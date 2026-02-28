@@ -91,14 +91,20 @@ public struct LoggableEvent: CustomStringConvertible, CustomDebugStringConvertib
 public struct LoggableLogger: Loggable {
   /// The logger instance used for logging.
   let logger: Logger
+  let formatter: any LoggableFormatter
 
   /// Logs captured event metadata to the default subsystem.
   ///
-  /// The event’s logging level is inherited from the function result unless explicitly specified:
+  /// The event's logging level is inherited from the function result unless explicitly specified:
   /// - ``OSLogType.info`` for successful function executions.
   /// - ``OSLogType.error`` for functions that throw errors.
   public func emit(event: LoggableEvent) {
-    self.logger.emit(event: event)
+    let message = formatter.format(event: event)
+    if let level = event.level as? OSLogType {
+      self.logger.log(level: level, "\(message)")
+    } else {
+      self.logger.log(level: event.result.isSuccess ? .info : .error, "\(message)")
+    }
   }
 
   @_spi(Experimental)
@@ -110,9 +116,15 @@ public struct LoggableLogger: Loggable {
   /// - ``Log(using:)
   /// - ``Log(using:level:omit:tag:)``
   ///
-  /// - Parameter logger: Logger used to log captured metadata.
-  public init(logger: Logger = Logger()) {
+  /// - Parameters:
+  ///   - logger: Logger used to log captured metadata.
+  ///   - formatter: Formatter used to produce the log message string.
+  public init(
+    logger: Logger = Logger(),
+    formatter: any LoggableFormatter = CompactFormatter()
+  ) {
     self.logger = logger
+    self.formatter = formatter
   }
 }
 
