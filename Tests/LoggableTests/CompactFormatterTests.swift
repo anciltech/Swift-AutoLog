@@ -182,3 +182,33 @@ struct CompactFormatterTests {
         #expect(!CompactFormatter().format(event: event).contains("\n"))
     }
 }
+
+// MARK: - Integration
+
+@Suite(.serialized)
+struct CompactFormatterIntegrationTests {
+
+    @Test func loggedMacro_emitsCompactFormat() {
+        var captured: String = ""
+
+        struct CapturingFormatter: LoggableFormatter {
+            let capture: @Sendable (String) -> Void
+            func format(event: LoggableEvent) -> String {
+                let output = CompactFormatter().format(event: event)
+                capture(output)
+                return output
+            }
+        }
+
+        @Logged(using: LoggableLogger(formatter: CapturingFormatter { captured = $0 }))
+        struct Subject {
+            func greet(name: String) -> String { "Hello, \(name)" }
+        }
+
+        _ = Subject().greet(name: "World")
+
+        #expect(captured.contains("🟢"))
+        #expect(captured.contains("greet(name: World)"))
+        #expect(captured.contains("→ Hello, World"))
+    }
+}
