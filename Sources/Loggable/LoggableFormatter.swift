@@ -68,9 +68,11 @@ public struct CompactFormatter: LoggableFormatter {
     }
 
     private func extractTypeName(from location: String) -> String {
-        // "App/LoggingDemoViewModel.swift:79:5" → "LoggingDemoViewModel"
-        let lastComponent = location.split(separator: "/").last.map(String.init) ?? location
-        return lastComponent.split(separator: ".").first.map(String.init) ?? lastComponent
+        // Expected format: "Module/TypeName.swift:line:col"
+        // Use ".swift" as boundary to handle names like "MyView+Extension.swift" correctly.
+        let filename = location.split(separator: "/").last.map(String.init) ?? location
+        let stem = filename.components(separatedBy: ".swift").first ?? filename
+        return stem.isEmpty ? "Unknown" : stem
     }
 
     private func extractFuncName(from declaration: String) -> String {

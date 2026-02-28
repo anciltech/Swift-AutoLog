@@ -24,9 +24,11 @@ struct CompactFormatterTests {
 
     // MARK: - Instantiation
 
-    @Test func compactFormatter_exists() {
-        let _ = CompactFormatter()
-        let _ = CompactFormatter(profile: .mvvm)
+    @Test func defaultProfile_isMVVM() {
+        let formatter = CompactFormatter()
+        // Default profile is MVVM; a ViewModel type should get depth-2 arrow
+        let event = makeEvent(location: "App/MyViewModel.swift:1:1")
+        #expect(formatter.format(event: event).hasPrefix("-->"))
     }
 
     // MARK: - Emoji
@@ -175,6 +177,7 @@ struct CompactFormatterTests {
         #expect(lines.count == 2)
         #expect(lines[1].contains("↳"))
         #expect(lines[1].contains("update"))
+        #expect(lines[1].contains("user"))
     }
 
     @Test func noTagsNoError_noSecondLine() {

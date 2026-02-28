@@ -134,6 +134,9 @@ extension Loggable where Self == LoggableLogger {
 }
 
 extension Logger: Loggable {
+  // Uses event.description (verbose multi-line format) intentionally.
+  // This conformance supports the @OSLog / @OSLogged macro path.
+  // Formatter-based output is only available via LoggableLogger.
   public func emit(event: LoggableEvent) {
     if let level = event.level as? OSLogType {
       self.log(level: level, "\(String(describing: event))")

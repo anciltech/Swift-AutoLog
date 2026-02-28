@@ -2,7 +2,9 @@ public struct DepthProfile: Sendable {
     public let suffixDepths: [(suffix: String, depth: Int)]
 
     public init(suffixDepths: [(suffix: String, depth: Int)]) {
-        self.suffixDepths = suffixDepths
+        // Sort by descending suffix length so longer (more specific) suffixes
+        // always win regardless of caller-provided order.
+        self.suffixDepths = suffixDepths.sorted { $0.suffix.count > $1.suffix.count }
     }
 
     public static let mvvm = DepthProfile(suffixDepths: [
@@ -25,10 +27,8 @@ public struct DepthProfile: Sendable {
     ])
 
     public func depth(for typeName: String) -> Int? {
-        suffixDepths
-            .sorted { $0.suffix.count > $1.suffix.count }
-            .first { typeName.hasSuffix($0.suffix) }?
-            .depth
+        // suffixDepths is pre-sorted by descending suffix length at init time.
+        suffixDepths.first { typeName.hasSuffix($0.suffix) }?.depth
     }
 
     public func arrow(for typeName: String) -> String {
