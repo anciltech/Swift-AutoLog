@@ -55,6 +55,22 @@ extension Button where Label == Text {
 extension Binding {
     /// Returns a new binding that logs interactions when the value is set,
     /// propagating the source to all downstream `@Logged` function calls.
+    ///
+    /// Use the ``InteractionSource``-typed overload for dot-shorthand syntax:
+    /// ```swift
+    /// Toggle("Dark Mode", isOn: $vm.darkMode.logged(.toggle("Dark Mode")))
+    /// ```
+    @MainActor public func logged(
+        _ source: InteractionSource,
+        fileID: String = #fileID,
+        line: Int = #line,
+        column: Int = #column
+    ) -> Binding {
+        logged(source as any Sourceable, fileID: fileID, line: line, column: column)
+    }
+
+    /// Returns a new binding that logs interactions when the value is set,
+    /// using any custom ``Sourceable`` type.
     @MainActor public func logged(
         _ source: any Sourceable,
         fileID: String = #fileID,
