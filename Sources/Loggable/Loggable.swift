@@ -114,7 +114,9 @@ public struct LoggableLogger: Loggable {
     }
   }
 
-  @_spi(Experimental)
+  // NOTE: @_spi(Experimental) intentionally removed — using it with @Logged(using:) in
+  // Swift 6.2.4 triggers a compiler ICE (ConstraintWalker crash during ResolveMacroRequest).
+  // Restore once rdar://FB17xxx / swift-front-end crash is fixed upstream.
   /// Creates a new instance of this type to serve as the default handler
   /// for emitted events.
   ///
