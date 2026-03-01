@@ -24,6 +24,7 @@ struct LogMacroTests {
       func foo() {
         let loggable: any Loggable = .logger
         let event = LoggableEvent(
+          source: LoggableSource.current,
           location: "TestModule/Test.swift:1:1",
           declaration: "func foo()",
           parameters: [:],
@@ -50,6 +51,7 @@ struct LogMacroTests {
       func foo() {
         let loggable: any Loggable = CustomLogger()
         let event = LoggableEvent(
+          source: LoggableSource.current,
           location: "TestModule/Test.swift:1:1",
           declaration: "func foo()",
           parameters: [:],
@@ -76,6 +78,7 @@ struct LogMacroTests {
       func foo() {
         let loggable: any Loggable = .custom
         let event = LoggableEvent(
+          source: LoggableSource.current,
           location: "TestModule/Test.swift:1:1",
           declaration: "func foo()",
           parameters: [:],
@@ -102,6 +105,7 @@ struct LogMacroTests {
       func foo() -> String {
         let loggable: any Loggable = .logger
         var event = LoggableEvent(
+          source: LoggableSource.current,
           location: "TestModule/Test.swift:1:1",
           declaration: "func foo() -> String",
           parameters: [:],
@@ -134,6 +138,7 @@ struct LogMacroTests {
         let loggable: any Loggable = .foo
         var event = LoggableEvent(
           level: .debug,
+          source: LoggableSource.current,
           location: "TestModule/Test.swift:1:1",
           declaration: "func foo(bar: String) -> String",
           parameters: [
@@ -167,6 +172,7 @@ struct LogMacroTests {
       func foo(bar: String) -> String {
         let loggable: any Loggable = .logger
         var event = LoggableEvent(
+          source: LoggableSource.current,
           location: "TestModule/Test.swift:1:1",
           declaration: "func foo(bar: String) -> String",
           parameters: [
@@ -200,6 +206,7 @@ struct LogMacroTests {
       func foo(_ bar: String, baz biz: Int) -> (String, Int) {
         let loggable: any Loggable = .logger
         var event = LoggableEvent(
+          source: LoggableSource.current,
           location: "TestModule/Test.swift:1:1",
           declaration: "func foo(_ bar: String, baz biz: Int) -> (String, Int)",
           parameters: [
@@ -237,6 +244,7 @@ struct LogMacroTests {
         let loggable: any Loggable = .logger
         let event = LoggableEvent(
           level: .debug,
+          source: LoggableSource.current,
           location: "TestModule/Test.swift:1:1",
           declaration: "mutating func foo()",
           parameters: [:],
@@ -264,6 +272,7 @@ struct LogMacroTests {
         let loggable: any Loggable = .logger
         let event = LoggableEvent(
           level: .debug,
+          source: LoggableSource.current,
           location: "TestModule/Test.swift:1:1",
           declaration: "mutating func foo(bar: String)",
           parameters: [
@@ -296,6 +305,7 @@ struct LogMacroTests {
       mutating func foo() throws {
         let loggable: any Loggable = .logger
         var event = LoggableEvent(
+          source: LoggableSource.current,
           location: "TestModule/Test.swift:1:1",
           declaration: "mutating func foo() throws",
           parameters: [:],
@@ -339,6 +349,7 @@ struct LogMacroTests {
         let loggable: any Loggable = .logger
         var event = LoggableEvent(
           level: .error,
+          source: LoggableSource.current,
           location: "TestModule/Test.swift:1:1",
           declaration: "func foo() throws",
           parameters: [:],
@@ -377,6 +388,7 @@ struct LogMacroTests {
       func foo() throws -> Int {
         let loggable: any Loggable = .logger
         var event = LoggableEvent(
+          source: LoggableSource.current,
           location: "TestModule/Test.swift:1:1",
           declaration: "func foo() throws -> Int",
           parameters: [:],
@@ -425,6 +437,7 @@ struct LogMacroTests {
       func foo(_ value: Int) throws {
         let loggable: any Loggable = .logger
         var event = LoggableEvent(
+          source: LoggableSource.current,
           location: "TestModule/Test.swift:1:1",
           declaration: "func foo(_ value: Int) throws",
           parameters: [
@@ -470,6 +483,7 @@ struct LogMacroTests {
       func foo(_ value: Int, content: String) throws -> (Int, String) {
         let loggable: any Loggable = .logger
         var event = LoggableEvent(
+          source: LoggableSource.current,
           location: "TestModule/Test.swift:1:1",
           declaration: "func foo(_ value: Int, content: String) throws -> (Int, String)",
           tags: []
@@ -513,6 +527,7 @@ struct LogMacroTests {
         let loggable: any Loggable = .logger
         var event = LoggableEvent(
           level: "fault",
+          source: LoggableSource.current,
           location: "TestModule/Test.swift:1:1",
           declaration: "func foo() async throws",
           parameters: [:],
@@ -547,6 +562,7 @@ struct LogMacroTests {
       func performTask(completion: @escaping () -> Void) {
         let loggable: any Loggable = .logger
         let event = LoggableEvent(
+          source: LoggableSource.current,
           location: "TestModule/Test.swift:1:1",
           declaration: "func performTask(completion: @escaping () -> Void)",
           parameters: [
@@ -578,6 +594,7 @@ struct LogMacroTests {
         let loggable: any Loggable = .logger
         let event = LoggableEvent(
           level: .info,
+          source: LoggableSource.current,
           location: "TestModule/Test.swift:1:1",
           declaration: "func check(condition: @autoclosure () -> Bool) -> Bool",
           parameters: [
@@ -610,6 +627,7 @@ struct LogMacroTests {
       func update(value: inout Int, with newValue: Int) {
         let loggable: any Loggable = .logger
         let event = LoggableEvent(
+          source: LoggableSource.current,
           location: "TestModule/Test.swift:1:1",
           declaration: "func update(value: inout Int, with newValue: Int)",
           parameters: [
@@ -641,6 +659,7 @@ struct LogMacroTests {
       static func staticMethod(info: String) -> String {
         let loggable: any Loggable = .logger
         let event = LoggableEvent(
+          source: LoggableSource.current,
           location: "TestModule/Test.swift:1:1",
           declaration: "static func staticMethod(info: String) -> String",
           parameters: [
@@ -675,6 +694,7 @@ struct LogMacroTests {
       func execute(operation: () throws -> Void) rethrows {
         let loggable: any Loggable = .logger
         var event = LoggableEvent(
+          source: LoggableSource.current,
           location: "TestModule/Test.swift:1:1",
           declaration: "func execute(operation: () throws -> Void) rethrows",
           parameters: [
@@ -712,6 +732,7 @@ struct LogMacroTests {
         let loggable: any Loggable = .custom
         let event = LoggableEvent(
           level: .debug,
+          source: LoggableSource.current,
           location: "TestModule/Test.swift:1:1",
           declaration: "func transform(value: Int, using transform: (Int) -> String) -> String",
           tags: [.commonTag, "example"]
@@ -784,6 +805,7 @@ struct LogMacroTests {
       func combine<T, U>(first: T, second: U) -> (T, U) where T: CustomStringConvertible, U: CustomStringConvertible {
         let loggable: any Loggable = .logger
         var event = LoggableEvent(
+          source: LoggableSource.current,
           location: "TestModule/Test.swift:1:1",
           declaration: "func combine<T, U>(first: T, second: U) -> (T, U) where T: CustomStringConvertible, U: CustomStringConvertible",
           parameters: [
@@ -818,6 +840,7 @@ struct LogMacroTests {
       func greet(name: String = "Guest") -> String {
         let loggable: any Loggable = .logger
         var event = LoggableEvent(
+          source: LoggableSource.current,
           location: "TestModule/Test.swift:1:1",
           declaration: #"func greet(name: String = "Guest") -> String"#,
           parameters: [
@@ -851,6 +874,7 @@ struct LogMacroTests {
       func sum(numbers: Int...) -> Int {
         let loggable: any Loggable = .logger
         var event = LoggableEvent(
+          source: LoggableSource.current,
           location: "TestModule/Test.swift:1:1",
           declaration: "func sum(numbers: Int...) -> Int",
           parameters: [
@@ -888,6 +912,7 @@ struct LogMacroTests {
       func compute(value: Int) -> Int {
         let loggable: any Loggable = .logger
         let event = LoggableEvent(
+          source: LoggableSource.current,
           location: "TestModule/Test.swift:1:1",
           declaration: "func compute(value: Int) -> Int",
           parameters: [
@@ -920,6 +945,7 @@ struct LogMacroTests {
       func makeIncrementer() -> (Int) -> Int {
         let loggable: any Loggable = .logger
         var event = LoggableEvent(
+          source: LoggableSource.current,
           location: "TestModule/Test.swift:1:1",
           declaration: "func makeIncrementer() -> (Int) -> Int",
           parameters: [:],
@@ -956,6 +982,7 @@ struct LogMacroTests {
       func fetchData(completion: @escaping () async -> String) {
         let loggable: any Loggable = .logger
         let event = LoggableEvent(
+          source: LoggableSource.current,
           location: "TestModule/Test.swift:1:1",
           declaration: "func fetchData(completion: @escaping () async -> String)",
           parameters: [
@@ -989,6 +1016,7 @@ struct LogMacroTests {
       func updateUI(message: String) {
         let loggable: any Loggable = .logger
         let event = LoggableEvent(
+          source: LoggableSource.current,
           location: "TestModule/Test.swift:1:1",
           declaration: "func updateUI(message: String)",
           parameters: [
@@ -1017,6 +1045,7 @@ struct LogMacroTests {
       func process<T: Equatable, U: Numeric>(first: T, second: U) -> Bool {
         let loggable: any Loggable = .logger
         var event = LoggableEvent(
+          source: LoggableSource.current,
           location: "TestModule/Test.swift:1:1",
           declaration: "func process<T: Equatable, U: Numeric>(first: T, second: U) -> Bool",
           parameters: [
@@ -1053,6 +1082,7 @@ struct LogMacroTests {
       func performAction() {
         let loggable: any Loggable = .logger
         let event = LoggableEvent(
+          source: LoggableSource.current,
           location: "TestModule/Test.swift:1:1",
           declaration: "func performAction()",
           parameters: [:],
@@ -1079,6 +1109,7 @@ struct LogMacroTests {
       func getOptionalValue() -> Int? {
         let loggable: any Loggable = .logger
         var event = LoggableEvent(
+          source: LoggableSource.current,
           location: "TestModule/Test.swift:1:1",
           declaration: "func getOptionalValue() -> Int?",
           parameters: [:],
@@ -1111,6 +1142,7 @@ struct LogMacroTests {
       func performAsyncTask(completion: @escaping () async throws -> String) async throws -> String {
         let loggable: any Loggable = .logger
         var event = LoggableEvent(
+          source: LoggableSource.current,
           location: "TestModule/Test.swift:1:1",
           declaration: "func performAsyncTask(completion: @escaping () async throws -> String) async throws -> String",
           parameters: [
@@ -1150,6 +1182,7 @@ struct LogMacroTests {
       override func description() -> String {
         let loggable: any Loggable = .logger
         var event = LoggableEvent(
+          source: LoggableSource.current,
           location: "TestModule/Test.swift:1:1",
           declaration: "override func description() -> String",
           parameters: [:],
@@ -1181,6 +1214,7 @@ struct LogMacroTests {
       func updateScore(score: inout Int, increment: Int = 1) {
         let loggable: any Loggable = .logger
         let event = LoggableEvent(
+          source: LoggableSource.current,
           location: "TestModule/Test.swift:1:1",
           declaration: "func updateScore(score: inout Int, increment: Int = 1)",
           parameters: [
@@ -1210,6 +1244,7 @@ struct LogMacroTests {
       func optionalTest(value: String?) -> String {
         let loggable: any Loggable = .logger
         var event = LoggableEvent(
+          source: LoggableSource.current,
           location: "TestModule/Test.swift:1:1",
           declaration: "func optionalTest(value: String?) -> String",
           parameters: [
@@ -1248,6 +1283,7 @@ struct LogMacroTests {
         where T: Comparable, U: Comparable{
         let loggable: any Loggable = .logger
         var event = LoggableEvent(
+          source: LoggableSource.current,
           location: "TestModule/Test.swift:1:1",
           declaration: "func merge<T, U>(_ first: [T], with second: [U]) -> [(T, U)]\n  where T: Comparable, U: Comparable",
           parameters: [
@@ -1283,6 +1319,7 @@ struct LogMacroTests {
       func perform(action: (() -> Void)? = nil) {
         let loggable: any Loggable = .logger
         let event = LoggableEvent(
+          source: LoggableSource.current,
           location: "TestModule/Test.swift:1:1",
           declaration: "func perform(action: (() -> Void)? = nil)",
           parameters: [
@@ -1313,6 +1350,7 @@ struct LogMacroTests {
       static func create<T>(value: T) -> [T] {
         let loggable: any Loggable = .logger
         var event = LoggableEvent(
+          source: LoggableSource.current,
           location: "TestModule/Test.swift:1:1",
           declaration: "static func create<T>(value: T) -> [T]",
           parameters: [
@@ -1346,6 +1384,7 @@ struct LogMacroTests {
       func process(pair: (Int, String)) -> String {
         let loggable: any Loggable = .logger
         var event = LoggableEvent(
+          source: LoggableSource.current,
           location: "TestModule/Test.swift:1:1",
           declaration: "func process(pair: (Int, String)) -> String",
           parameters: [
@@ -1379,6 +1418,7 @@ struct LogMacroTests {
       func filterElements<T>(elements: [T], using predicate: (T) -> Bool) -> [T] {
         let loggable: any Loggable = .logger
         var event = LoggableEvent(
+          source: LoggableSource.current,
           location: "TestModule/Test.swift:1:1",
           declaration: "func filterElements<T>(elements: [T], using predicate: (T) -> Bool) -> [T]",
           parameters: [
@@ -1414,6 +1454,7 @@ struct LogMacroTests {
       func filterElements<T>(elements: [T], using predicate: (T) -> Bool) -> [T] {
         let loggable: any Loggable = .logger
         var event = LoggableEvent(
+          source: LoggableSource.current,
           location: "TestModule/Test.swift:1:1",
           declaration: "func filterElements<T>(elements: [T], using predicate: (T) -> Bool) -> [T]",
           parameters: [

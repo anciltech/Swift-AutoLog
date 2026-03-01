@@ -24,6 +24,7 @@ struct OSLogMacroTests {
       func foo() {
         let loggable: any Loggable = Self.logger
         let event = LoggableEvent(
+          source: LoggableSource.current,
           location: "TestModule/Test.swift:1:1",
           declaration: "func foo()",
           parameters: [:],
@@ -50,6 +51,7 @@ struct OSLogMacroTests {
       func sum(numbers: Int...) -> Int {
         let loggable: any Loggable = Self.logger
         var event = LoggableEvent(
+          source: LoggableSource.current,
           location: "TestModule/Test.swift:1:1",
           declaration: "func sum(numbers: Int...) -> Int",
           parameters: [
@@ -84,6 +86,7 @@ struct OSLogMacroTests {
         let loggable: any Loggable = Self.logger
         let event = LoggableEvent(
           level: .debug,
+          source: LoggableSource.current,
           location: "TestModule/Test.swift:1:1",
           declaration: "func transform(value: Int, using transform: (Int) -> String) -> String",
           tags: [.commonTag, "example"]
