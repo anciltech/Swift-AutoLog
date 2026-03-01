@@ -24,6 +24,12 @@ public struct CompactFormatter: LoggableFormatter {
         let typeName   = extractTypeName(from: event.location)
         let arrow      = profile.arrow(for: typeName)
         let em         = emoji(for: event)
+
+        // Interaction event: source present and declaration matches source description
+        if let source = event.source, event.declaration == source.description {
+            return "\(arrow) \(em) \(typeName).\(event.declaration)"
+        }
+
         let funcName   = extractFuncName(from: event.declaration)
         let params     = formatParameters(event.parameters)
         let specifiers = effectSpecifiers(from: event.declaration)
