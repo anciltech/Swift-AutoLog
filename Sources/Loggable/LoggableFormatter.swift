@@ -51,6 +51,11 @@ public struct CompactFormatter: LoggableFormatter {
     // MARK: - Private helpers
 
     private func emoji(for event: LoggableEvent) -> String {
+        // Source emoji takes priority when present
+        if let source = event.source {
+            return source.emoji
+        }
+
         // Failure always wins
         if case .failure = event.result { return "🔴" }
 
