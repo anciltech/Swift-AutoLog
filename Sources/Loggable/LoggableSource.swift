@@ -8,6 +8,10 @@ public enum LoggableSource {
     /// The logger used to emit standalone interaction events.
     /// Defaults to `LoggableLogger()`. Set this to customize
     /// where interaction events are logged.
+    ///
+    /// - Important: Set this property during app initialization only,
+    ///   before any concurrent calls to ``run(_:fileID:line:column:operation:)``.
+    ///   Mutating it concurrently with `run()` calls is a data race.
     public static nonisolated(unsafe) var logger: any Loggable = LoggableLogger()
 
     /// Emits a standalone interaction event and runs the operation

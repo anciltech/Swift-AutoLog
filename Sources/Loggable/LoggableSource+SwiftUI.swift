@@ -37,14 +37,13 @@ extension Button where Label == Text {
     ) -> some View {
         Button(title, role: role) {
             Task {
-                let sendableAction = action
                 await LoggableSource.run(
                     InteractionSource.button(title),
                     fileID: fileID,
                     line: line,
                     column: column
                 ) { @Sendable in
-                    await sendableAction()
+                    await action()
                 }
             }
         }

@@ -142,6 +142,9 @@ struct LoggableSourceTests {
     }
 
     @Test func run_emitsInteractionEvent() {
+        let originalLogger = LoggableSource.logger
+        defer { LoggableSource.logger = originalLogger }
+
         let mock = MockLogger()
         LoggableSource.logger = mock
 
@@ -235,5 +238,22 @@ struct CompactFormatterSourceTests {
         )
         let output = CompactFormatter(profile: .mvvm).format(event: event)
         #expect(output.hasPrefix("--> 🔀 MyViewModel.toggle(\"Dark Mode\")"))
+    }
+
+    @Test func downstreamFunction_usesSourceEmoji_withStandardFormat() {
+        // When source is present but declaration doesn't match source.description,
+        // it's a downstream @Logged function — source emoji is used but
+        // function name formatting is standard.
+        let event = makeEvent(
+            source: InteractionSource.button("Deposit"),
+            location: "App/Account.swift:20:5",
+            declaration: "func deposit(_ amount: Decimal)",
+            parameters: ["amount": 50],
+            result: .success(())
+        )
+        let output = CompactFormatter().format(event: event)
+        #expect(output.contains("👆🏼"))
+        #expect(output.contains("Account.deposit(amount: 50)"))
+        #expect(!output.contains("🟢"))
     }
 }
