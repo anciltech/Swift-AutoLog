@@ -64,7 +64,7 @@ extension LoggableTests {
     case mock
   }
   
-  @Logged(using: mock)
+  @Logged(using: LoggableTests.mock)
   struct Testcase {
     func mockThrowingFunction() throws {
       throw Failure.mock

@@ -87,9 +87,14 @@ public struct CompactFormatter: LoggableFormatter {
     }
 
     private func extractFuncName(from declaration: String) -> String {
-        // "func fetchUser(id: Int) async throws -> String" → "fetchUser"
+        // "public mutating func deposit(amount: Int)" → "deposit"
         // "func fetch<T: Decodable>(type: T.Type)" → "fetch"
-        let afterFunc = declaration.hasPrefix("func ") ? String(declaration.dropFirst(5)) : declaration
+        let afterFunc: String
+        if let range = declaration.range(of: "func ") {
+            afterFunc = String(declaration[range.upperBound...])
+        } else {
+            afterFunc = declaration
+        }
         let withoutGenerics = afterFunc.split(separator: "<").first.map(String.init) ?? afterFunc
         return withoutGenerics.split(separator: "(").first.map(String.init) ?? withoutGenerics
     }
@@ -106,13 +111,7 @@ public struct CompactFormatter: LoggableFormatter {
     }
 
     private func effectSpecifiers(from declaration: String) -> String {
-        let isAsync  = declaration.range(of: #"\basync\b"#,  options: .regularExpression) != nil
-        let isThrows = declaration.range(of: #"\bthrows\b"#, options: .regularExpression) != nil
-        switch (isAsync, isThrows) {
-        case (true, true):   return " async throws"
-        case (true, false):  return " async"
-        case (false, true):  return " throws"
-        case (false, false): return ""
-        }
+        let isAsync = declaration.range(of: #"\basync\b"#, options: .regularExpression) != nil
+        return isAsync ? " async" : ""
     }
 }
