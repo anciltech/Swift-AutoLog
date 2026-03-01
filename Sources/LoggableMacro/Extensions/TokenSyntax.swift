@@ -24,6 +24,8 @@ extension TokenSyntax {
     case Loggable
     case parameters
     case declaration
+    case source
+    case LoggableSource
     case Conformance
     case LoggableEvent
     case Omit
@@ -128,6 +130,12 @@ extension TokenSyntax {
 
       case .Redact:
         return TokenSyntax.identifier("Redact")
+
+      case .source:
+        return TokenSyntax.identifier("source")
+
+      case .LoggableSource:
+        return TokenSyntax.identifier("LoggableSource")
       }
     }
   }

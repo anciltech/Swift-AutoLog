@@ -154,6 +154,22 @@ extension LoggableMacro {
                     )
                   }
 
+                  // MARK: - source: (any Sourceable)?
+                  LabeledExprSyntax(
+                    leadingTrivia: .newline,
+                    label: .predefined(.source),
+                    colon: .colonToken(),
+                    expression: MemberAccessExprSyntax(
+                      base: DeclReferenceExprSyntax(
+                        baseName: .predefined(.LoggableSource)
+                      ),
+                      period: .periodToken(),
+                      name: TokenSyntax.identifier("current")
+                    ),
+                    trailingComma: .commaToken(),
+                    trailingTrivia: .newline
+                  )
+
                   // MARK: - location: String
                   LabeledExprSyntax(
                     leadingTrivia: .newline,
