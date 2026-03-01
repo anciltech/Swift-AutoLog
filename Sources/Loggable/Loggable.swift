@@ -20,6 +20,9 @@ public struct LoggableEvent: CustomStringConvertible, CustomDebugStringConvertib
   /// The logging level associated with the event.
   public let level: (any Levelable)?
 
+  /// The interaction source that triggered this event, if any.
+  public let source: (any Sourceable)?
+
   /// The source location of the invoked function.
   public let location: String
 
@@ -39,6 +42,7 @@ public struct LoggableEvent: CustomStringConvertible, CustomDebugStringConvertib
 
   public var description: String {
     """
+    source: \(source.map { String(describing: $0) } ?? "nil")
     location: \(location)
     declaration: \(declaration)
     parameters: \(parameters)
@@ -50,6 +54,7 @@ public struct LoggableEvent: CustomStringConvertible, CustomDebugStringConvertib
   public var debugDescription: String {
     """
     level: \(String(describing: level))
+    source: \(source.map { String(describing: $0) } ?? "nil")
     location: \(location)
     declaration: \(declaration)
     parameters: \(parameters)
@@ -70,6 +75,7 @@ public struct LoggableEvent: CustomStringConvertible, CustomDebugStringConvertib
   ///   - tags: A collection of tags to associate with the event.
   public init(
     level: (any Levelable)? = nil,
+    source: (any Sourceable)? = nil,
     location: String,
     declaration: String,
     parameters: [String: Any] = [:],
@@ -77,6 +83,7 @@ public struct LoggableEvent: CustomStringConvertible, CustomDebugStringConvertib
     tags: [any Taggable] = []
   ) {
     self.level = level
+    self.source = source
     self.location = location
     self.declaration = declaration
     self.parameters = parameters
