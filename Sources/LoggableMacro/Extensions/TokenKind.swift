@@ -5,6 +5,7 @@ extension TokenKind {
     case autoclosure
     case capture
     case using
+    case architecture
     case access
     case omit
     case tag
@@ -46,6 +47,9 @@ extension TokenKind {
 
       case .using:
         return TokenKind.identifier("using")
+
+      case .architecture:
+        return TokenKind.identifier("architecture")
 
       case .Omit:
         return TokenKind.identifier("Omit")

@@ -8,14 +8,23 @@ protocol LoggableMacro: BodyMacro {
 
 extension LoggableMacro {
   public static func initialize(for node: AttributeSyntax) -> ExprSyntax {
-    guard let expression = node.extract(argument: .using, as: ExprSyntax.self) else {
-      return ExprSyntax(
-        MemberAccessExprSyntax(
-          name: .predefined(.logger)
-        )
-      )
+    if let expression = node.extract(argument: .architecture, as: ExprSyntax.self) {
+      return expression
     }
-    return expression
+
+    if let expression = node.extract(argument: .using, as: ExprSyntax.self) {
+      return expression
+    }
+
+    return ExprSyntax(
+      MemberAccessExprSyntax(
+        base: DeclReferenceExprSyntax(
+          baseName: .predefined(.LoggableSource)
+        ),
+        period: .periodToken(),
+        name: .predefined(.logger)
+      )
+    )
   }
 
   public static func expansion(

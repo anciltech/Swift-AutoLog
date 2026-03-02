@@ -139,7 +139,33 @@ public macro OSLog(
 /// }
 /// ```
 @attached(memberAttribute)
-public macro Logged(using loggable: any Loggable = .logger) = #externalMacro(
+public macro Logged() = #externalMacro(
+  module: "LoggableMacro",
+  type: "LoggedMacro"
+)
+
+@attached(memberAttribute)
+public macro Logged(using loggable: any Loggable) = #externalMacro(
+  module: "LoggableMacro",
+  type: "LoggedMacro"
+)
+
+@attached(memberAttribute)
+public macro Logged(architecture loggable: any Loggable) = #externalMacro(
+  module: "LoggableMacro",
+  type: "LoggedMacro"
+)
+
+/// Overload for concrete `LoggableLogger` to avoid existential boxing in
+/// macro argument type-checking on Swift 6.2.x.
+@attached(memberAttribute)
+public macro Logged(using loggable: LoggableLogger) = #externalMacro(
+  module: "LoggableMacro",
+  type: "LoggedMacro"
+)
+
+@attached(memberAttribute)
+public macro Logged(architecture loggable: LoggableLogger) = #externalMacro(
   module: "LoggableMacro",
   type: "LoggedMacro"
 )
@@ -148,7 +174,43 @@ public macro Logged(using loggable: any Loggable = .logger) = #externalMacro(
 ///
 /// - Parameter loggable: The type that handles captured events.
 @attached(body)
-public macro Log(using loggable: any Loggable = .logger) = #externalMacro(
+public macro Log() = #externalMacro(
+  module: "LoggableMacro",
+  type: "LogMacro"
+)
+
+@attached(body)
+public macro Log(
+  level: (any Levelable)? = nil,
+  omit: any Omittable... = [],
+  tag: any Taggable... = []
+) = #externalMacro(
+  module: "LoggableMacro",
+  type: "LogMacro"
+)
+
+@attached(body)
+public macro Log(using loggable: any Loggable) = #externalMacro(
+  module: "LoggableMacro",
+  type: "LogMacro"
+)
+
+@attached(body)
+public macro Log(architecture loggable: any Loggable) = #externalMacro(
+  module: "LoggableMacro",
+  type: "LogMacro"
+)
+
+/// Overload for concrete `LoggableLogger` to avoid existential boxing in
+/// macro argument type-checking on Swift 6.2.x.
+@attached(body)
+public macro Log(using loggable: LoggableLogger) = #externalMacro(
+  module: "LoggableMacro",
+  type: "LogMacro"
+)
+
+@attached(body)
+public macro Log(architecture loggable: LoggableLogger) = #externalMacro(
   module: "LoggableMacro",
   type: "LogMacro"
 )
@@ -162,7 +224,42 @@ public macro Log(using loggable: any Loggable = .logger) = #externalMacro(
 ///   - tag: The tags to be associated with captured event.
 @attached(body)
 public macro Log(
-  using loggable: any Loggable = .logger,
+  using loggable: any Loggable,
+  level: (any Levelable)? = nil,
+  omit: any Omittable... = [],
+  tag: any Taggable... = []
+) = #externalMacro(
+  module: "LoggableMacro",
+  type: "LogMacro"
+)
+
+@attached(body)
+public macro Log(
+  architecture loggable: any Loggable,
+  level: (any Levelable)? = nil,
+  omit: any Omittable... = [],
+  tag: any Taggable... = []
+) = #externalMacro(
+  module: "LoggableMacro",
+  type: "LogMacro"
+)
+
+/// Overload for concrete `LoggableLogger` to avoid existential boxing in
+/// macro argument type-checking on Swift 6.2.x.
+@attached(body)
+public macro Log(
+  using loggable: LoggableLogger,
+  level: (any Levelable)? = nil,
+  omit: any Omittable... = [],
+  tag: any Taggable... = []
+) = #externalMacro(
+  module: "LoggableMacro",
+  type: "LogMacro"
+)
+
+@attached(body)
+public macro Log(
+  architecture loggable: LoggableLogger,
   level: (any Levelable)? = nil,
   omit: any Omittable... = [],
   tag: any Taggable... = []
