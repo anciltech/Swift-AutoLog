@@ -122,20 +122,20 @@ struct LoggableSourceTests {
 
     @Test func run_setsCurrentDuringExecution() {
         var capturedEmoji: String?
-        LoggableSource.run(.button("Test")) {
+        LoggableSource.run(InteractionSource.button("Test")) {
             capturedEmoji = LoggableSource.current?.emoji
         }
         #expect(capturedEmoji == "👆🏼")
     }
 
     @Test func run_restoresNilAfterExecution() {
-        LoggableSource.run(.button("Test")) { }
+        LoggableSource.run(InteractionSource.button("Test")) { }
         #expect(LoggableSource.current == nil)
     }
 
     @Test func run_async_setsCurrentDuringExecution() async {
         var capturedEmoji: String?
-        await LoggableSource.run(.api("GET /users")) {
+        await LoggableSource.run(InteractionSource.api("GET /users")) {
             capturedEmoji = LoggableSource.current?.emoji
         }
         #expect(capturedEmoji == "🌐")
@@ -148,7 +148,7 @@ struct LoggableSourceTests {
         let mock = MockLogger()
         LoggableSource.logger = mock
 
-        LoggableSource.run(.button("Deposit")) { }
+        LoggableSource.run(InteractionSource.button("Deposit")) { }
 
         #expect(mock.events.count == 1)
         #expect(mock.events.first?.source?.emoji == "👆🏼")
@@ -156,12 +156,12 @@ struct LoggableSourceTests {
     }
 
     @Test func run_returnsOperationResult() {
-        let result = LoggableSource.run(.button("Calc")) { 42 }
+        let result = LoggableSource.run(InteractionSource.button("Calc")) { 42 }
         #expect(result == 42)
     }
 
     @Test func run_async_returnsOperationResult() async {
-        let result = await LoggableSource.run(.api("Fetch")) { "data" }
+        let result = await LoggableSource.run(InteractionSource.api("Fetch")) { "data" }
         #expect(result == "data")
     }
 }
@@ -191,25 +191,30 @@ struct CompactFormatterSourceTests {
         )
     }
 
-    @Test func source_replacesStatusEmoji() {
+    // In the new formatter, source emoji no longer replaces the status emoji on function events.
+    // Status emoji (🟢/🔴/🔵) is always used; source attribution appears on a second ↖ line
+    // only when the source is a SourceContext (set by LoggableSource.run via @TaskLocal).
+
+    @Test func functionEvent_withSource_showsStatusEmoji_notSourceEmoji() {
+        // Non-SourceContext sources don't produce an attribution line.
         let event = makeEvent(
             source: InteractionSource.button("Deposit"),
             result: .success(())
         )
         let output = CompactFormatter().format(event: event)
-        #expect(output.contains("👆🏼"))
-        #expect(!output.contains("🟢"))
+        #expect(!output.contains("👆🏼"))  // Source emoji NOT on function line
+        #expect(output.contains("🟢"))     // Status emoji IS shown
     }
 
-    @Test func source_replacesStatusEmoji_evenOnFailure() {
+    @Test func functionEvent_failure_showsRedEmoji_notSourceEmoji() {
         struct E: Error {}
         let event = makeEvent(
             source: InteractionSource.api("GET /users"),
             result: .failure(E())
         )
         let output = CompactFormatter().format(event: event)
-        #expect(output.contains("🌐"))
-        #expect(!output.contains("🔴"))
+        #expect(!output.contains("🌐"))   // Source emoji NOT on function line
+        #expect(output.contains("🔴"))    // Failure emoji IS shown
     }
 
     @Test func noSource_fallsBackToStatusEmoji() {
@@ -218,7 +223,9 @@ struct CompactFormatterSourceTests {
         #expect(output.contains("🟢"))
     }
 
-    @Test func interactionEvent_formatsAsSourceDescription() {
+    @Test func interactionEvent_usesLabelAndLocation() {
+        // Interaction events (declaration == source.description) are formatted as:
+        // "-> 👆🏼 <label> [<TypeName>:<line>]"
         let event = makeEvent(
             source: InteractionSource.button("Deposit"),
             location: "App/ContentView.swift:30:5",
@@ -226,24 +233,26 @@ struct CompactFormatterSourceTests {
         )
         let output = CompactFormatter().format(event: event)
         #expect(output.contains("👆🏼"))
-        #expect(output.contains("ContentView.button(\"Deposit\")"))
+        #expect(output.contains("Deposit"))
+        #expect(output.contains("[ContentView:30]"))
         #expect(!output.contains("→"))
     }
 
     @Test func interactionEvent_usesDepthArrow() {
+        // Depth arrow length is derived from the type name suffix via DepthProfile.
         let event = makeEvent(
             source: InteractionSource.toggle("Dark Mode"),
             location: "App/MyViewModel.swift:15:5",
             declaration: "toggle(\"Dark Mode\")"
         )
         let output = CompactFormatter(profile: .mvvm).format(event: event)
-        #expect(output.hasPrefix("--> 🔀 MyViewModel.toggle(\"Dark Mode\")"))
+        #expect(output.hasPrefix("--> 🔀 Dark Mode [MyViewModel:15]"))
     }
 
-    @Test func downstreamFunction_usesSourceEmoji_withStandardFormat() {
-        // When source is present but declaration doesn't match source.description,
-        // it's a downstream @Logged function — source emoji is used but
-        // function name formatting is standard.
+    @Test func downstreamFunction_showsStatusEmoji_noSourceEmoji() {
+        // When source is set but declaration doesn't match source.description,
+        // it's a downstream @Logged function. Status emoji is used; source emoji
+        // only appears in the ↖ attribution line (for SourceContext sources only).
         let event = makeEvent(
             source: InteractionSource.button("Deposit"),
             location: "App/Account.swift:20:5",
@@ -252,8 +261,30 @@ struct CompactFormatterSourceTests {
             result: .success(())
         )
         let output = CompactFormatter().format(event: event)
-        #expect(output.contains("👆🏼"))
+        #expect(!output.contains("👆🏼"))  // Source emoji NOT on function line
+        #expect(output.contains("🟢"))     // Status emoji shown
         #expect(output.contains("Account.deposit(amount: 50)"))
-        #expect(!output.contains("🟢"))
+    }
+
+    @Test func functionEvent_withSourceContext_showsAttributionLine() {
+        // When source is a SourceContext (from LoggableSource.run), a second ↖ line
+        // is appended showing the interaction source emoji, label, and call-site location.
+        let ctx = SourceContext(
+            source: InteractionSource.button("Deposit"),
+            location: "App/ContentView.swift:30:5"
+        )
+        let event = makeEvent(
+            source: ctx,
+            declaration: "func deposit(_ amount: Decimal)",
+            result: .success(())
+        )
+        let output = CompactFormatter().format(event: event)
+        let lines = output.split(separator: "\n", omittingEmptySubsequences: false)
+        #expect(lines.count == 2)
+        #expect(lines[0].contains("🟢"))
+        #expect(lines[1].contains("↖"))
+        #expect(lines[1].contains("👆🏼"))
+        #expect(lines[1].contains("Deposit"))
+        #expect(lines[1].contains("[ContentView:30]"))
     }
 }

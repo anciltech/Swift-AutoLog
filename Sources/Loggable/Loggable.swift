@@ -40,6 +40,14 @@ public struct LoggableEvent: CustomStringConvertible, CustomDebugStringConvertib
   /// The collection of tags associated with the event.
   public let tags: [any Taggable]
 
+  /// The measured execution duration of the function, when timing is enabled.
+  /// `nil` when `@Log(measure: false)` suppresses timing at compile time.
+  public var duration: Duration?
+
+  /// `true` when the function was explicitly annotated with `@Log(measure: true)`,
+  /// allowing the formatter to show timing even when the global default is off.
+  public var isMeasuredExplicitly: Bool
+
   public var description: String {
     """
     source: \(source.map { String(describing: $0) } ?? "nil")
@@ -60,6 +68,7 @@ public struct LoggableEvent: CustomStringConvertible, CustomDebugStringConvertib
     parameters: \(parameters)
     result: \(result)
     tags: \(tags)
+    duration: \(duration.map { String(describing: $0) } ?? "nil")
     """
   }
 
@@ -73,6 +82,7 @@ public struct LoggableEvent: CustomStringConvertible, CustomDebugStringConvertib
   ///   - parameters: The set of parameters and their corresponding argument values.
   ///   - result: The result returned by the function.
   ///   - tags: A collection of tags to associate with the event.
+  ///   - isMeasuredExplicitly: Whether timing was explicitly requested via `@Log(measure: true)`.
   public init(
     level: (any Levelable)? = nil,
     source: (any Sourceable)? = nil,
@@ -80,7 +90,8 @@ public struct LoggableEvent: CustomStringConvertible, CustomDebugStringConvertib
     declaration: String,
     parameters: [String: Any] = [:],
     result: Result<Any, any Error> = .success(()),
-    tags: [any Taggable] = []
+    tags: [any Taggable] = [],
+    isMeasuredExplicitly: Bool = false
   ) {
     self.level = level
     self.source = source
@@ -89,6 +100,22 @@ public struct LoggableEvent: CustomStringConvertible, CustomDebugStringConvertib
     self.parameters = parameters
     self.result = result
     self.tags = tags
+    self.duration = nil
+    self.isMeasuredExplicitly = isMeasuredExplicitly
+  }
+
+  /// A copy of this event representing the function's start, with `.start` level
+  /// and default void result. Used by `emitStart(event:)` on `Loggable`.
+  public var asStartEvent: LoggableEvent {
+    LoggableEvent(
+      level: LogLevel.start,
+      source: source,
+      location: location,
+      declaration: declaration,
+      parameters: parameters,
+      result: .success(()),
+      tags: tags
+    )
   }
 }
 
@@ -134,6 +161,17 @@ public struct LoggableLogger: Loggable {
   ) {
     self.logger = logger
     self.formatter = formatter
+  }
+}
+
+extension Loggable {
+  /// Emits a start event (🔵) for the given event, respecting the global
+  /// `LoggableSettingsStorage.emitStartEvents` flag.
+  ///
+  /// Called automatically by macro-generated code at function entry.
+  public func emitStart(event: LoggableEvent) {
+    guard LoggableSettingsStorage.emitStartEvents else { return }
+    emit(event: event.asStartEvent)
   }
 }
 

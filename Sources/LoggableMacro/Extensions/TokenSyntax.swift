@@ -35,6 +35,12 @@ extension TokenSyntax {
     case bundleIdentifier
     case Bundle
     case main
+    case emitStart
+    case duration
+    case isMeasuredExplicitly
+    case ContinuousClock
+    case now
+    case __logStart
 
     var identifier: TokenSyntax {
       switch self {
@@ -136,6 +142,24 @@ extension TokenSyntax {
 
       case .LoggableSource:
         return TokenSyntax.identifier("LoggableSource")
+
+      case .emitStart:
+        return TokenSyntax.identifier("emitStart")
+
+      case .duration:
+        return TokenSyntax.identifier("duration")
+
+      case .isMeasuredExplicitly:
+        return TokenSyntax.identifier("isMeasuredExplicitly")
+
+      case .ContinuousClock:
+        return TokenSyntax.identifier("ContinuousClock")
+
+      case .now:
+        return TokenSyntax.identifier("now")
+
+      case .__logStart:
+        return TokenSyntax.identifier("__logStart")
       }
     }
   }

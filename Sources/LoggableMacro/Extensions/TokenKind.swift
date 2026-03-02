@@ -18,6 +18,7 @@ extension TokenKind {
     case Logged
     case subsystem
     case category
+    case measure
 
     var identifier: TokenKind {
       switch self {
@@ -68,6 +69,9 @@ extension TokenKind {
 
       case .Logged:
         return TokenKind.identifier("Logged")
+
+      case .measure:
+        return TokenKind.identifier("measure")
       }
     }
   }

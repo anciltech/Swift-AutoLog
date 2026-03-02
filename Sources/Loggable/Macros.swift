@@ -189,6 +189,29 @@ public macro Log(
   type: "LogMacro"
 )
 
+/// Overload that allows controlling performance timing at the function level.
+///
+/// - Parameter measure: `true` forces timing display even when the global setting is off;
+///   `false` suppresses timing code entirely for this function.
+@attached(body)
+public macro Log(
+  measure: Bool
+) = #externalMacro(
+  module: "LoggableMacro",
+  type: "LogMacro"
+)
+
+@attached(body)
+public macro Log(
+  level: (any Levelable)? = nil,
+  omit: any Omittable... = [],
+  tag: any Taggable... = [],
+  measure: Bool
+) = #externalMacro(
+  module: "LoggableMacro",
+  type: "LogMacro"
+)
+
 @attached(body)
 public macro Log(using loggable: any Loggable) = #externalMacro(
   module: "LoggableMacro",
@@ -259,10 +282,34 @@ public macro Log(
 
 @attached(body)
 public macro Log(
+  using loggable: LoggableLogger,
+  level: (any Levelable)? = nil,
+  omit: any Omittable... = [],
+  tag: any Taggable... = [],
+  measure: Bool
+) = #externalMacro(
+  module: "LoggableMacro",
+  type: "LogMacro"
+)
+
+@attached(body)
+public macro Log(
   architecture loggable: LoggableLogger,
   level: (any Levelable)? = nil,
   omit: any Omittable... = [],
   tag: any Taggable... = []
+) = #externalMacro(
+  module: "LoggableMacro",
+  type: "LogMacro"
+)
+
+@attached(body)
+public macro Log(
+  architecture loggable: LoggableLogger,
+  level: (any Levelable)? = nil,
+  omit: any Omittable... = [],
+  tag: any Taggable... = [],
+  measure: Bool
 ) = #externalMacro(
   module: "LoggableMacro",
   type: "LogMacro"

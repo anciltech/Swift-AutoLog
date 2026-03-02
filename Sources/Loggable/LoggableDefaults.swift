@@ -7,6 +7,8 @@ import Foundation
 public enum LoggableSettingsStorage {
   public static nonisolated(unsafe) var userDefaults: UserDefaults = .standard
 
+  // MARK: - Omit parameters
+
   public static nonisolated(unsafe) var omitParametersKey: String = "log.omitParameters"
   public static nonisolated(unsafe) var omitResultKey: String = "log.omitResult"
 
@@ -31,6 +33,35 @@ public enum LoggableSettingsStorage {
 
   public static func setOmitResult(_ value: Bool) {
     userDefaults.set(value, forKey: omitResultKey)
+  }
+
+  // MARK: - Start events
+
+  /// Whether the macro should emit a 🔵 start event before a function executes.
+  /// Defaults to `true`. Set to `false` during app init to suppress start events globally.
+  public static nonisolated(unsafe) var emitStartEvents: Bool = true
+
+  // MARK: - Timing
+
+  /// Whether `@Logged` functions should display timing by default.
+  /// Individual functions may override this with `@Log(measure: true/false)`.
+  /// Defaults to `true`.
+  public static nonisolated(unsafe) var measureTimingDefault: Bool = true
+
+  public static nonisolated(unsafe) var measureTimingKey: String = "log.measureTiming"
+
+  /// Restrict timing display to specific depth levels (e.g. `[2]` for ViewModel only).
+  /// `nil` means show timing for all depths when enabled.
+  public static nonisolated(unsafe) var measureTimingDepths: Set<Int>? = nil
+
+  public static func measureTiming() -> Bool {
+    guard userDefaults.object(forKey: measureTimingKey) != nil
+    else { return measureTimingDefault }
+    return userDefaults.bool(forKey: measureTimingKey)
+  }
+
+  public static func setMeasureTiming(_ value: Bool) {
+    userDefaults.set(value, forKey: measureTimingKey)
   }
 }
 

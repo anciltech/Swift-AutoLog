@@ -39,6 +39,21 @@ extension LoggableMacro {
     let omitTraits = function.syntax.attributes.extractTraits(for: .omit)
     let levelTrait = function.syntax.attributes.extractTraits(for: .level).first
 
+    // Extract measure: Bool? from @Log(measure: ...).
+    // nil → default (generate timing, not explicitly requested)
+    // true → generate timing, mark as explicitly requested
+    // false → suppress timing code entirely
+    let measureTrait = node.extract(argument: .measure, as: BooleanLiteralExprSyntax.self)
+    let shouldMeasure: Bool
+    let isMeasuredExplicitly: Bool
+    if let measureTrait {
+      shouldMeasure = measureTrait.literal.tokenKind == .keyword(.true)
+      isMeasuredExplicitly = shouldMeasure
+    } else {
+      shouldMeasure = true
+      isMeasuredExplicitly = false
+    }
+
     return body {
       self.hook(for: node)
       self.event(
@@ -50,17 +65,36 @@ extension LoggableMacro {
         omittableTraits: omitTraits
       )
 
+      // When @Log(measure: true), mark this event as explicitly measured.
+      // The formatter uses this to override the global measureTimingDefault.
+      if isMeasuredExplicitly {
+        self.captureExplicitMeasure()
+      }
+
+      // Emit 🔵 start event (respects LoggableSettingsStorage.emitStartEvents at runtime).
+      self.emitStart()
+
+      // Capture timing start (compile-time opt-out via measure: false).
+      if shouldMeasure {
+        self.captureTimingStart()
+      }
+
       switch function.isThrowing {
         case false where function.isVoid:
           function.body
+          if shouldMeasure { self.captureTimingEnd() }
           self.emit()
 
         case true where function.isVoid:
+          // Fixed: now emits on success too (paired with the start event).
           CodeBlockItemSyntax(function.plain)
           CodeBlockItemSyntax.try {
             CodeBlockItemSyntax.call(function)
+            if shouldMeasure { self.captureTimingEnd() }
+            self.emit()
           } catch: {
             self.capture(.error)
+            if shouldMeasure { self.captureTimingEnd() }
             self.emit()
             CodeBlockItemSyntax.rethrow
           }
@@ -70,10 +104,12 @@ extension LoggableMacro {
           CodeBlockItemSyntax.try {
             CodeBlockItemSyntax.call(function)
             self.capture(.result)
+            if shouldMeasure { self.captureTimingEnd() }
             self.emit()
             CodeBlockItemSyntax.return
           } catch: {
             self.capture(.error)
+            if shouldMeasure { self.captureTimingEnd() }
             self.emit()
             CodeBlockItemSyntax.rethrow
           }
@@ -84,6 +120,7 @@ extension LoggableMacro {
           if !omitTraits.contains(where: \.isOmitResult) {
             self.capture(.result)
           }
+          if shouldMeasure { self.captureTimingEnd() }
           self.emit()
           CodeBlockItemSyntax.return
       }
@@ -137,11 +174,8 @@ extension LoggableMacro {
   ) -> CodeBlockItemSyntax {
     CodeBlockItemSyntax(
       VariableDeclSyntax(
-        bindingSpecifier: TokenSyntax.keyword(
-          declaration.isThrowing || !(declaration.isVoid || omittableTraits.contains(where: \.isOmitResult))
-            ? .var
-            : .let
-        ),
+        // Always `var` — timing (`event.duration`) and result are assigned post-construction.
+        bindingSpecifier: .keyword(.var),
         bindings: PatternBindingListSyntax(
           arrayLiteral: PatternBindingSyntax(
             pattern: IdentifierPatternSyntax(identifier: .predefined(.event)),
@@ -220,7 +254,7 @@ extension LoggableMacro {
                             if omittableTraits.contains(
                               where: { trait in trait.isOmitParameter(parameter.name) }
                             ) { return nil }
-                            
+
                             return DictionaryElementSyntax(
                               key: StringLiteralExprSyntax(content: parameter.name.text),
                               value: DeclReferenceExprSyntax(baseName: parameter.name.trimmed),
@@ -284,6 +318,7 @@ extension LoggableMacro {
     )
   }
 
+  /// Generates: `loggable.emit(event: event)`
   static func emit() -> CodeBlockItemSyntax {
     CodeBlockItemSyntax(
       FunctionCallExprSyntax(
@@ -303,6 +338,93 @@ extension LoggableMacro {
           )
         ),
         rightParen: .rightParenToken()
+      )
+    )
+  }
+
+  /// Generates: `loggable.emitStart(event: event)`
+  ///
+  /// The `emitStart` default implementation on `Loggable` checks
+  /// `LoggableSettingsStorage.emitStartEvents` at runtime before emitting.
+  static func emitStart() -> CodeBlockItemSyntax {
+    CodeBlockItemSyntax(
+      FunctionCallExprSyntax(
+        calledExpression: MemberAccessExprSyntax(
+          base: DeclReferenceExprSyntax(baseName: .predefined(.loggable)),
+          period: .periodToken(),
+          name: .predefined(.emitStart)
+        ),
+        leftParen: .leftParenToken(),
+        arguments: LabeledExprListSyntax(
+          arrayLiteral: LabeledExprSyntax(
+            label: .predefined(.event),
+            colon: .colonToken(),
+            expression: DeclReferenceExprSyntax(baseName: .predefined(.event))
+          )
+        ),
+        rightParen: .rightParenToken()
+      )
+    )
+  }
+
+  /// Generates: `event.isMeasuredExplicitly = true`
+  ///
+  /// Injected when `@Log(measure: true)` is used, so the formatter shows timing
+  /// even when `LoggableSettingsStorage.measureTimingDefault` is `false`.
+  static func captureExplicitMeasure() -> CodeBlockItemSyntax {
+    CodeBlockItemSyntax(
+      InfixOperatorExprSyntax(
+        leftOperand: MemberAccessExprSyntax(
+          base: DeclReferenceExprSyntax(baseName: .predefined(.event)),
+          period: .periodToken(),
+          name: .predefined(.isMeasuredExplicitly)
+        ),
+        operator: AssignmentExprSyntax(),
+        rightOperand: BooleanLiteralExprSyntax(booleanLiteral: true)
+      )
+    )
+  }
+
+  /// Generates: `let __logStart = ContinuousClock.now`
+  static func captureTimingStart() -> CodeBlockItemSyntax {
+    CodeBlockItemSyntax(
+      VariableDeclSyntax(
+        bindingSpecifier: .keyword(.let),
+        bindings: PatternBindingListSyntax(
+          arrayLiteral: PatternBindingSyntax(
+            pattern: IdentifierPatternSyntax(identifier: .predefined(.__logStart)),
+            initializer: InitializerClauseSyntax(
+              value: MemberAccessExprSyntax(
+                base: DeclReferenceExprSyntax(baseName: .predefined(.ContinuousClock)),
+                period: .periodToken(),
+                name: .predefined(.now)
+              )
+            )
+          )
+        )
+      )
+    )
+  }
+
+  /// Generates: `event.duration = ContinuousClock.now - __logStart`
+  static func captureTimingEnd() -> CodeBlockItemSyntax {
+    CodeBlockItemSyntax(
+      InfixOperatorExprSyntax(
+        leftOperand: MemberAccessExprSyntax(
+          base: DeclReferenceExprSyntax(baseName: .predefined(.event)),
+          period: .periodToken(),
+          name: .predefined(.duration)
+        ),
+        operator: AssignmentExprSyntax(),
+        rightOperand: InfixOperatorExprSyntax(
+          leftOperand: MemberAccessExprSyntax(
+            base: DeclReferenceExprSyntax(baseName: .predefined(.ContinuousClock)),
+            period: .periodToken(),
+            name: .predefined(.now)
+          ),
+          operator: BinaryOperatorExprSyntax(operator: .binaryOperator("-")),
+          rightOperand: DeclReferenceExprSyntax(baseName: .predefined(.__logStart))
+        )
       )
     )
   }

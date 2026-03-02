@@ -5,25 +5,37 @@ import Testing
 @Suite(.serialized)
 struct LoggableTests {
   static let mock = MockLogger()
-  
+
   @Test
   func whenLoggerAttachedToType_expectedToCaptureAllEvent() async throws {
+    // Workaround: @Logged(using: MockLogger) triggers a Swift compiler ICE due to
+    // existential boxing in macro argument type-checking (ResolveMacroRequest crash).
+    // Use @Logged (no-arg) with a temporary global-logger override instead.
+    let prevLogger = LoggableSource.logger
+    let prevEmitStart = LoggableSettingsStorage.emitStartEvents
+    LoggableSource.logger = Self.mock
+    LoggableSettingsStorage.emitStartEvents = false
+    defer {
+      LoggableSource.logger = prevLogger
+      LoggableSettingsStorage.emitStartEvents = prevEmitStart
+    }
+
     let testcase = Testcase()
-    
+
     #expect(throws: Failure.mock) {
       try testcase.mockThrowingFunction()
     }
     #expect(Self.mock.events.count == 1)
-    
+
     await #expect(throws: Failure.mock) {
       try await testcase.mockAsyncThrowingFunction()
     }
     #expect(Self.mock.events.count == 2)
-    
+
     testcase.mockFunctionReturningVoidWithErrorLevelAnnotation()
     #expect(Self.mock.events.count == 3)
     #expect(Self.mock.events.last?.level as? MockLevel == MockLevel.error)
-    
+
     testcase.mockFunctionReturningVoidWithStringErrorLevelAnnotation()
     #expect(Self.mock.events.count == 4)
     #expect(
@@ -35,11 +47,11 @@ struct LoggableTests {
         }
       }()
     )
-    
+
     _ = testcase.mockFunctionWithMultipleParametersAndOmitParametersAnnotation(100, "% Luck")
     #expect(Self.mock.events.count == 5)
     #expect(Self.mock.events.last?.parameters.isEmpty == true)
-    
+
     _ = testcase.mockFunctionWitgTagAndOmitResultAnnotation()
     #expect(Self.mock.events.count == 6)
     #expect(Self.mock.events.last?.tags.count == 2)
@@ -52,7 +64,7 @@ struct LoggableTests {
         }
       }()
     )
-    
+
     _ = testcase.mockGenericFunctionWithOmitSpecificParameterAnnotationReturingPassedArgument(mock: true)
     #expect(Self.mock.events.count == 7)
     #expect(Self.mock.events.last?.parameters.isEmpty == true)
@@ -63,35 +75,37 @@ extension LoggableTests {
   enum Failure: Error {
     case mock
   }
-  
-  @Logged(using: LoggableTests.mock)
+
+  // @Logged (no-arg) avoids the Swift compiler ICE caused by passing a non-LoggableLogger
+  // existential to @Logged(using:). The test overrides LoggableSource.logger instead.
+  @Logged
   struct Testcase {
     func mockThrowingFunction() throws {
       throw Failure.mock
     }
-    
+
     func mockAsyncThrowingFunction() async throws {
       try await Task.sleep(for: .milliseconds(100))
       throw Failure.mock
     }
-    
+
     @Level(.mockError)
     func mockFunctionReturningVoidWithErrorLevelAnnotation() {
-      
+
     }
-    
+
     @Level("error")
     func mockFunctionReturningVoidWithStringErrorLevelAnnotation() {
-      
+
     }
-    
+
     @Omit("value")
     func mockGenericFunctionWithOmitSpecificParameterAnnotationReturingPassedArgument<T>(
       mock value: T
     ) -> T {
       value
     }
-    
+
     @Omit(.parameters)
     func mockFunctionWithMultipleParametersAndOmitParametersAnnotation(
       _ intValue: Int,
@@ -99,7 +113,7 @@ extension LoggableTests {
     ) -> String {
       intValue.description + stringValue
     }
-    
+
     @Omit(.result)
     @Tag(.mock)
     @Tag("mock-string-tag")
