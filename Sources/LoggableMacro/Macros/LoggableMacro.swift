@@ -54,6 +54,9 @@ extension LoggableMacro {
       isMeasuredExplicitly = false
     }
 
+    let instrumentedBody = self.instrumentedBody(of: function)
+    let instrumentedPlain = self.instrumentedPlain(of: function)
+
     return body {
       self.hook(for: node)
       self.event(
@@ -81,13 +84,13 @@ extension LoggableMacro {
 
       switch function.isThrowing {
         case false where function.isVoid:
-          function.body
+          instrumentedBody
           if shouldMeasure { self.captureTimingEnd() }
           self.emit()
 
         case true where function.isVoid:
           // Fixed: now emits on success too (paired with the start event).
-          CodeBlockItemSyntax(function.plain)
+          CodeBlockItemSyntax(instrumentedPlain)
           CodeBlockItemSyntax.try {
             CodeBlockItemSyntax.call(function)
             if shouldMeasure { self.captureTimingEnd() }
@@ -100,7 +103,7 @@ extension LoggableMacro {
           }
 
         case true:
-          CodeBlockItemSyntax(function.plain)
+          CodeBlockItemSyntax(instrumentedPlain)
           CodeBlockItemSyntax.try {
             CodeBlockItemSyntax.call(function)
             self.capture(.result)
@@ -115,7 +118,7 @@ extension LoggableMacro {
           }
 
         case false:
-          CodeBlockItemSyntax(function.plain)
+          CodeBlockItemSyntax(instrumentedPlain)
           CodeBlockItemSyntax.call(function)
           if !omitTraits.contains(where: \.isOmitResult) {
             self.capture(.result)
@@ -427,5 +430,324 @@ extension LoggableMacro {
         )
       )
     )
+  }
+
+  static func instrumentedBody(
+    of function: FunctionSyntax
+  ) -> [CodeBlockItemSyntax] {
+    guard let body = function.syntax.body else { return function.body }
+    var yieldCaptureIndex = 0
+    return rewriteStatements(
+      Array(body.statements),
+      yieldCaptureIndex: &yieldCaptureIndex
+    )
+  }
+
+  static func instrumentedPlain(
+    of function: FunctionSyntax
+  ) -> FunctionDeclSyntax {
+    var plain = function.plain
+    guard var body = plain.body else { return plain }
+    var yieldCaptureIndex = 0
+    body.statements = CodeBlockItemListSyntax(
+      rewriteStatements(
+        Array(body.statements),
+        yieldCaptureIndex: &yieldCaptureIndex
+      )
+    )
+    plain.body = body
+    return plain
+  }
+
+  static func rewriteStatements(
+    _ statements: [CodeBlockItemSyntax],
+    yieldCaptureIndex: inout Int
+  ) -> [CodeBlockItemSyntax] {
+    statements.flatMap { statement in
+      rewriteStatementItem(statement, yieldCaptureIndex: &yieldCaptureIndex)
+    }
+  }
+
+  static func rewriteStatementItem(
+    _ item: CodeBlockItemSyntax,
+    yieldCaptureIndex: inout Int
+  ) -> [CodeBlockItemSyntax] {
+    guard case let .stmt(statement) = item.item else {
+      return [item]
+    }
+
+    if let expanded = rewriteYieldStatement(
+      statement,
+      yieldCaptureIndex: &yieldCaptureIndex
+    ) {
+      return expanded
+    }
+
+    if var expressionStmt = statement.as(ExpressionStmtSyntax.self) {
+      expressionStmt.expression = rewriteExpression(
+        expressionStmt.expression,
+        yieldCaptureIndex: &yieldCaptureIndex
+      )
+      return [CodeBlockItemSyntax(expressionStmt)]
+    }
+
+    if var forStmt = statement.as(ForStmtSyntax.self) {
+      forStmt.body.statements = CodeBlockItemListSyntax(
+        rewriteStatements(
+          Array(forStmt.body.statements),
+          yieldCaptureIndex: &yieldCaptureIndex
+        )
+      )
+      return [CodeBlockItemSyntax(forStmt)]
+    }
+
+    if var whileStmt = statement.as(WhileStmtSyntax.self) {
+      whileStmt.body.statements = CodeBlockItemListSyntax(
+        rewriteStatements(
+          Array(whileStmt.body.statements),
+          yieldCaptureIndex: &yieldCaptureIndex
+        )
+      )
+      return [CodeBlockItemSyntax(whileStmt)]
+    }
+
+    if var repeatStmt = statement.as(RepeatStmtSyntax.self) {
+      repeatStmt.body.statements = CodeBlockItemListSyntax(
+        rewriteStatements(
+          Array(repeatStmt.body.statements),
+          yieldCaptureIndex: &yieldCaptureIndex
+        )
+      )
+      return [CodeBlockItemSyntax(repeatStmt)]
+    }
+
+    if var guardStmt = statement.as(GuardStmtSyntax.self) {
+      guardStmt.body.statements = CodeBlockItemListSyntax(
+        rewriteStatements(
+          Array(guardStmt.body.statements),
+          yieldCaptureIndex: &yieldCaptureIndex
+        )
+      )
+      return [CodeBlockItemSyntax(guardStmt)]
+    }
+
+    if var doStmt = statement.as(DoStmtSyntax.self) {
+      doStmt.body.statements = CodeBlockItemListSyntax(
+        rewriteStatements(
+          Array(doStmt.body.statements),
+          yieldCaptureIndex: &yieldCaptureIndex
+        )
+      )
+
+      var catchClauses = doStmt.catchClauses
+      for index in catchClauses.indices {
+        var clause = catchClauses[index]
+        clause.body.statements = CodeBlockItemListSyntax(
+          rewriteStatements(
+            Array(clause.body.statements),
+            yieldCaptureIndex: &yieldCaptureIndex
+          )
+        )
+        catchClauses[index] = clause
+      }
+      doStmt.catchClauses = catchClauses
+      return [CodeBlockItemSyntax(doStmt)]
+    }
+
+    return [item]
+  }
+
+  static func rewriteExpression(
+    _ expression: ExprSyntax,
+    yieldCaptureIndex: inout Int
+  ) -> ExprSyntax {
+    if var closure = expression.as(ClosureExprSyntax.self) {
+      closure.statements = CodeBlockItemListSyntax(
+        rewriteStatements(
+          Array(closure.statements),
+          yieldCaptureIndex: &yieldCaptureIndex
+        )
+      )
+      return ExprSyntax(closure)
+    }
+
+    if var functionCall = expression.as(FunctionCallExprSyntax.self) {
+      functionCall.calledExpression = rewriteExpression(
+        functionCall.calledExpression,
+        yieldCaptureIndex: &yieldCaptureIndex
+      )
+
+      var arguments = functionCall.arguments
+      for index in arguments.indices {
+        var argument = arguments[index]
+        argument.expression = rewriteExpression(
+          argument.expression,
+          yieldCaptureIndex: &yieldCaptureIndex
+        )
+        arguments[index] = argument
+      }
+      functionCall.arguments = arguments
+
+      if var trailingClosure = functionCall.trailingClosure {
+        trailingClosure.statements = CodeBlockItemListSyntax(
+          rewriteStatements(
+            Array(trailingClosure.statements),
+            yieldCaptureIndex: &yieldCaptureIndex
+          )
+        )
+        functionCall.trailingClosure = trailingClosure
+      }
+
+      var additional = functionCall.additionalTrailingClosures
+      for index in additional.indices {
+        var closureElement = additional[index]
+        var closure = closureElement.closure
+        closure.statements = CodeBlockItemListSyntax(
+          rewriteStatements(
+            Array(closure.statements),
+            yieldCaptureIndex: &yieldCaptureIndex
+          )
+        )
+        closureElement.closure = closure
+        additional[index] = closureElement
+      }
+      functionCall.additionalTrailingClosures = additional
+
+      return ExprSyntax(functionCall)
+    }
+
+    if var ifExpr = expression.as(IfExprSyntax.self) {
+      ifExpr.body.statements = CodeBlockItemListSyntax(
+        rewriteStatements(
+          Array(ifExpr.body.statements),
+          yieldCaptureIndex: &yieldCaptureIndex
+        )
+      )
+
+      if let elseBody = ifExpr.elseBody {
+        switch elseBody {
+        case .codeBlock(var codeBlock):
+          codeBlock.statements = CodeBlockItemListSyntax(
+            rewriteStatements(
+              Array(codeBlock.statements),
+              yieldCaptureIndex: &yieldCaptureIndex
+            )
+          )
+          ifExpr.elseBody = .codeBlock(codeBlock)
+
+        case .ifExpr(let nestedIf):
+          let rewrittenNested = rewriteExpression(
+            ExprSyntax(nestedIf),
+            yieldCaptureIndex: &yieldCaptureIndex
+          )
+          if let nestedIfExpr = rewrittenNested.as(IfExprSyntax.self) {
+            ifExpr.elseBody = .ifExpr(nestedIfExpr)
+          }
+        }
+      }
+
+      return ExprSyntax(ifExpr)
+    }
+
+    return expression
+  }
+
+  static func rewriteYieldStatement(
+    _ statement: StmtSyntax,
+    yieldCaptureIndex: inout Int
+  ) -> [CodeBlockItemSyntax]? {
+    guard
+      let expressionStmt = statement.as(ExpressionStmtSyntax.self),
+      let call = expressionStmt.expression.as(FunctionCallExprSyntax.self),
+      isYieldCall(call),
+      let firstArgument = call.arguments.first
+    else { return nil }
+
+    let tempName = TokenSyntax.identifier("__logYieldValue\(yieldCaptureIndex)")
+    yieldCaptureIndex += 1
+
+    let captureValue = CodeBlockItemSyntax(
+      VariableDeclSyntax(
+        bindingSpecifier: .keyword(.let),
+        bindings: PatternBindingListSyntax(
+          arrayLiteral: PatternBindingSyntax(
+            pattern: IdentifierPatternSyntax(identifier: tempName),
+            initializer: InitializerClauseSyntax(value: firstArgument.expression)
+          )
+        )
+      )
+    )
+
+    let describeValueExpr = FunctionCallExprSyntax(
+      calledExpression: DeclReferenceExprSyntax(baseName: .identifier("String")),
+      leftParen: .leftParenToken(),
+      arguments: LabeledExprListSyntax(
+        arrayLiteral: LabeledExprSyntax(
+          label: .identifier("describing"),
+          colon: .colonToken(),
+          expression: DeclReferenceExprSyntax(baseName: tempName)
+        )
+      ),
+      rightParen: .rightParenToken()
+    )
+
+    let messageExpr = InfixOperatorExprSyntax(
+      leftOperand: StringLiteralExprSyntax(content: "[AsyncStream.yield] value="),
+      operator: BinaryOperatorExprSyntax(operator: .binaryOperator("+")),
+      rightOperand: describeValueExpr
+    )
+
+    let emitUpdate = CodeBlockItemSyntax(
+      FunctionCallExprSyntax(
+        calledExpression: MemberAccessExprSyntax(
+          base: DeclReferenceExprSyntax(baseName: .predefined(.LoggableSource)),
+          period: .periodToken(),
+          name: .predefined(.emit)
+        ),
+        leftParen: .leftParenToken(),
+        arguments: LabeledExprListSyntax {
+          LabeledExprSyntax(
+            expression: MemberAccessExprSyntax(
+              period: .periodToken(),
+              name: .identifier("update")
+            ),
+            trailingComma: .commaToken()
+          )
+          LabeledExprSyntax(expression: messageExpr)
+        },
+        rightParen: .rightParenToken()
+      )
+    )
+
+    var rewrittenCall = call
+    var rewrittenArguments = rewrittenCall.arguments
+    let firstIndex = rewrittenArguments.startIndex
+    var updatedArgument = rewrittenArguments[firstIndex]
+    updatedArgument.expression = ExprSyntax(DeclReferenceExprSyntax(baseName: tempName))
+    rewrittenArguments[firstIndex] = updatedArgument
+    rewrittenCall.arguments = rewrittenArguments
+
+    let callYield = CodeBlockItemSyntax(rewrittenCall)
+    return [captureValue, emitUpdate, callYield]
+  }
+
+  static func isYieldCall(_ call: FunctionCallExprSyntax) -> Bool {
+    memberName(in: call.calledExpression) == "yield"
+  }
+
+  static func memberName(in expression: ExprSyntax) -> String? {
+    if let member = expression.as(MemberAccessExprSyntax.self) {
+      return member.declName.baseName.text
+    }
+
+    if let optional = expression.as(OptionalChainingExprSyntax.self) {
+      return memberName(in: optional.expression)
+    }
+
+    if let forced = expression.as(ForceUnwrapExprSyntax.self) {
+      return memberName(in: forced.expression)
+    }
+
+    return nil
   }
 }
