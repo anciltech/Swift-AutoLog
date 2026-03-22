@@ -24,17 +24,43 @@ public protocol LoggableFormatter: Sendable {
 ///          ↳ notFound [NetworkError]
 ///          ↖ 👆🏼 Run [AsyncExamplesView:42]
 /// ```
+///
+/// ### Customising the layout
+///
+/// Pass a ``LogFormat`` at init time (static override) or configure one globally
+/// via `AutoLogSettingsStorage.setLogFormat(_:)` (runtime override). A static
+/// override always wins over the global setting.
+///
+/// ```swift
+/// // Static — this formatter always uses this layout, ignoring global settings.
+/// let logger = LoggableLogger(
+///   formatter: CompactFormatter(format: LogFormat(mainLine: [
+///     .depthArrow, .statusEmoji, .functionName, .parameters
+///   ]))
+/// )
+///
+/// // Global — all CompactFormatters without a static override pick this up.
+/// AutoLogSettingsStorage.setLogFormat(
+///   LogFormat(mainLine: [.depthArrow, .statusEmoji, .functionName, .parameters])
+/// )
+/// ```
 public struct CompactFormatter: LoggableFormatter {
   public let profile: DepthProfile
 
-  public init(profile: DepthProfile = .mvvm) {
+  /// A fixed format override. When `nil`, ``AutoLogSettingsStorage/logFormat()``
+  /// is consulted on every call to ``format(event:)``.
+  public let format: LogFormat?
+
+  public init(profile: DepthProfile = .mvvm, format: LogFormat? = nil) {
     self.profile = profile
+    self.format  = format
   }
 
   public func format(event: LoggableEvent) -> String {
     let typeName = extractTypeName(from: event.location)
-    let arrow    = profile.arrow(for: typeName)
+    let fmt      = format ?? AutoLogSettingsStorage.logFormat()
     let depth    = profile.depth(for: typeName) ?? 1
+    let arrow    = fmt.arrowStyle.arrow(for: depth)
 
     // ── Interaction event ────────────────────────────────────────────────────
     // Detected when declaration matches the source's description (set by LoggableSource.run).
@@ -49,15 +75,79 @@ public struct CompactFormatter: LoggableFormatter {
     let params     = formatParameters(event.parameters)
     let specifiers = effectSpecifiers(from: event.declaration)
 
-    var line = "\(arrow) \(em) \(typeName).\(funcName)(\(params))\(specifiers)"
+    // ── Build main line from ordered format elements ──────────────────────────
+    //
+    // Spacing rules:
+    //   • Most elements are space-separated.
+    //   • "glue" elements attach to the previous token with no leading space:
+    //       dotSeparator, parameters, lineNumber.
+    //   • functionName glues when it immediately follows dotSeparator.
 
-    // ── Inline return value on success for non-Void results ──────────────────
-    if case .success(let value) = event.result, type(of: value) != Void.self {
-      line += " → \(value)"
+    struct Segment {
+      let text: String
+      let noLeadingSpace: Bool
     }
 
-    // ── Inline timing suffix ─────────────────────────────────────────────────
-    line += timingSuffix(for: event, depth: depth)
+    var segments: [Segment] = []
+
+    for element in fmt.mainLine {
+      switch element {
+
+      case .depthArrow:
+        segments.append(Segment(text: arrow, noLeadingSpace: false))
+
+      case .statusEmoji:
+        segments.append(Segment(text: em, noLeadingSpace: false))
+
+      case .typeName:
+        segments.append(Segment(text: typeName, noLeadingSpace: false))
+
+      case .dotSeparator:
+        segments.append(Segment(text: ".", noLeadingSpace: true))
+
+      case .functionName:
+        // Glue directly to a preceding dot separator; otherwise use a space.
+        let glue = segments.last?.text == "."
+        segments.append(Segment(text: funcName, noLeadingSpace: glue))
+
+      case .parameters:
+        segments.append(Segment(text: "(\(params))", noLeadingSpace: true))
+
+      case .effectSpecifiers:
+        let trimmed = specifiers.trimmingCharacters(in: .whitespaces)
+        guard !trimmed.isEmpty else { continue }
+        segments.append(Segment(text: trimmed, noLeadingSpace: false))
+
+      case .returnValue:
+        guard
+          case .success(let value) = event.result,
+          type(of: value) != Void.self
+        else { continue }
+        segments.append(Segment(text: "→ \(value)", noLeadingSpace: false))
+
+      case .timing:
+        let suffix = timingSuffix(for: event, depth: depth)
+          .trimmingCharacters(in: .whitespaces)
+        guard !suffix.isEmpty else { continue }
+        segments.append(Segment(text: suffix, noLeadingSpace: false))
+
+      case .lineNumber:
+        let ln = extractLine(from: event.location)
+        segments.append(Segment(text: ":\(ln)", noLeadingSpace: true))
+
+      // ── Spacers — render literal text, always glue to previous token ─────
+      case .space:    segments.append(Segment(text: " ",   noLeadingSpace: true))
+      case .comma:    segments.append(Segment(text: ",",   noLeadingSpace: true))
+      case .pipe:     segments.append(Segment(text: " | ", noLeadingSpace: true))
+      case .slash:    segments.append(Segment(text: "/",   noLeadingSpace: true))
+      case .newline:  segments.append(Segment(text: "\n",  noLeadingSpace: true))
+      }
+    }
+
+    var line = ""
+    for (i, segment) in segments.enumerated() {
+      line += (i == 0 || segment.noLeadingSpace) ? segment.text : " \(segment.text)"
+    }
 
     // ── Second line: error detail OR tags ────────────────────────────────────
     var annotations: [String] = []
@@ -118,8 +208,8 @@ public struct CompactFormatter: LoggableFormatter {
     guard !isStartEvent(event) else { return "" }
     guard let duration = event.duration else { return "" }
 
-    let globalOn = LoggableSettingsStorage.measureTiming()
-    let depthOk  = LoggableSettingsStorage.measureTimingDepths.map { $0.contains(depth) } ?? true
+    let globalOn = AutoLogSettingsStorage.measureTiming()
+    let depthOk  = AutoLogSettingsStorage.measureTimingDepths.map { $0.contains(depth) } ?? true
     guard (globalOn && depthOk) || event.isMeasuredExplicitly else { return "" }
 
     return " ⏱ \(formatDuration(duration))"
