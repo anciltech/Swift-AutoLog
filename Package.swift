@@ -3,15 +3,15 @@ import CompilerPluginSupport
 import PackageDescription
 
 let package = Package(
-  name: "swift-loggable",
+  name: "Swift-AutoLog",
   platforms: [
     .macOS(.v15),
     .iOS(.v18),
   ],
   products: [
     .library(
-      name: "Loggable",
-      targets: ["Loggable"]
+      name: "AutoLog",
+      targets: ["AutoLog"]
     ),
   ],
   dependencies: [
@@ -30,7 +30,7 @@ let package = Package(
   ],
   targets: [
     .macro(
-      name: "LoggableMacro",
+      name: "AutoLogMacro",
       dependencies: [
         .product(
           name: "SwiftSyntaxMacros",
@@ -43,15 +43,15 @@ let package = Package(
       ]
     ),
     .target(
-      name: "Loggable",
+      name: "AutoLog",
       dependencies: [
-        "LoggableMacro"
+        "AutoLogMacro"
       ]
     ),
     .testTarget(
-      name: "LoggableMacroTests",
+      name: "AutoLogMacroTests",
       dependencies: [
-        "LoggableMacro",
+        "AutoLogMacro",
         .product(
           name: "SwiftSyntaxMacrosTestSupport",
           package: "swift-syntax"
@@ -63,9 +63,9 @@ let package = Package(
       ]
     ),
     .testTarget(
-      name: "LoggableTests",
+      name: "AutoLogTests",
       dependencies: [
-        "Loggable",
+        "AutoLog",
       ]
     ),
   ]

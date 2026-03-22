@@ -1,4 +1,4 @@
-import Loggable
+import AutoLog
 
 final class MockLogger: Loggable, @unchecked Sendable {
   var events: [LoggableEvent]

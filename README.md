@@ -1,12 +1,12 @@
-# Loggable
-[![CI](https://github.com/23122K/swift-loggable/actions/workflows/ci.yaml/badge.svg?branch=main)](https://github.com/23122K/swift-loggable/actions/workflows/ci.yaml)
-[![](https://img.shields.io/endpoint?url=https%3A%2F%2Fswiftpackageindex.com%2Fapi%2Fpackages%2F23122K%2Fswift-loggable%2Fbadge%3Ftype%3Dswift-versions)](https://swiftpackageindex.com/23122K/swift-loggable)
-[![](https://img.shields.io/endpoint?url=https%3A%2F%2Fswiftpackageindex.com%2Fapi%2Fpackages%2F23122K%2Fswift-loggable%2Fbadge%3Ftype%3Dplatforms)](https://swiftpackageindex.com/23122K/swift-loggable)
+# Swift AutoLog
+[![CI](https://github.com/anciltech/Swift-AutoLog/actions/workflows/ci.yaml/badge.svg?branch=main)](https://github.com/anciltech/Swift-AutoLog/actions/workflows/ci.yaml)
+[![](https://img.shields.io/endpoint?url=https%3A%2F%2Fswiftpackageindex.com%2Fapi%2Fpackages%2Fanciltech%2FSwift-AutoLog%2Fbadge%3Ftype%3Dswift-versions)](https://swiftpackageindex.com/anciltech/Swift-AutoLog)
+[![](https://img.shields.io/endpoint?url=https%3A%2F%2Fswiftpackageindex.com%2Fapi%2Fpackages%2Fanciltech%2FSwift-AutoLog%2Fbadge%3Ftype%3Dplatforms)](https://swiftpackageindex.com/anciltech/Swift-AutoLog)
 
 A set of macros that support type-wide and per-function logging with ability to customize how logs are handled.
 
 ## Overview
-There are many situations where logging additional information is helpful. However most of them are neglected as they reqire some boilerplate, this is especially present in bidirectional architectures. Loggable aims to simplify this  by providing macros that can:
+There are many situations where logging additional information is helpful. However most of them are neglected as they require some boilerplate, this is especially present in bidirectional architectures. Swift AutoLog aims to simplify this by providing macros that can:
 
 * **Annotate all methods within type or extension**
 
@@ -14,27 +14,27 @@ There is no need to annotate each method individually - simply apply the desired
 
 * **Customize how logs are handled**
 
-All macros include the ability to add tags to logged functions, suppress their output or parameters, or ecent exclude the functions entirely from emmiting an event.
+All macros include the ability to add tags to logged functions, suppress their output or parameters, or even exclude the functions entirely from emitting an event.
 
 * **Leverage OSLog support**
 
-Loggable provides macros that leverage Apple's OSLog framework, eliminating the need to manually create a [`Logger`](https://developer.apple.com/documentation/os/logger) instance, configure subsystems and categories, or log each function individually.
+Swift AutoLog provides macros that leverage Apple's OSLog framework, eliminating the need to manually create a [`Logger`](https://developer.apple.com/documentation/os/logger) instance, configure subsystems and categories, or log each function individually.
 
 
-**On top of that**, Loggable does not bind you into any proprietary logging system - use the logger of you choice without compromising on convinence that comes with macros.
+**On top of that**, Swift AutoLog does not bind you into any proprietary logging system - use the logger of your choice without compromising on convenience that comes with macros.
 
 ## Get started
 
-You can start using Loggable in just two simple steps:
+You can start using Swift AutoLog in just two simple steps:
 
-1. Import Loggable package and enable macros.
+1. Import AutoLog package and enable macros.
 ```swift
-import Loggable
+import AutoLog
 ```
 
 2. Mark desired type with `@Logged` annotation, eg.:
 ```swift
-import Loggable
+import AutoLog
 import SwiftData
 
 @Logged
@@ -47,12 +47,12 @@ actor SwiftDataClient {
 }
 ```
 
-That's it! Now, whenever the `save` method is invoked, an event is emitted that captures metadata such as the location, signature, parameters, and result. For a more detailed guide, refer to the [documentation](https://swiftpackageindex.com/23122K/swift-loggable/main/documentation/loggable).
+That's it! Now, whenever the `save` method is invoked, an event is emitted that captures metadata such as the location, signature, parameters, and result. For a more detailed guide, refer to the [documentation](https://swiftpackageindex.com/anciltech/Swift-AutoLog/main/documentation/autolog).
 
 Alternatively, you can take advantage of the OSLog framework by switching to the following approach:
 
 ```swift
-import Loggable
+import AutoLog
 import SwiftData
 
 @OSLogger
@@ -65,18 +65,18 @@ actor SwiftDataClient {
   }
 }
 ```
-The `@OSLogger` annotation introduces a static instance of [`Logger`](https://developer.apple.com/documentation/os/logger) , while `@OSLogged` implicitly makes every method within the annotated scope loggable. Refer to the [documentation](https://swiftpackageindex.com/23122K/swift-loggable/main/documentation/loggable) to learn more.
+The `@OSLogger` annotation introduces a static instance of [`Logger`](https://developer.apple.com/documentation/os/logger), while `@OSLogged` implicitly makes every method within the annotated scope loggable. Refer to the [documentation](https://swiftpackageindex.com/anciltech/Swift-AutoLog/main/documentation/autolog) to learn more.
 
 ## Learn More
-Loggable offers a wide range of additional features. You can create custom loggers, add tags to captured events for later processing, exclude specific methods from logging, ignore certain parameters (or all of them) from being captured, override the log level for individual events, and much more. For usage examples and detailed information, see the [documentation](https://swiftpackageindex.com/23122K/swift-loggable/main/documentation/loggable) or check example app [Count Me In](https://github.com/23122K/swift-loggable/tree/main/Examples/CountMeIn).
+Swift AutoLog offers a wide range of additional features. You can create custom loggers, add tags to captured events for later processing, exclude specific methods from logging, ignore certain parameters (or all of them) from being captured, override the log level for individual events, and much more. For usage examples and detailed information, see the [documentation](https://swiftpackageindex.com/anciltech/Swift-AutoLog/main/documentation/autolog).
 
 ## Installation
 Add the following dependency to your Package.swift
 ```swift
-.package(url: "https://github.com/23122K/swift-loggable.git", branch: "main"),
+.package(url: "https://github.com/anciltech/Swift-AutoLog.git", from: "0.4.0"),
 ```
-Alternatively, *Project → Package dependencies → + → Search or enter package URL* and paste 
+Alternatively, *Project → Package Dependencies → + → Search or enter package URL* and paste
 ```
-https://github.com/23122K/swift-loggable.git
+https://github.com/anciltech/Swift-AutoLog.git
 ```
-In both cases, choose dependency rule of your choice.
+In both cases, choose the dependency rule of your choice.

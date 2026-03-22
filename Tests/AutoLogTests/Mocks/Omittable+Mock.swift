@@ -1,4 +1,4 @@
-import Loggable
+import AutoLog
 
 extension Omittable where Self == Omit {
   static var mock: any Omittable {

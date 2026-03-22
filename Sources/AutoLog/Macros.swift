@@ -13,7 +13,7 @@ public macro osLogger(
   subsystem: String? = nil,
   category: String? = nil
 ) = #externalMacro(
-  module: "LoggableMacro",
+  module: "AutoLogMacro",
   type: "OSLoggerMacro"
 )
 
@@ -52,7 +52,7 @@ public macro OSLogger(
   subsystem: String? = nil,
   category: String? = nil
 ) = #externalMacro(
-  module: "LoggableMacro",
+  module: "AutoLogMacro",
   type: "OSLoggerMacro"
 )
 
@@ -77,7 +77,7 @@ public macro OSLogger(
 /// ```
 @attached(memberAttribute)
 public macro OSLogged() = #externalMacro(
-  module: "LoggableMacro",
+  module: "AutoLogMacro",
   type: "OSLoggedMacro"
 )
 
@@ -96,7 +96,7 @@ public macro OSLog(
   omit: any Omittable... = [],
   tag: any Taggable... = []
 ) = #externalMacro(
-  module: "LoggableMacro",
+  module: "AutoLogMacro",
   type: "OSLogMacro"
 )
 
@@ -140,19 +140,19 @@ public macro OSLog(
 /// ```
 @attached(memberAttribute)
 public macro Logged() = #externalMacro(
-  module: "LoggableMacro",
+  module: "AutoLogMacro",
   type: "LoggedMacro"
 )
 
 @attached(memberAttribute)
 public macro Logged(using loggable: any Loggable) = #externalMacro(
-  module: "LoggableMacro",
+  module: "AutoLogMacro",
   type: "LoggedMacro"
 )
 
 @attached(memberAttribute)
 public macro Logged(architecture loggable: any Loggable) = #externalMacro(
-  module: "LoggableMacro",
+  module: "AutoLogMacro",
   type: "LoggedMacro"
 )
 
@@ -160,13 +160,13 @@ public macro Logged(architecture loggable: any Loggable) = #externalMacro(
 /// macro argument type-checking on Swift 6.2.x.
 @attached(memberAttribute)
 public macro Logged(using loggable: LoggableLogger) = #externalMacro(
-  module: "LoggableMacro",
+  module: "AutoLogMacro",
   type: "LoggedMacro"
 )
 
 @attached(memberAttribute)
 public macro Logged(architecture loggable: LoggableLogger) = #externalMacro(
-  module: "LoggableMacro",
+  module: "AutoLogMacro",
   type: "LoggedMacro"
 )
 
@@ -175,7 +175,7 @@ public macro Logged(architecture loggable: LoggableLogger) = #externalMacro(
 /// - Parameter loggable: The type that handles captured events.
 @attached(body)
 public macro Log() = #externalMacro(
-  module: "LoggableMacro",
+  module: "AutoLogMacro",
   type: "LogMacro"
 )
 
@@ -185,7 +185,7 @@ public macro Log(
   omit: any Omittable... = [],
   tag: any Taggable... = []
 ) = #externalMacro(
-  module: "LoggableMacro",
+  module: "AutoLogMacro",
   type: "LogMacro"
 )
 
@@ -197,7 +197,7 @@ public macro Log(
 public macro Log(
   measure: Bool
 ) = #externalMacro(
-  module: "LoggableMacro",
+  module: "AutoLogMacro",
   type: "LogMacro"
 )
 
@@ -208,19 +208,19 @@ public macro Log(
   tag: any Taggable... = [],
   measure: Bool
 ) = #externalMacro(
-  module: "LoggableMacro",
+  module: "AutoLogMacro",
   type: "LogMacro"
 )
 
 @attached(body)
 public macro Log(using loggable: any Loggable) = #externalMacro(
-  module: "LoggableMacro",
+  module: "AutoLogMacro",
   type: "LogMacro"
 )
 
 @attached(body)
 public macro Log(architecture loggable: any Loggable) = #externalMacro(
-  module: "LoggableMacro",
+  module: "AutoLogMacro",
   type: "LogMacro"
 )
 
@@ -228,13 +228,13 @@ public macro Log(architecture loggable: any Loggable) = #externalMacro(
 /// macro argument type-checking on Swift 6.2.x.
 @attached(body)
 public macro Log(using loggable: LoggableLogger) = #externalMacro(
-  module: "LoggableMacro",
+  module: "AutoLogMacro",
   type: "LogMacro"
 )
 
 @attached(body)
 public macro Log(architecture loggable: LoggableLogger) = #externalMacro(
-  module: "LoggableMacro",
+  module: "AutoLogMacro",
   type: "LogMacro"
 )
 
@@ -252,7 +252,7 @@ public macro Log(
   omit: any Omittable... = [],
   tag: any Taggable... = []
 ) = #externalMacro(
-  module: "LoggableMacro",
+  module: "AutoLogMacro",
   type: "LogMacro"
 )
 
@@ -263,7 +263,7 @@ public macro Log(
   omit: any Omittable... = [],
   tag: any Taggable... = []
 ) = #externalMacro(
-  module: "LoggableMacro",
+  module: "AutoLogMacro",
   type: "LogMacro"
 )
 
@@ -276,7 +276,7 @@ public macro Log(
   omit: any Omittable... = [],
   tag: any Taggable... = []
 ) = #externalMacro(
-  module: "LoggableMacro",
+  module: "AutoLogMacro",
   type: "LogMacro"
 )
 
@@ -288,7 +288,7 @@ public macro Log(
   tag: any Taggable... = [],
   measure: Bool
 ) = #externalMacro(
-  module: "LoggableMacro",
+  module: "AutoLogMacro",
   type: "LogMacro"
 )
 
@@ -299,7 +299,7 @@ public macro Log(
   omit: any Omittable... = [],
   tag: any Taggable... = []
 ) = #externalMacro(
-  module: "LoggableMacro",
+  module: "AutoLogMacro",
   type: "LogMacro"
 )
 
@@ -311,7 +311,7 @@ public macro Log(
   tag: any Taggable... = [],
   measure: Bool
 ) = #externalMacro(
-  module: "LoggableMacro",
+  module: "AutoLogMacro",
   type: "LogMacro"
 )
 
@@ -343,7 +343,7 @@ public macro Log(
 /// ```
 @attached(body)
 public macro Level(_ trait: (any Levelable)? = nil) = #externalMacro(
-  module: "LoggableMacro",
+  module: "AutoLogMacro",
   type: "LevelMacro"
 )
 
@@ -369,7 +369,7 @@ public macro Level(_ trait: (any Levelable)? = nil) = #externalMacro(
 /// ```
 @attached(body)
 public macro Omit() = #externalMacro(
-  module: "LoggableMacro",
+  module: "AutoLogMacro",
   type: "OmitMacro"
 )
 
@@ -399,7 +399,7 @@ public macro Omit() = #externalMacro(
 /// ```
 @attached(body)
 public macro Omit(_ traits: any Omittable...) = #externalMacro(
-  module: "LoggableMacro",
+  module: "AutoLogMacro",
   type: "OmitMacro"
 )
 
@@ -430,6 +430,6 @@ public macro Omit(_ traits: any Omittable...) = #externalMacro(
 /// ```
 @attached(body)
 public macro Tag(_ traits: any Taggable...) =  #externalMacro(
-  module: "LoggableMacro",
+  module: "AutoLogMacro",
   type: "TagMacro"
 )

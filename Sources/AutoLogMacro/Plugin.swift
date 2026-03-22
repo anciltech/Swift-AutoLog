@@ -2,7 +2,7 @@ import SwiftCompilerPlugin
 import SwiftSyntaxMacros
 
 @main
-struct LoggablePlugin: CompilerPlugin {
+struct AutoLogPlugin: CompilerPlugin {
   let providingMacros: [Macro.Type] = [
     LogMacro.self,
     LoggedMacro.self,

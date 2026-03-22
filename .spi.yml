@@ -2,5 +2,5 @@ version: 1
 builder:
   configs:
     - documentation_targets:
-      - Loggable
+      - AutoLog
       swift_version: 6.0

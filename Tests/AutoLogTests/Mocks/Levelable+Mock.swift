@@ -1,4 +1,4 @@
-import Loggable
+import AutoLog
 
 enum MockLevel: String {
   case none

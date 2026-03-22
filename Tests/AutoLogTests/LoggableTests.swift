@@ -1,4 +1,4 @@
-import Loggable
+import AutoLog
 import Synchronization
 import Testing
 

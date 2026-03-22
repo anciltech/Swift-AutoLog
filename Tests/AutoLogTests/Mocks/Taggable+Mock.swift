@@ -1,4 +1,4 @@
-import Loggable
+import AutoLog
 
 enum MockTag: Taggable {
   case tag(String)

@@ -1,4 +1,4 @@
-import LoggableMacro
+import AutoLogMacro
 import MacroTesting
 import Testing
 
