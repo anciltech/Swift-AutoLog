@@ -215,12 +215,12 @@ struct CompactFormatterIntegrationTests {
         }
 
         let prevLogger = LoggableSource.logger
-        let prevEmitStart = LoggableSettingsStorage.emitStartEvents
+        let prevEmitStart = AutoLogSettingsStorage.emitStartEvents
         LoggableSource.logger = LoggableLogger(formatter: CapturingFormatter(box: box))
-        LoggableSettingsStorage.emitStartEvents = false
+        AutoLogSettingsStorage.emitStartEvents = false
         defer {
             LoggableSource.logger = prevLogger
-            LoggableSettingsStorage.emitStartEvents = prevEmitStart
+            AutoLogSettingsStorage.emitStartEvents = prevEmitStart
         }
 
         struct Subject {
@@ -234,4 +234,63 @@ struct CompactFormatterIntegrationTests {
         #expect(box.value.contains("greet(name: World)"))
         #expect(box.value.contains("→ Hello, World"))
     }
+}
+
+// MARK: - ArrowStyleTests
+
+@Suite
+struct ArrowStyleTests {
+
+  @Test func default_producesStandardArrows() {
+    let style = LogFormat.ArrowStyle.default
+    #expect(style.arrow(for: 1) == "->")
+    #expect(style.arrow(for: 2) == "-->")
+    #expect(style.arrow(for: 3) == "--->")
+  }
+
+  @Test func customStyle_producesExpectedArrows() {
+    let style = LogFormat.ArrowStyle(start: "a", repeater: "b", end: ">")
+    #expect(style.arrow(for: 1) == "a>")
+    #expect(style.arrow(for: 2) == "ab>")
+    #expect(style.arrow(for: 4) == "abbb>")
+  }
+
+  @Test func emptyRepeater_sameArrowAtAllDepths() {
+    let style = LogFormat.ArrowStyle(start: "~", repeater: "", end: ">")
+    #expect(style.arrow(for: 1) == "~>")
+    #expect(style.arrow(for: 5) == "~>")
+  }
+
+  @Test func logFormat_decodesLegacyJsonWithoutArrowStyle() throws {
+    // Simulate JSON written by an older version that has no arrowStyle key.
+    let json = #"{"mainLine":["depthArrow","statusEmoji"]}"#
+    let format = try JSONDecoder().decode(LogFormat.self, from: Data(json.utf8))
+    #expect(format.arrowStyle == .default)
+  }
+
+  @Test func logFormat_roundTripsArrowStyle() throws {
+    let original = LogFormat(
+      mainLine: [.depthArrow, .functionName],
+      arrowStyle: LogFormat.ArrowStyle(start: "a", repeater: "b", end: ">")
+    )
+    let data    = try JSONEncoder().encode(original)
+    let decoded = try JSONDecoder().decode(LogFormat.self, from: data)
+    #expect(decoded.arrowStyle == original.arrowStyle)
+  }
+
+  @Test func compactFormatter_usesCustomArrow() {
+    let format = LogFormat(
+      mainLine: [.depthArrow, .statusEmoji, .functionName],
+      arrowStyle: LogFormat.ArrowStyle(start: "~", repeater: "~", end: ">")
+    )
+    let formatter = CompactFormatter(profile: .mvvm, format: format)
+    var event = LoggableEvent(
+      location: "App/MyViewModel.swift:1:1",
+      declaration: "func doWork()"
+    )
+    event.duration = .milliseconds(0)
+    let output = formatter.format(event: event)
+    // ViewModel = depth 2 → "~~>"
+    #expect(output.hasPrefix("~~>"))
+  }
 }
