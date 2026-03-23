@@ -1,35 +1,72 @@
 import SwiftUI
 import AppKit
 
-/// A text field that selects all its content the moment it becomes focused.
+/// A text field that:
+/// 1. Selects all its content when it becomes first responder, so the user
+///    can immediately type a replacement value.
+/// 2. Blocks external @Observable re-renders from resetting the displayed
+///    text while the user is actively editing.
 ///
-/// On macOS, clicking a `TextField` places the cursor at the click position
-/// rather than selecting all content. For short style fields (emoji, arrow
-/// characters) the cursor almost always lands at position 0, so pressing
-/// Backspace has nothing to delete and triggers a system beep.
-///
-/// This view fixes that by sending the standard "select all" Responder Chain
-/// action one run-loop after focus is acquired — by which point the underlying
-/// `NSTextField` editor is definitely first responder.
-struct StyleTextField: View {
+/// The SwiftUI TextField approach fails for (2): when the binding setter
+/// mutates an @Observable ViewModel, SwiftUI re-renders the view immediately,
+/// which can reset the field's content before the deletion completes.
+/// NSViewRepresentable gives us direct access to the NSTextField delegate so
+/// we can guard updateNSView with an `isEditing` flag.
+struct StyleTextField: NSViewRepresentable {
   @Binding var text: String
-  var width: CGFloat = 52
 
-  @FocusState private var isFocused: Bool
+  func makeNSView(context: Context) -> NSTextField {
+    let field = NSTextField()
+    field.stringValue = text
+    field.placeholderString = ""
+    field.delegate = context.coordinator
+    field.bezelStyle = .roundedBezel
+    field.isBezeled = true
+    field.focusRingType = .default
+    field.font = .monospacedSystemFont(ofSize: NSFont.systemFontSize, weight: .regular)
+    field.cell?.wraps = false
+    field.cell?.isScrollable = true
+    return field
+  }
 
-  var body: some View {
-    TextField("", text: $text)
-      .textFieldStyle(.roundedBorder)
-      .font(.system(.body, design: .monospaced))
-      .frame(width: width)
-      .focused($isFocused)
-      .onChange(of: isFocused) { _, focused in
-        guard focused else { return }
-        // Defer one run-loop so the NSTextField editor is first-responder
-        // before the select-all action reaches it.
-        DispatchQueue.main.async {
-          NSApp.sendAction(#selector(NSText.selectAll(_:)), to: nil, from: nil)
-        }
-      }
+  func updateNSView(_ nsView: NSTextField, context: Context) {
+    // While the user is editing, never override what they've typed —
+    // the binding's setter already stored the value; we just don't want
+    // @Observable-triggered re-renders to snap the displayed text back.
+    guard !context.coordinator.isEditing else { return }
+    if nsView.stringValue != text {
+      nsView.stringValue = text
+    }
+  }
+
+  func makeCoordinator() -> Coordinator { Coordinator(text: $text) }
+}
+
+// MARK: - Coordinator
+
+extension StyleTextField {
+
+  final class Coordinator: NSObject, NSTextFieldDelegate {
+    @Binding var text: String
+    var isEditing = false
+
+    init(text: Binding<String>) { _text = text }
+
+    /// Called the moment the field editor activates — guaranteed timing for selectAll.
+    func controlTextDidBeginEditing(_ obj: Notification) {
+      isEditing = true
+      guard let field  = obj.object as? NSTextField,
+            let editor = field.currentEditor() else { return }
+      editor.selectAll(nil)
+    }
+
+    func controlTextDidChange(_ obj: Notification) {
+      guard let field = obj.object as? NSTextField else { return }
+      text = field.stringValue
+    }
+
+    func controlTextDidEndEditing(_ obj: Notification) {
+      isEditing = false
+    }
   }
 }

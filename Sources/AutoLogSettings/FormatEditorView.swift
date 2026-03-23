@@ -352,7 +352,7 @@ struct FormatEditorView: View {
           .font(.caption)
           .foregroundStyle(.secondary)
       }
-      StyleTextField(text: value)
+      StyleTextField(text: value).frame(width: 52)
     }
   }
 
@@ -361,7 +361,7 @@ struct FormatEditorView: View {
       Text(label)
         .font(.caption)
         .foregroundStyle(.secondary)
-      StyleTextField(text: value, width: 60)
+      StyleTextField(text: value).frame(width: 60)
     }
   }
 
