@@ -62,6 +62,7 @@ struct FormatEditorView: View {
           activeSection
           paletteSection
           arrowStyleSection
+          statusStyleSection
         }
         .padding(16)
       }
@@ -306,6 +307,60 @@ struct FormatEditorView: View {
       .padding(10)
       .background(Color.secondary.opacity(0.06))
       .clipShape(RoundedRectangle(cornerRadius: 8))
+    }
+  }
+
+  // MARK: - Status style section
+
+  private var statusStyleRows: [(label: String, preview: String,
+                                  get: KeyPath<LogFormat.StatusStyle, String>,
+                                  set: WritableKeyPath<LogFormat.StatusStyle, String>)] {
+    [
+      ("Start",   "🔵", \.start,   \.start),
+      ("Success", "🟢", \.success, \.success),
+      ("Failure", "🔴", \.failure, \.failure),
+      ("Warning", "🟡", \.warning, \.warning),
+      ("Update",  "🟣", \.update,  \.update),
+    ]
+  }
+
+  private var statusStyleSection: some View {
+    VStack(alignment: .leading, spacing: 10) {
+      Label("Status", systemImage: "circle.fill")
+        .font(.subheadline.weight(.semibold))
+
+      HStack(spacing: 16) {
+        ForEach(statusStyleRows, id: \.label) { row in
+          statusField(
+            label:   row.label,
+            preview: row.preview,
+            value: Binding(
+              get: { viewModel.statusStyle[keyPath: row.get] },
+              set: {
+                var s = viewModel.statusStyle
+                s[keyPath: row.set] = $0
+                viewModel.updateStatusStyle(s)
+              }
+            )
+          )
+        }
+      }
+    }
+  }
+
+  private func statusField(label: String, preview: String, value: Binding<String>) -> some View {
+    VStack(alignment: .leading, spacing: 4) {
+      HStack(spacing: 4) {
+        Text(preview)
+          .font(.caption)
+        Text(label)
+          .font(.caption)
+          .foregroundStyle(.secondary)
+      }
+      TextField("", text: value)
+        .textFieldStyle(.roundedBorder)
+        .font(.system(.body, design: .monospaced))
+        .frame(width: 52)
     }
   }
 
