@@ -42,7 +42,7 @@ struct FormatChipView: View {
         .foregroundStyle(.secondary)
       }
     }
-    .padding(.horizontal, element.isSpacer ? 10 : 10)
+    .padding(.horizontal, 10)
     .padding(.vertical, 5)
     .background(background)
     .foregroundStyle(foreground)
@@ -78,6 +78,7 @@ struct FormatChipView: View {
     switch role {
     case .active  where element.isSpacer: return Color.orange.opacity(0.4)
     case .active:                         return Color.accentColor.opacity(0.3)
+    case .palette where element.isSpacer: return Color.orange.opacity(0.3)
     case .palette:                        return Color.secondary.opacity(0.2)
     }
   }
