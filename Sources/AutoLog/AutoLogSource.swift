@@ -1,11 +1,11 @@
 /// A `Sourceable` wrapper that pairs an interaction source with the call-site
-/// location where it was activated. Stored in `LoggableSource.current` so that
+/// location where it was activated. Stored in `AutoLogSource.current` so that
 /// downstream `@Logged` function events can include the attribution line
 /// (`↖ 👆🏼 Run [AsyncExamplesView:42]`).
 ///
 /// `SourceContext` conforms to `Sourceable` by delegating all protocol
 /// requirements to the wrapped source, so existing code reading
-/// `LoggableSource.current?.emoji` / `.label` continues to work unchanged.
+/// `AutoLogSource.current?.emoji` / `.label` continues to work unchanged.
 public struct SourceContext: Sourceable, Sendable {
   /// The underlying interaction source (e.g., `InteractionSource.button("Run")`).
   public let source: any Sourceable
@@ -24,7 +24,7 @@ public struct SourceContext: Sourceable, Sendable {
 
 /// Manages the current interaction source via TaskLocal and emits
 /// standalone interaction events when sources are activated.
-public enum LoggableSource {
+public enum AutoLogSource {
   /// The current interaction source context, automatically propagated
   /// through structured concurrency (async/await, TaskGroup).
   ///
@@ -34,13 +34,13 @@ public enum LoggableSource {
   @TaskLocal public static var current: SourceContext?
 
   /// The logger used to emit standalone interaction events.
-  /// Defaults to `LoggableLogger()`. Set this to customize
+  /// Defaults to `AutoLogLogger()`. Set this to customize
   /// where interaction events are logged.
   ///
   /// - Important: Set this property during app initialization only,
   ///   before any concurrent calls to ``run(_:fileID:line:column:operation:)``.
   ///   Mutating it concurrently with `run()` calls is a data race.
-  public static nonisolated(unsafe) var logger: any Loggable = LoggableLogger()
+  public static nonisolated(unsafe) var logger: any AutoLogger = AutoLogLogger()
 
   // MARK: - Interaction source activation
 
@@ -48,7 +48,7 @@ public enum LoggableSource {
   /// with the source set on the TaskLocal.
   ///
   /// All `@Logged` functions called within the operation will
-  /// automatically see this source on `LoggableSource.current`.
+  /// automatically see this source on `AutoLogSource.current`.
   @discardableResult
   public static func run<T>(
     _ source: any Sourceable,
@@ -58,7 +58,7 @@ public enum LoggableSource {
     operation: () throws -> T
   ) rethrows -> T {
     let locationString = "\(fileID):\(line):\(column)"
-    logger.emit(event: LoggableEvent(
+    logger.emit(event: AutoLogEvent(
       source: source,
       location: locationString,
       declaration: source.description
@@ -78,7 +78,7 @@ public enum LoggableSource {
     operation: () async throws -> T
   ) async rethrows -> T {
     let locationString = "\(fileID):\(line):\(column)"
-    logger.emit(event: LoggableEvent(
+    logger.emit(event: AutoLogEvent(
       source: source,
       location: locationString,
       declaration: source.description
@@ -96,7 +96,7 @@ public enum LoggableSource {
   /// or developer notes without attaching them to a function boundary.
   ///
   /// ```swift
-  /// LoggableSource.emit(.update, "User changed avatar")
+  /// AutoLogSource.emit(.update, "User changed avatar")
   /// // → 🟣  "User changed avatar"
   /// ```
   public static func emit(
@@ -105,7 +105,7 @@ public enum LoggableSource {
     fileID: String = #fileID,
     line: Int = #line
   ) {
-    logger.emit(event: LoggableEvent(
+    logger.emit(event: AutoLogEvent(
       level: level,
       source: current?.source,
       location: "\(fileID):\(line)",

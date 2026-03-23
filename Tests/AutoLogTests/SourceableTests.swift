@@ -90,10 +90,10 @@ struct SourceableTests {
         #expect(source.label == "https://example.com")
     }
 
-    // MARK: - LoggableEvent source field
+    // MARK: - AutoLogEvent source field
 
     @Test func event_withSource_carriesSource() {
-        let event = LoggableEvent(
+        let event = AutoLogEvent(
             source: InteractionSource.button("Deposit"),
             location: "App/ContentView.swift:30:5",
             declaration: "func deposit(_ amount: Decimal)"
@@ -103,7 +103,7 @@ struct SourceableTests {
     }
 
     @Test func event_withoutSource_hasNilSource() {
-        let event = LoggableEvent(
+        let event = AutoLogEvent(
             location: "App/MyView.swift:10:5",
             declaration: "func doSomething()"
         )
@@ -111,44 +111,56 @@ struct SourceableTests {
     }
 }
 
-// MARK: - LoggableSource Tests
+// MARK: - AutoLogSource Tests
 
 @Suite(.serialized)
-struct LoggableSourceTests {
+struct AutoLogSourceTests {
 
     @Test func current_isNilByDefault() {
-        #expect(LoggableSource.current == nil)
+        #expect(AutoLogSource.current == nil)
     }
 
     @Test func run_setsCurrentDuringExecution() {
+        let originalLogger = AutoLogSource.logger
+        defer { AutoLogSource.logger = originalLogger }
+        AutoLogSource.logger = MockLogger()
+
         var capturedEmoji: String?
-        LoggableSource.run(InteractionSource.button("Test")) {
-            capturedEmoji = LoggableSource.current?.emoji
+        AutoLogSource.run(InteractionSource.button("Test")) {
+            capturedEmoji = AutoLogSource.current?.emoji
         }
         #expect(capturedEmoji == "👆🏼")
     }
 
     @Test func run_restoresNilAfterExecution() {
-        LoggableSource.run(InteractionSource.button("Test")) { }
-        #expect(LoggableSource.current == nil)
+        let originalLogger = AutoLogSource.logger
+        defer { AutoLogSource.logger = originalLogger }
+        AutoLogSource.logger = MockLogger()
+
+        AutoLogSource.run(InteractionSource.button("Test")) { }
+        #expect(AutoLogSource.current == nil)
     }
 
     @Test func run_async_setsCurrentDuringExecution() async {
+        let originalLogger = AutoLogSource.logger
+        defer { AutoLogSource.logger = originalLogger }
+        AutoLogSource.logger = MockLogger()
+
         var capturedEmoji: String?
-        await LoggableSource.run(InteractionSource.api("GET /users")) {
-            capturedEmoji = LoggableSource.current?.emoji
+        await AutoLogSource.run(InteractionSource.api("GET /users")) {
+            capturedEmoji = AutoLogSource.current?.emoji
         }
         #expect(capturedEmoji == "🌐")
     }
 
     @Test func run_emitsInteractionEvent() {
-        let originalLogger = LoggableSource.logger
-        defer { LoggableSource.logger = originalLogger }
+        let originalLogger = AutoLogSource.logger
+        defer { AutoLogSource.logger = originalLogger }
 
         let mock = MockLogger()
-        LoggableSource.logger = mock
+        AutoLogSource.logger = mock
 
-        LoggableSource.run(InteractionSource.button("Deposit")) { }
+        AutoLogSource.run(InteractionSource.button("Deposit")) { }
 
         #expect(mock.events.count == 1)
         #expect(mock.events.first?.source?.emoji == "👆🏼")
@@ -156,12 +168,20 @@ struct LoggableSourceTests {
     }
 
     @Test func run_returnsOperationResult() {
-        let result = LoggableSource.run(InteractionSource.button("Calc")) { 42 }
+        let originalLogger = AutoLogSource.logger
+        defer { AutoLogSource.logger = originalLogger }
+        AutoLogSource.logger = MockLogger()
+
+        let result = AutoLogSource.run(InteractionSource.button("Calc")) { 42 }
         #expect(result == 42)
     }
 
     @Test func run_async_returnsOperationResult() async {
-        let result = await LoggableSource.run(InteractionSource.api("Fetch")) { "data" }
+        let originalLogger = AutoLogSource.logger
+        defer { AutoLogSource.logger = originalLogger }
+        AutoLogSource.logger = MockLogger()
+
+        let result = await AutoLogSource.run(InteractionSource.api("Fetch")) { "data" }
         #expect(result == "data")
     }
 }
@@ -179,8 +199,8 @@ struct CompactFormatterSourceTests {
         parameters: [String: Any] = [:],
         result: Result<Any, any Error> = .success(()),
         tags: [any Taggable] = []
-    ) -> LoggableEvent {
-        LoggableEvent(
+    ) -> AutoLogEvent {
+        AutoLogEvent(
             level: level,
             source: source,
             location: location,
@@ -193,7 +213,7 @@ struct CompactFormatterSourceTests {
 
     // In the new formatter, source emoji no longer replaces the status emoji on function events.
     // Status emoji (🟢/🔴/🔵) is always used; source attribution appears on a second ↖ line
-    // only when the source is a SourceContext (set by LoggableSource.run via @TaskLocal).
+    // only when the source is a SourceContext (set by AutoLogSource.run via @TaskLocal).
 
     @Test func functionEvent_withSource_showsStatusEmoji_notSourceEmoji() {
         // Non-SourceContext sources don't produce an attribution line.
@@ -267,7 +287,7 @@ struct CompactFormatterSourceTests {
     }
 
     @Test func functionEvent_withSourceContext_showsAttributionLine() {
-        // When source is a SourceContext (from LoggableSource.run), a second ↖ line
+        // When source is a SourceContext (from AutoLogSource.run), a second ↖ line
         // is appended showing the interaction source emoji, label, and call-site location.
         let ctx = SourceContext(
             source: InteractionSource.button("Deposit"),

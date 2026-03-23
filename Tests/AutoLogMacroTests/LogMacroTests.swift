@@ -22,16 +22,20 @@ struct LogMacroTests {
     } expansion: {
       """
       func foo() {
-        let loggable: any Loggable = .logger
-        let event = LoggableEvent(
-          source: LoggableSource.current,
+        let autoLogger: any AutoLogger = AutoLogSource.logger
+        var event = AutoLogEvent(
+          source: AutoLogSource.current,
+
           location: "TestModule/Test.swift:1:1",
           declaration: "func foo()",
           parameters: [:],
           tags: []
         )
+        autoLogger.emitStart(event: event)
+        let __logStart = ContinuousClock.now
         print("Foo")
-        loggable.emit(event: event)
+        event.duration = ContinuousClock.now - __logStart
+        autoLogger.emit(event: event)
       }
       """
     }
@@ -49,23 +53,27 @@ struct LogMacroTests {
     } expansion: {
       """
       func foo() {
-        let loggable: any Loggable = CustomLogger()
-        let event = LoggableEvent(
-          source: LoggableSource.current,
+        let autoLogger: any AutoLogger = CustomLogger()
+        var event = AutoLogEvent(
+          source: AutoLogSource.current,
+
           location: "TestModule/Test.swift:1:1",
           declaration: "func foo()",
           parameters: [:],
           tags: []
         )
+        autoLogger.emitStart(event: event)
+        let __logStart = ContinuousClock.now
         print("Foo")
-        loggable.emit(event: event)
+        event.duration = ContinuousClock.now - __logStart
+        autoLogger.emit(event: event)
       }
       """
     }
   }
 
   @Test
-  func voidFunction_loggableAsStaticParameter_noAdditionalAnnotations() throws {
+  func voidFunction_autoLoggerAsStaticParameter_noAdditionalAnnotations() throws {
     assertMacro {
       #"""
       @Log(using: .custom)
@@ -76,16 +84,20 @@ struct LogMacroTests {
     } expansion: {
       """
       func foo() {
-        let loggable: any Loggable = .custom
-        let event = LoggableEvent(
-          source: LoggableSource.current,
+        let autoLogger: any AutoLogger = .custom
+        var event = AutoLogEvent(
+          source: AutoLogSource.current,
+
           location: "TestModule/Test.swift:1:1",
           declaration: "func foo()",
           parameters: [:],
           tags: []
         )
+        autoLogger.emitStart(event: event)
+        let __logStart = ContinuousClock.now
         print("Foo")
-        loggable.emit(event: event)
+        event.duration = ContinuousClock.now - __logStart
+        autoLogger.emit(event: event)
       }
       """
     }
@@ -103,20 +115,24 @@ struct LogMacroTests {
     } expansion: {
       """
       func foo() -> String {
-        let loggable: any Loggable = .logger
-        var event = LoggableEvent(
-          source: LoggableSource.current,
+        let autoLogger: any AutoLogger = AutoLogSource.logger
+        var event = AutoLogEvent(
+          source: AutoLogSource.current,
+
           location: "TestModule/Test.swift:1:1",
           declaration: "func foo() -> String",
           parameters: [:],
           tags: []
         )
+        autoLogger.emitStart(event: event)
+        let __logStart = ContinuousClock.now
         func _foo() -> String {
           return "Foo"
         }
         let result = _foo()
         event.result = .success(result)
-        loggable.emit(event: event)
+        event.duration = ContinuousClock.now - __logStart
+        autoLogger.emit(event: event)
         return result
       }
       """
@@ -124,7 +140,7 @@ struct LogMacroTests {
   }
 
   @Test
-  func stringFunctionWithArguments_loggableAndLevelableAsStaticParameters_noAdditionalAnnotations() throws {
+  func stringFunctionWithArguments_autoLoggerAndLevelableAsStaticParameters_noAdditionalAnnotations() throws {
     assertMacro {
       #"""
       @Log(using: .foo, level: .debug)
@@ -135,10 +151,11 @@ struct LogMacroTests {
     } expansion: {
       #"""
       func foo(bar: String) -> String {
-        let loggable: any Loggable = .foo
-        var event = LoggableEvent(
+        let autoLogger: any AutoLogger = .foo
+        var event = AutoLogEvent(
           level: .debug,
-          source: LoggableSource.current,
+          source: AutoLogSource.current,
+
           location: "TestModule/Test.swift:1:1",
           declaration: "func foo(bar: String) -> String",
           parameters: [
@@ -146,12 +163,15 @@ struct LogMacroTests {
           ],
           tags: []
         )
+        autoLogger.emitStart(event: event)
+        let __logStart = ContinuousClock.now
         func _foo(bar: String) -> String {
           print("Foo: \(bar)")
         }
         let result = _foo(bar: bar)
         event.result = .success(result)
-        loggable.emit(event: event)
+        event.duration = ContinuousClock.now - __logStart
+        autoLogger.emit(event: event)
         return result
       }
       """#
@@ -170,9 +190,10 @@ struct LogMacroTests {
     } expansion: {
       #"""
       func foo(bar: String) -> String {
-        let loggable: any Loggable = .logger
-        var event = LoggableEvent(
-          source: LoggableSource.current,
+        let autoLogger: any AutoLogger = AutoLogSource.logger
+        var event = AutoLogEvent(
+          source: AutoLogSource.current,
+
           location: "TestModule/Test.swift:1:1",
           declaration: "func foo(bar: String) -> String",
           parameters: [
@@ -180,12 +201,15 @@ struct LogMacroTests {
           ],
           tags: ["example"]
         )
+        autoLogger.emitStart(event: event)
+        let __logStart = ContinuousClock.now
         func _foo(bar: String) -> String {
           return "Foo: \(bar)"
         }
         let result = _foo(bar: bar)
         event.result = .success(result)
-        loggable.emit(event: event)
+        event.duration = ContinuousClock.now - __logStart
+        autoLogger.emit(event: event)
         return result
       }
       """#
@@ -204,9 +228,10 @@ struct LogMacroTests {
     } expansion: {
       #"""
       func foo(_ bar: String, baz biz: Int) -> (String, Int) {
-        let loggable: any Loggable = .logger
-        var event = LoggableEvent(
-          source: LoggableSource.current,
+        let autoLogger: any AutoLogger = AutoLogSource.logger
+        var event = AutoLogEvent(
+          source: AutoLogSource.current,
+
           location: "TestModule/Test.swift:1:1",
           declaration: "func foo(_ bar: String, baz biz: Int) -> (String, Int)",
           parameters: [
@@ -215,12 +240,15 @@ struct LogMacroTests {
           ],
           tags: []
         )
+        autoLogger.emitStart(event: event)
+        let __logStart = ContinuousClock.now
         func _foo(bar: String, biz: Int) -> (String, Int) {
           return ("Bar: \(bar)", biz * 2)
         }
         let result = _foo(bar: bar, biz: biz)
         event.result = .success(result)
-        loggable.emit(event: event)
+        event.duration = ContinuousClock.now - __logStart
+        autoLogger.emit(event: event)
         return result
       }
       """#
@@ -241,17 +269,21 @@ struct LogMacroTests {
       """
       @Level(.debug)
       mutating func foo() {
-        let loggable: any Loggable = .logger
-        let event = LoggableEvent(
+        let autoLogger: any AutoLogger = AutoLogSource.logger
+        var event = AutoLogEvent(
           level: .debug,
-          source: LoggableSource.current,
+          source: AutoLogSource.current,
+
           location: "TestModule/Test.swift:1:1",
           declaration: "mutating func foo()",
           parameters: [:],
           tags: []
         )
+        autoLogger.emitStart(event: event)
+        let __logStart = ContinuousClock.now
         self.counter += 1
-        loggable.emit(event: event)
+        event.duration = ContinuousClock.now - __logStart
+        autoLogger.emit(event: event)
       }
       """
     }
@@ -269,10 +301,11 @@ struct LogMacroTests {
     } expansion: {
       """
       mutating func foo(bar: String) {
-        let loggable: any Loggable = .logger
-        let event = LoggableEvent(
+        let autoLogger: any AutoLogger = AutoLogSource.logger
+        var event = AutoLogEvent(
           level: .debug,
-          source: LoggableSource.current,
+          source: AutoLogSource.current,
+
           location: "TestModule/Test.swift:1:1",
           declaration: "mutating func foo(bar: String)",
           parameters: [
@@ -280,8 +313,11 @@ struct LogMacroTests {
           ],
           tags: [.common, "example"]
         )
+        autoLogger.emitStart(event: event)
+        let __logStart = ContinuousClock.now
         self.bar = bar
-        loggable.emit(event: event)
+        event.duration = ContinuousClock.now - __logStart
+        autoLogger.emit(event: event)
       }
       """
     }
@@ -303,14 +339,17 @@ struct LogMacroTests {
     } expansion: {
       """
       mutating func foo() throws {
-        let loggable: any Loggable = .logger
-        var event = LoggableEvent(
-          source: LoggableSource.current,
+        let autoLogger: any AutoLogger = AutoLogSource.logger
+        var event = AutoLogEvent(
+          source: AutoLogSource.current,
+
           location: "TestModule/Test.swift:1:1",
           declaration: "mutating func foo() throws",
           parameters: [:],
           tags: []
         )
+        autoLogger.emitStart(event: event)
+        let __logStart = ContinuousClock.now
         func _foo() throws {
           if self.counter == 0 {
             throw NSError(domain: com.foo.test, code: .zero)
@@ -320,9 +359,12 @@ struct LogMacroTests {
         }
         do {
           let _ = try _foo()
+          event.duration = ContinuousClock.now - __logStart
+          autoLogger.emit(event: event)
         } catch {
           event.result = .failure(error)
-          loggable.emit(event: event)
+          event.duration = ContinuousClock.now - __logStart
+          autoLogger.emit(event: event)
           throw error
         }
       }
@@ -346,23 +388,29 @@ struct LogMacroTests {
       @Level(.error)
       @Tag("example")
       func foo() throws {
-        let loggable: any Loggable = .logger
-        var event = LoggableEvent(
+        let autoLogger: any AutoLogger = AutoLogSource.logger
+        var event = AutoLogEvent(
           level: .error,
-          source: LoggableSource.current,
+          source: AutoLogSource.current,
+
           location: "TestModule/Test.swift:1:1",
           declaration: "func foo() throws",
           parameters: [:],
           tags: ["example"]
         )
+        autoLogger.emitStart(event: event)
+        let __logStart = ContinuousClock.now
         func _foo() throws {
           throw NSError()
         }
         do {
           let _ = try _foo()
+          event.duration = ContinuousClock.now - __logStart
+          autoLogger.emit(event: event)
         } catch {
           event.result = .failure(error)
-          loggable.emit(event: event)
+          event.duration = ContinuousClock.now - __logStart
+          autoLogger.emit(event: event)
           throw error
         }
       }
@@ -386,14 +434,17 @@ struct LogMacroTests {
     } expansion: {
       """
       func foo() throws -> Int {
-        let loggable: any Loggable = .logger
-        var event = LoggableEvent(
-          source: LoggableSource.current,
+        let autoLogger: any AutoLogger = AutoLogSource.logger
+        var event = AutoLogEvent(
+          source: AutoLogSource.current,
+
           location: "TestModule/Test.swift:1:1",
           declaration: "func foo() throws -> Int",
           parameters: [:],
           tags: []
         )
+        autoLogger.emitStart(event: event)
+        let __logStart = ContinuousClock.now
         func _foo() throws -> Int {
           if Bool.random() {
             throw NSError(domain: com.foo.test, code: .zero)
@@ -404,11 +455,13 @@ struct LogMacroTests {
         do {
           let result = try _foo()
           event.result = .success(result)
-          loggable.emit(event: event)
+          event.duration = ContinuousClock.now - __logStart
+          autoLogger.emit(event: event)
           return result
         } catch {
           event.result = .failure(error)
-          loggable.emit(event: event)
+          event.duration = ContinuousClock.now - __logStart
+          autoLogger.emit(event: event)
           throw error
         }
       }
@@ -435,9 +488,10 @@ struct LogMacroTests {
       """
       @Omit("value")
       func foo(_ value: Int) throws {
-        let loggable: any Loggable = .logger
-        var event = LoggableEvent(
-          source: LoggableSource.current,
+        let autoLogger: any AutoLogger = AutoLogSource.logger
+        var event = AutoLogEvent(
+          source: AutoLogSource.current,
+
           location: "TestModule/Test.swift:1:1",
           declaration: "func foo(_ value: Int) throws",
           parameters: [
@@ -445,6 +499,8 @@ struct LogMacroTests {
           ],
           tags: []
         )
+        autoLogger.emitStart(event: event)
+        let __logStart = ContinuousClock.now
         func _foo(value: Int) throws {
           if Bool.random() {
             print("true")
@@ -455,9 +511,12 @@ struct LogMacroTests {
         }
         do {
           let _ = try _foo(value: value)
+          event.duration = ContinuousClock.now - __logStart
+          autoLogger.emit(event: event)
         } catch {
           event.result = .failure(error)
-          loggable.emit(event: event)
+          event.duration = ContinuousClock.now - __logStart
+          autoLogger.emit(event: event)
           throw error
         }
       }
@@ -481,13 +540,16 @@ struct LogMacroTests {
     } expansion: {
       #"""
       func foo(_ value: Int, content: String) throws -> (Int, String) {
-        let loggable: any Loggable = .logger
-        var event = LoggableEvent(
-          source: LoggableSource.current,
+        let autoLogger: any AutoLogger = AutoLogSource.logger
+        var event = AutoLogEvent(
+          source: AutoLogSource.current,
+
           location: "TestModule/Test.swift:1:1",
           declaration: "func foo(_ value: Int, content: String) throws -> (Int, String)",
           tags: []
         )
+        autoLogger.emitStart(event: event)
+        let __logStart = ContinuousClock.now
         func _foo(value: Int, content: String) throws -> (Int, String) {
           if Bool.random() {
             throw NSError(domain: com.foo.test, code: .zero)
@@ -498,11 +560,13 @@ struct LogMacroTests {
         do {
           let result = try _foo(value: value, content: content)
           event.result = .success(result)
-          loggable.emit(event: event)
+          event.duration = ContinuousClock.now - __logStart
+          autoLogger.emit(event: event)
           return result
         } catch {
           event.result = .failure(error)
-          loggable.emit(event: event)
+          event.duration = ContinuousClock.now - __logStart
+          autoLogger.emit(event: event)
           throw error
         }
       }
@@ -524,23 +588,29 @@ struct LogMacroTests {
       """
       @Tag("example")
       func foo() async throws {
-        let loggable: any Loggable = .logger
-        var event = LoggableEvent(
+        let autoLogger: any AutoLogger = AutoLogSource.logger
+        var event = AutoLogEvent(
           level: "fault",
-          source: LoggableSource.current,
+          source: AutoLogSource.current,
+
           location: "TestModule/Test.swift:1:1",
           declaration: "func foo() async throws",
           parameters: [:],
           tags: ["example"]
         )
+        autoLogger.emitStart(event: event)
+        let __logStart = ContinuousClock.now
         func _foo() async throws {
           try await Task.sleep(nanoseconds: 100_000_000)
         }
         do {
           let _ = try await _foo()
+          event.duration = ContinuousClock.now - __logStart
+          autoLogger.emit(event: event)
         } catch {
           event.result = .failure(error)
-          loggable.emit(event: event)
+          event.duration = ContinuousClock.now - __logStart
+          autoLogger.emit(event: event)
           throw error
         }
       }
@@ -560,9 +630,10 @@ struct LogMacroTests {
     } expansion: {
       """
       func performTask(completion: @escaping () -> Void) {
-        let loggable: any Loggable = .logger
-        let event = LoggableEvent(
-          source: LoggableSource.current,
+        let autoLogger: any AutoLogger = AutoLogSource.logger
+        var event = AutoLogEvent(
+          source: AutoLogSource.current,
+
           location: "TestModule/Test.swift:1:1",
           declaration: "func performTask(completion: @escaping () -> Void)",
           parameters: [
@@ -570,8 +641,11 @@ struct LogMacroTests {
           ],
           tags: []
         )
+        autoLogger.emitStart(event: event)
+        let __logStart = ContinuousClock.now
         completion()
-        loggable.emit(event: event)
+        event.duration = ContinuousClock.now - __logStart
+        autoLogger.emit(event: event)
       }
       """
     }
@@ -591,10 +665,11 @@ struct LogMacroTests {
       """
       @Level(.info)
       func check(condition: @autoclosure () -> Bool) -> Bool {
-        let loggable: any Loggable = .logger
-        let event = LoggableEvent(
+        let autoLogger: any AutoLogger = AutoLogSource.logger
+        var event = AutoLogEvent(
           level: .info,
-          source: LoggableSource.current,
+          source: AutoLogSource.current,
+
           location: "TestModule/Test.swift:1:1",
           declaration: "func check(condition: @autoclosure () -> Bool) -> Bool",
           parameters: [
@@ -602,11 +677,14 @@ struct LogMacroTests {
           ],
           tags: []
         )
+        autoLogger.emitStart(event: event)
+        let __logStart = ContinuousClock.now
         func _check(condition: @autoclosure () -> Bool) -> Bool {
           return condition()
         }
         let result = _check(condition: condition())
-        loggable.emit(event: event)
+        event.duration = ContinuousClock.now - __logStart
+        autoLogger.emit(event: event)
         return result
       }
       """
@@ -625,9 +703,10 @@ struct LogMacroTests {
     } expansion: {
       """
       func update(value: inout Int, with newValue: Int) {
-        let loggable: any Loggable = .logger
-        let event = LoggableEvent(
-          source: LoggableSource.current,
+        let autoLogger: any AutoLogger = AutoLogSource.logger
+        var event = AutoLogEvent(
+          source: AutoLogSource.current,
+
           location: "TestModule/Test.swift:1:1",
           declaration: "func update(value: inout Int, with newValue: Int)",
           parameters: [
@@ -636,8 +715,11 @@ struct LogMacroTests {
           ],
           tags: []
         )
+        autoLogger.emitStart(event: event)
+        let __logStart = ContinuousClock.now
         value = newValue
-        loggable.emit(event: event)
+        event.duration = ContinuousClock.now - __logStart
+        autoLogger.emit(event: event)
       }
       """
     }
@@ -657,9 +739,10 @@ struct LogMacroTests {
       #"""
       @Omit(.result)
       static func staticMethod(info: String) -> String {
-        let loggable: any Loggable = .logger
-        let event = LoggableEvent(
-          source: LoggableSource.current,
+        let autoLogger: any AutoLogger = AutoLogSource.logger
+        var event = AutoLogEvent(
+          source: AutoLogSource.current,
+
           location: "TestModule/Test.swift:1:1",
           declaration: "static func staticMethod(info: String) -> String",
           parameters: [
@@ -667,11 +750,14 @@ struct LogMacroTests {
           ],
           tags: []
         )
+        autoLogger.emitStart(event: event)
+        let __logStart = ContinuousClock.now
         func _staticMethod(info: String) -> String {
           return "Static: \(info)"
         }
         let result = _staticMethod(info: info)
-        loggable.emit(event: event)
+        event.duration = ContinuousClock.now - __logStart
+        autoLogger.emit(event: event)
         return result
       }
       """#
@@ -692,9 +778,10 @@ struct LogMacroTests {
       """
       @Omit("operation")
       func execute(operation: () throws -> Void) rethrows {
-        let loggable: any Loggable = .logger
-        var event = LoggableEvent(
-          source: LoggableSource.current,
+        let autoLogger: any AutoLogger = AutoLogSource.logger
+        var event = AutoLogEvent(
+          source: AutoLogSource.current,
+
           location: "TestModule/Test.swift:1:1",
           declaration: "func execute(operation: () throws -> Void) rethrows",
           parameters: [
@@ -702,14 +789,19 @@ struct LogMacroTests {
           ],
           tags: []
         )
+        autoLogger.emitStart(event: event)
+        let __logStart = ContinuousClock.now
         func _execute(operation: () throws -> Void) rethrows {
           try operation()
         }
         do {
           let _ = try _execute(operation: operation)
+          event.duration = ContinuousClock.now - __logStart
+          autoLogger.emit(event: event)
         } catch {
           event.result = .failure(error)
-          loggable.emit(event: event)
+          event.duration = ContinuousClock.now - __logStart
+          autoLogger.emit(event: event)
           throw error
         }
       }
@@ -729,19 +821,23 @@ struct LogMacroTests {
     } expansion: {
       """
       func transform(value: Int, using transform: (Int) -> String) -> String {
-        let loggable: any Loggable = .custom
-        let event = LoggableEvent(
+        let autoLogger: any AutoLogger = .custom
+        var event = AutoLogEvent(
           level: .debug,
-          source: LoggableSource.current,
+          source: AutoLogSource.current,
+
           location: "TestModule/Test.swift:1:1",
           declaration: "func transform(value: Int, using transform: (Int) -> String) -> String",
           tags: [.commonTag, "example"]
         )
+        autoLogger.emitStart(event: event)
+        let __logStart = ContinuousClock.now
         func _transform(value: Int, transform: (Int) -> String) -> String {
           return transform(value)
         }
         let result = _transform(value: value, transform: transform)
-        loggable.emit(event: event)
+        event.duration = ContinuousClock.now - __logStart
+        autoLogger.emit(event: event)
         return result
       }
       """
@@ -768,8 +864,8 @@ struct LogMacroTests {
 //      @Tag(.commonTag)
 //      @Level(.info)
 //      func identity<T>(_ value: T) -> T {
-//        let loggable: any Loggable = .logger
-//        var event = LoggableEvent(
+//        let autoLogger: any AutoLogger = AutoLogSource.logger
+//        var event = AutoLogEvent(
 //          level: "level_info",
 //          location: "TestModule/Test.swift:5:1",
 //          declaration: "func identity<T>(_ value: T) -> T",
@@ -782,7 +878,8 @@ struct LogMacroTests {
 //          return value
 //        }
 //        let result = _identity(value: value)
-//        loggable.emit(event: event)
+//        event.duration = ContinuousClock.now - __logStart
+//        autoLogger.emit(event: event)
 //        return result
 //      }
 //      """
@@ -803,9 +900,10 @@ struct LogMacroTests {
       """
       @Tag(.example, "example")
       func combine<T, U>(first: T, second: U) -> (T, U) where T: CustomStringConvertible, U: CustomStringConvertible {
-        let loggable: any Loggable = .logger
-        var event = LoggableEvent(
-          source: LoggableSource.current,
+        let autoLogger: any AutoLogger = AutoLogSource.logger
+        var event = AutoLogEvent(
+          source: AutoLogSource.current,
+
           location: "TestModule/Test.swift:1:1",
           declaration: "func combine<T, U>(first: T, second: U) -> (T, U) where T: CustomStringConvertible, U: CustomStringConvertible",
           parameters: [
@@ -814,12 +912,15 @@ struct LogMacroTests {
           ],
           tags: [.example, "example"]
         )
+        autoLogger.emitStart(event: event)
+        let __logStart = ContinuousClock.now
         func _combine(first: T, second: U) -> (T, U) {
           return (first, second)
         }
         let result = _combine(first: first, second: second)
         event.result = .success(result)
-        loggable.emit(event: event)
+        event.duration = ContinuousClock.now - __logStart
+        autoLogger.emit(event: event)
         return result
       }
       """
@@ -838,9 +939,10 @@ struct LogMacroTests {
     } expansion: {
       #"""
       func greet(name: String = "Guest") -> String {
-        let loggable: any Loggable = .logger
-        var event = LoggableEvent(
-          source: LoggableSource.current,
+        let autoLogger: any AutoLogger = AutoLogSource.logger
+        var event = AutoLogEvent(
+          source: AutoLogSource.current,
+
           location: "TestModule/Test.swift:1:1",
           declaration: #"func greet(name: String = "Guest") -> String"#,
           parameters: [
@@ -848,12 +950,15 @@ struct LogMacroTests {
           ],
           tags: []
         )
+        autoLogger.emitStart(event: event)
+        let __logStart = ContinuousClock.now
         func _greet(name: String) -> String {
           return "Hello, \(name)!"
         }
         let result = _greet(name: name)
         event.result = .success(result)
-        loggable.emit(event: event)
+        event.duration = ContinuousClock.now - __logStart
+        autoLogger.emit(event: event)
         return result
       }
       """#
@@ -872,9 +977,10 @@ struct LogMacroTests {
     } expansion: {
       """
       func sum(numbers: Int...) -> Int {
-        let loggable: any Loggable = .logger
-        var event = LoggableEvent(
-          source: LoggableSource.current,
+        let autoLogger: any AutoLogger = AutoLogSource.logger
+        var event = AutoLogEvent(
+          source: AutoLogSource.current,
+
           location: "TestModule/Test.swift:1:1",
           declaration: "func sum(numbers: Int...) -> Int",
           parameters: [
@@ -882,12 +988,15 @@ struct LogMacroTests {
           ],
           tags: []
         )
+        autoLogger.emitStart(event: event)
+        let __logStart = ContinuousClock.now
         func _sum(numbers: Int...) -> Int {
           return numbers.reduce(0, +)
         }
         let result = _sum(numbers: numbers)
         event.result = .success(result)
-        loggable.emit(event: event)
+        event.duration = ContinuousClock.now - __logStart
+        autoLogger.emit(event: event)
         return result
       }
       """
@@ -910,9 +1019,10 @@ struct LogMacroTests {
       @Omit(.result)
       @discardableResult
       func compute(value: Int) -> Int {
-        let loggable: any Loggable = .logger
-        let event = LoggableEvent(
-          source: LoggableSource.current,
+        let autoLogger: any AutoLogger = AutoLogSource.logger
+        var event = AutoLogEvent(
+          source: AutoLogSource.current,
+
           location: "TestModule/Test.swift:1:1",
           declaration: "func compute(value: Int) -> Int",
           parameters: [
@@ -920,11 +1030,14 @@ struct LogMacroTests {
           ],
           tags: []
         )
+        autoLogger.emitStart(event: event)
+        let __logStart = ContinuousClock.now
         func _compute(value: Int) -> Int {
           return value * value
         }
         let result = _compute(value: value)
-        loggable.emit(event: event)
+        event.duration = ContinuousClock.now - __logStart
+        autoLogger.emit(event: event)
         return result
       }
       """
@@ -943,14 +1056,17 @@ struct LogMacroTests {
     } expansion: {
       """
       func makeIncrementer() -> (Int) -> Int {
-        let loggable: any Loggable = .logger
-        var event = LoggableEvent(
-          source: LoggableSource.current,
+        let autoLogger: any AutoLogger = AutoLogSource.logger
+        var event = AutoLogEvent(
+          source: AutoLogSource.current,
+
           location: "TestModule/Test.swift:1:1",
           declaration: "func makeIncrementer() -> (Int) -> Int",
           parameters: [:],
           tags: []
         )
+        autoLogger.emitStart(event: event)
+        let __logStart = ContinuousClock.now
         func _makeIncrementer() -> (Int) -> Int {
           return {
             $0 + 1
@@ -958,7 +1074,8 @@ struct LogMacroTests {
         }
         let result = _makeIncrementer()
         event.result = .success(result)
-        loggable.emit(event: event)
+        event.duration = ContinuousClock.now - __logStart
+        autoLogger.emit(event: event)
         return result
       }
       """
@@ -980,9 +1097,10 @@ struct LogMacroTests {
     } expansion: {
       """
       func fetchData(completion: @escaping () async -> String) {
-        let loggable: any Loggable = .logger
-        let event = LoggableEvent(
-          source: LoggableSource.current,
+        let autoLogger: any AutoLogger = AutoLogSource.logger
+        var event = AutoLogEvent(
+          source: AutoLogSource.current,
+
           location: "TestModule/Test.swift:1:1",
           declaration: "func fetchData(completion: @escaping () async -> String)",
           parameters: [
@@ -990,11 +1108,14 @@ struct LogMacroTests {
           ],
           tags: []
         )
+        autoLogger.emitStart(event: event)
+        let __logStart = ContinuousClock.now
         Task {
             let data = await completion()
             print(data)
           }
-        loggable.emit(event: event)
+        event.duration = ContinuousClock.now - __logStart
+        autoLogger.emit(event: event)
       }
       """
     }
@@ -1014,9 +1135,10 @@ struct LogMacroTests {
       """
       @MainActor
       func updateUI(message: String) {
-        let loggable: any Loggable = .logger
-        let event = LoggableEvent(
-          source: LoggableSource.current,
+        let autoLogger: any AutoLogger = AutoLogSource.logger
+        var event = AutoLogEvent(
+          source: AutoLogSource.current,
+
           location: "TestModule/Test.swift:1:1",
           declaration: "func updateUI(message: String)",
           parameters: [
@@ -1024,8 +1146,11 @@ struct LogMacroTests {
           ],
           tags: []
         )
+        autoLogger.emitStart(event: event)
+        let __logStart = ContinuousClock.now
         print(message)
-        loggable.emit(event: event)
+        event.duration = ContinuousClock.now - __logStart
+        autoLogger.emit(event: event)
       }
       """
     }
@@ -1043,9 +1168,10 @@ struct LogMacroTests {
     } expansion: {
       """
       func process<T: Equatable, U: Numeric>(first: T, second: U) -> Bool {
-        let loggable: any Loggable = .logger
-        var event = LoggableEvent(
-          source: LoggableSource.current,
+        let autoLogger: any AutoLogger = AutoLogSource.logger
+        var event = AutoLogEvent(
+          source: AutoLogSource.current,
+
           location: "TestModule/Test.swift:1:1",
           declaration: "func process<T: Equatable, U: Numeric>(first: T, second: U) -> Bool",
           parameters: [
@@ -1054,12 +1180,15 @@ struct LogMacroTests {
           ],
           tags: []
         )
+        autoLogger.emitStart(event: event)
+        let __logStart = ContinuousClock.now
         func _process(first: T, second: U) -> Bool {
           return true
         }
         let result = _process(first: first, second: second)
         event.result = .success(result)
-        loggable.emit(event: event)
+        event.duration = ContinuousClock.now - __logStart
+        autoLogger.emit(event: event)
         return result
       }
       """
@@ -1080,16 +1209,20 @@ struct LogMacroTests {
       """
       @objc
       func performAction() {
-        let loggable: any Loggable = .logger
-        let event = LoggableEvent(
-          source: LoggableSource.current,
+        let autoLogger: any AutoLogger = AutoLogSource.logger
+        var event = AutoLogEvent(
+          source: AutoLogSource.current,
+
           location: "TestModule/Test.swift:1:1",
           declaration: "func performAction()",
           parameters: [:],
           tags: []
         )
+        autoLogger.emitStart(event: event)
+        let __logStart = ContinuousClock.now
         print("Action performed")
-        loggable.emit(event: event)
+        event.duration = ContinuousClock.now - __logStart
+        autoLogger.emit(event: event)
       }
       """
     }
@@ -1107,20 +1240,24 @@ struct LogMacroTests {
     } expansion: {
       """
       func getOptionalValue() -> Int? {
-        let loggable: any Loggable = .logger
-        var event = LoggableEvent(
-          source: LoggableSource.current,
+        let autoLogger: any AutoLogger = AutoLogSource.logger
+        var event = AutoLogEvent(
+          source: AutoLogSource.current,
+
           location: "TestModule/Test.swift:1:1",
           declaration: "func getOptionalValue() -> Int?",
           parameters: [:],
           tags: []
         )
+        autoLogger.emitStart(event: event)
+        let __logStart = ContinuousClock.now
         func _getOptionalValue() -> Int? {
           return nil
         }
         let result = _getOptionalValue()
         event.result = .success(result)
-        loggable.emit(event: event)
+        event.duration = ContinuousClock.now - __logStart
+        autoLogger.emit(event: event)
         return result
       }
       """
@@ -1140,9 +1277,10 @@ struct LogMacroTests {
     } expansion: {
       """
       func performAsyncTask(completion: @escaping () async throws -> String) async throws -> String {
-        let loggable: any Loggable = .logger
-        var event = LoggableEvent(
-          source: LoggableSource.current,
+        let autoLogger: any AutoLogger = AutoLogSource.logger
+        var event = AutoLogEvent(
+          source: AutoLogSource.current,
+
           location: "TestModule/Test.swift:1:1",
           declaration: "func performAsyncTask(completion: @escaping () async throws -> String) async throws -> String",
           parameters: [
@@ -1150,17 +1288,21 @@ struct LogMacroTests {
           ],
           tags: []
         )
+        autoLogger.emitStart(event: event)
+        let __logStart = ContinuousClock.now
         func _performAsyncTask(completion: @escaping () async throws -> String) async throws -> String {
           return try await completion()
         }
         do {
           let result = try await _performAsyncTask(completion: completion)
           event.result = .success(result)
-          loggable.emit(event: event)
+          event.duration = ContinuousClock.now - __logStart
+          autoLogger.emit(event: event)
           return result
         } catch {
           event.result = .failure(error)
-          loggable.emit(event: event)
+          event.duration = ContinuousClock.now - __logStart
+          autoLogger.emit(event: event)
           throw error
         }
       }
@@ -1180,20 +1322,24 @@ struct LogMacroTests {
     } expansion: {
       """
       override func description() -> String {
-        let loggable: any Loggable = .logger
-        var event = LoggableEvent(
-          source: LoggableSource.current,
+        let autoLogger: any AutoLogger = AutoLogSource.logger
+        var event = AutoLogEvent(
+          source: AutoLogSource.current,
+
           location: "TestModule/Test.swift:1:1",
           declaration: "override func description() -> String",
           parameters: [:],
           tags: []
         )
+        autoLogger.emitStart(event: event)
+        let __logStart = ContinuousClock.now
         func _description() -> String {
           return "Override"
         }
         let result = _description()
         event.result = .success(result)
-        loggable.emit(event: event)
+        event.duration = ContinuousClock.now - __logStart
+        autoLogger.emit(event: event)
         return result
       }
       """
@@ -1212,9 +1358,10 @@ struct LogMacroTests {
     } expansion: {
       """
       func updateScore(score: inout Int, increment: Int = 1) {
-        let loggable: any Loggable = .logger
-        let event = LoggableEvent(
-          source: LoggableSource.current,
+        let autoLogger: any AutoLogger = AutoLogSource.logger
+        var event = AutoLogEvent(
+          source: AutoLogSource.current,
+
           location: "TestModule/Test.swift:1:1",
           declaration: "func updateScore(score: inout Int, increment: Int = 1)",
           parameters: [
@@ -1223,8 +1370,11 @@ struct LogMacroTests {
           ],
           tags: []
         )
+        autoLogger.emitStart(event: event)
+        let __logStart = ContinuousClock.now
         score += increment
-        loggable.emit(event: event)
+        event.duration = ContinuousClock.now - __logStart
+        autoLogger.emit(event: event)
       }
       """
     }
@@ -1242,9 +1392,10 @@ struct LogMacroTests {
     } expansion: {
       """
       func optionalTest(value: String?) -> String {
-        let loggable: any Loggable = .logger
-        var event = LoggableEvent(
-          source: LoggableSource.current,
+        let autoLogger: any AutoLogger = AutoLogSource.logger
+        var event = AutoLogEvent(
+          source: AutoLogSource.current,
+
           location: "TestModule/Test.swift:1:1",
           declaration: "func optionalTest(value: String?) -> String",
           parameters: [
@@ -1252,12 +1403,15 @@ struct LogMacroTests {
           ],
           tags: []
         )
+        autoLogger.emitStart(event: event)
+        let __logStart = ContinuousClock.now
         func _optionalTest(value: String?) -> String {
           return value ?? "Default"
         }
         let result = _optionalTest(value: value)
         event.result = .success(result)
-        loggable.emit(event: event)
+        event.duration = ContinuousClock.now - __logStart
+        autoLogger.emit(event: event)
         return result
       }
       """
@@ -1281,9 +1435,10 @@ struct LogMacroTests {
       @Omit("second")
       func merge<T, U>(_ first: [T], with second: [U]) -> [(T, U)]
         where T: Comparable, U: Comparable{
-        let loggable: any Loggable = .logger
-        var event = LoggableEvent(
-          source: LoggableSource.current,
+        let autoLogger: any AutoLogger = AutoLogSource.logger
+        var event = AutoLogEvent(
+          source: AutoLogSource.current,
+
           location: "TestModule/Test.swift:1:1",
           declaration: "func merge<T, U>(_ first: [T], with second: [U]) -> [(T, U)]\n  where T: Comparable, U: Comparable",
           parameters: [
@@ -1292,13 +1447,16 @@ struct LogMacroTests {
           ],
           tags: []
         )
+        autoLogger.emitStart(event: event)
+        let __logStart = ContinuousClock.now
         func _merge(first: [T], second: [U]) -> [(T, U)]
         {
           return []
         }
         let result = _merge(first: first, second: second)
         event.result = .success(result)
-        loggable.emit(event: event)
+        event.duration = ContinuousClock.now - __logStart
+        autoLogger.emit(event: event)
         return result
       }
       """#
@@ -1317,9 +1475,10 @@ struct LogMacroTests {
     } expansion: {
       """
       func perform(action: (() -> Void)? = nil) {
-        let loggable: any Loggable = .logger
-        let event = LoggableEvent(
-          source: LoggableSource.current,
+        let autoLogger: any AutoLogger = AutoLogSource.logger
+        var event = AutoLogEvent(
+          source: AutoLogSource.current,
+
           location: "TestModule/Test.swift:1:1",
           declaration: "func perform(action: (() -> Void)? = nil)",
           parameters: [
@@ -1327,8 +1486,11 @@ struct LogMacroTests {
           ],
           tags: []
         )
+        autoLogger.emitStart(event: event)
+        let __logStart = ContinuousClock.now
         action?()
-        loggable.emit(event: event)
+        event.duration = ContinuousClock.now - __logStart
+        autoLogger.emit(event: event)
       }
       """
     }
@@ -1348,9 +1510,10 @@ struct LogMacroTests {
       """
       @discardableResult
       static func create<T>(value: T) -> [T] {
-        let loggable: any Loggable = .logger
-        var event = LoggableEvent(
-          source: LoggableSource.current,
+        let autoLogger: any AutoLogger = AutoLogSource.logger
+        var event = AutoLogEvent(
+          source: AutoLogSource.current,
+
           location: "TestModule/Test.swift:1:1",
           declaration: "static func create<T>(value: T) -> [T]",
           parameters: [
@@ -1358,12 +1521,15 @@ struct LogMacroTests {
           ],
           tags: []
         )
+        autoLogger.emitStart(event: event)
+        let __logStart = ContinuousClock.now
         func _create(value: T) -> [T] {
           return [value]
         }
         let result = _create(value: value)
         event.result = .success(result)
-        loggable.emit(event: event)
+        event.duration = ContinuousClock.now - __logStart
+        autoLogger.emit(event: event)
         return result
       }
       """
@@ -1382,9 +1548,10 @@ struct LogMacroTests {
     } expansion: {
       #"""
       func process(pair: (Int, String)) -> String {
-        let loggable: any Loggable = .logger
-        var event = LoggableEvent(
-          source: LoggableSource.current,
+        let autoLogger: any AutoLogger = AutoLogSource.logger
+        var event = AutoLogEvent(
+          source: AutoLogSource.current,
+
           location: "TestModule/Test.swift:1:1",
           declaration: "func process(pair: (Int, String)) -> String",
           parameters: [
@@ -1392,12 +1559,15 @@ struct LogMacroTests {
           ],
           tags: []
         )
+        autoLogger.emitStart(event: event)
+        let __logStart = ContinuousClock.now
         func _process(pair: (Int, String)) -> String {
           return "\(pair.0) - \(pair.1)"
         }
         let result = _process(pair: pair)
         event.result = .success(result)
-        loggable.emit(event: event)
+        event.duration = ContinuousClock.now - __logStart
+        autoLogger.emit(event: event)
         return result
       }
       """#
@@ -1416,9 +1586,10 @@ struct LogMacroTests {
     } expansion: {
       """
       func filterElements<T>(elements: [T], using predicate: (T) -> Bool) -> [T] {
-        let loggable: any Loggable = .logger
-        var event = LoggableEvent(
-          source: LoggableSource.current,
+        let autoLogger: any AutoLogger = AutoLogSource.logger
+        var event = AutoLogEvent(
+          source: AutoLogSource.current,
+
           location: "TestModule/Test.swift:1:1",
           declaration: "func filterElements<T>(elements: [T], using predicate: (T) -> Bool) -> [T]",
           parameters: [
@@ -1427,12 +1598,15 @@ struct LogMacroTests {
           ],
           tags: []
         )
+        autoLogger.emitStart(event: event)
+        let __logStart = ContinuousClock.now
         func _filterElements(elements: [T], predicate: (T) -> Bool) -> [T] {
           return elements.filter(predicate)
         }
         let result = _filterElements(elements: elements, predicate: predicate)
         event.result = .success(result)
-        loggable.emit(event: event)
+        event.duration = ContinuousClock.now - __logStart
+        autoLogger.emit(event: event)
         return result
       }
       """
@@ -1452,9 +1626,10 @@ struct LogMacroTests {
     } expansion: {
       """
       func filterElements<T>(elements: [T], using predicate: (T) -> Bool) -> [T] {
-        let loggable: any Loggable = .logger
-        var event = LoggableEvent(
-          source: LoggableSource.current,
+        let autoLogger: any AutoLogger = AutoLogSource.logger
+        var event = AutoLogEvent(
+          source: AutoLogSource.current,
+
           location: "TestModule/Test.swift:1:1",
           declaration: "func filterElements<T>(elements: [T], using predicate: (T) -> Bool) -> [T]",
           parameters: [
@@ -1463,12 +1638,15 @@ struct LogMacroTests {
           ],
           tags: []
         )
+        autoLogger.emitStart(event: event)
+        let __logStart = ContinuousClock.now
         func _filterElements(elements: [T], predicate: (T) -> Bool) -> [T] {
           return elements.filter(predicate)
         }
         let result = _filterElements(elements: elements, predicate: predicate)
         event.result = .success(result)
-        loggable.emit(event: event)
+        event.duration = ContinuousClock.now - __logStart
+        autoLogger.emit(event: event)
         return result
       }
       """

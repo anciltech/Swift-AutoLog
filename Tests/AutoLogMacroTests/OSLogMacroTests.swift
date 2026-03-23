@@ -22,16 +22,20 @@ struct OSLogMacroTests {
     } expansion: {
       """
       func foo() {
-        let loggable: any Loggable = Self.logger
-        let event = LoggableEvent(
-          source: LoggableSource.current,
+        let autoLogger: any AutoLogger = Self.logger
+        var event = AutoLogEvent(
+          source: AutoLogSource.current,
+
           location: "TestModule/Test.swift:1:1",
           declaration: "func foo()",
           parameters: [:],
           tags: []
         )
+        autoLogger.emitStart(event: event)
+        let __logStart = ContinuousClock.now
         print("Foo")
-        loggable.emit(event: event)
+        event.duration = ContinuousClock.now - __logStart
+        autoLogger.emit(event: event)
       }
       """
     }
@@ -49,9 +53,10 @@ struct OSLogMacroTests {
     } expansion: {
       """
       func sum(numbers: Int...) -> Int {
-        let loggable: any Loggable = Self.logger
-        var event = LoggableEvent(
-          source: LoggableSource.current,
+        let autoLogger: any AutoLogger = Self.logger
+        var event = AutoLogEvent(
+          source: AutoLogSource.current,
+
           location: "TestModule/Test.swift:1:1",
           declaration: "func sum(numbers: Int...) -> Int",
           parameters: [
@@ -59,12 +64,15 @@ struct OSLogMacroTests {
           ],
           tags: ["example"]
         )
+        autoLogger.emitStart(event: event)
+        let __logStart = ContinuousClock.now
         func _sum(numbers: Int...) -> Int {
           return numbers.reduce(0, +)
         }
         let result = _sum(numbers: numbers)
         event.result = .success(result)
-        loggable.emit(event: event)
+        event.duration = ContinuousClock.now - __logStart
+        autoLogger.emit(event: event)
         return result
       }
       """
@@ -83,19 +91,23 @@ struct OSLogMacroTests {
     } expansion: {
       """
       func transform(value: Int, using transform: (Int) -> String) -> String {
-        let loggable: any Loggable = Self.logger
-        let event = LoggableEvent(
+        let autoLogger: any AutoLogger = Self.logger
+        var event = AutoLogEvent(
           level: .debug,
-          source: LoggableSource.current,
+          source: AutoLogSource.current,
+
           location: "TestModule/Test.swift:1:1",
           declaration: "func transform(value: Int, using transform: (Int) -> String) -> String",
           tags: [.commonTag, "example"]
         )
+        autoLogger.emitStart(event: event)
+        let __logStart = ContinuousClock.now
         func _transform(value: Int, transform: (Int) -> String) -> String {
           return transform(value)
         }
         let result = _transform(value: value, transform: transform)
-        loggable.emit(event: event)
+        event.duration = ContinuousClock.now - __logStart
+        autoLogger.emit(event: event)
         return result
       }
       """
@@ -122,8 +134,8 @@ struct OSLogMacroTests {
 //      @Tag(.commonTag)
 //      @Level(.info)
 //      func identity<T>(_ value: T) -> T {
-//        let loggable: any Loggable = Self.logger
-//        var event = LoggableEvent(
+//        let autoLogger: any AutoLogger = Self.logger
+//        var event = AutoLogEvent(
 //          level: "level_info",
 //          location: "TestModule/Test.swift:5:1",
 //          declaration: "func identity<T>(_ value: T) -> T",
@@ -136,7 +148,8 @@ struct OSLogMacroTests {
 //          return value
 //        }
 //        let result = _identity(value: value)
-//        loggable.emit(event: event)
+//        event.duration = ContinuousClock.now - __logStart
+//        autoLogger.emit(event: event)
 //        return result
 //      }
 //      """

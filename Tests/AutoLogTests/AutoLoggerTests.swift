@@ -3,7 +3,7 @@ import Synchronization
 import Testing
 
 @Suite(.serialized)
-struct LoggableTests {
+struct AutoLoggerTests {
   static let mock = MockLogger()
 
   @Test
@@ -11,13 +11,13 @@ struct LoggableTests {
     // Workaround: @Logged(using: MockLogger) triggers a Swift compiler ICE due to
     // existential boxing in macro argument type-checking (ResolveMacroRequest crash).
     // Use @Logged (no-arg) with a temporary global-logger override instead.
-    let prevLogger = LoggableSource.logger
-    let prevEmitStart = LoggableSettingsStorage.emitStartEvents
-    LoggableSource.logger = Self.mock
-    LoggableSettingsStorage.emitStartEvents = false
+    let prevLogger = AutoLogSource.logger
+    let prevEmitStart = AutoLogSettingsStorage.emitStartEvents
+    AutoLogSource.logger = Self.mock
+    AutoLogSettingsStorage.emitStartEvents = false
     defer {
-      LoggableSource.logger = prevLogger
-      LoggableSettingsStorage.emitStartEvents = prevEmitStart
+      AutoLogSource.logger = prevLogger
+      AutoLogSettingsStorage.emitStartEvents = prevEmitStart
     }
 
     let testcase = Testcase()
@@ -71,13 +71,13 @@ struct LoggableTests {
   }
 }
 
-extension LoggableTests {
+extension AutoLoggerTests {
   enum Failure: Error {
     case mock
   }
 
-  // @Logged (no-arg) avoids the Swift compiler ICE caused by passing a non-LoggableLogger
-  // existential to @Logged(using:). The test overrides LoggableSource.logger instead.
+  // @Logged (no-arg) avoids the Swift compiler ICE caused by passing a non-AutoLogLogger
+  // existential to @Logged(using:). The test overrides AutoLogSource.logger instead.
   @Logged
   struct Testcase {
     func mockThrowingFunction() throws {

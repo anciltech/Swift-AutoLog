@@ -11,8 +11,8 @@ struct CompactFormatterTests {
         parameters: [String: Any] = [:],
         result: Result<Any, any Error> = .success(()),
         tags: [any Taggable] = []
-    ) -> LoggableEvent {
-        LoggableEvent(
+    ) -> AutoLogEvent {
+        AutoLogEvent(
             level: level,
             location: location,
             declaration: declaration,
@@ -199,27 +199,27 @@ struct CompactFormatterIntegrationTests {
 
     @Test func loggedMacro_emitsCompactFormat() {
         // Use a class box to capture the last formatted output in a @Sendable closure.
-        // Workaround: @Logged(using: LoggableLogger(formatter:)) inside a function body
+        // Workaround: @Logged(using: AutoLogLogger(formatter:)) inside a function body
         // triggers a Swift compiler ICE (ExpandBodyMacroRequest crash). Instead we override
-        // LoggableSource.logger temporarily and use @Log (no-arg) on the inner struct.
+        // AutoLogSource.logger temporarily and use @Log (no-arg) on the inner struct.
         final class Box: @unchecked Sendable { var value = "" }
         let box = Box()
 
-        struct CapturingFormatter: LoggableFormatter {
+        struct CapturingFormatter: AutoLogFormatter {
             let box: Box
-            func format(event: LoggableEvent) -> String {
+            func format(event: AutoLogEvent) -> String {
                 let output = CompactFormatter().format(event: event)
                 box.value = output
                 return output
             }
         }
 
-        let prevLogger = LoggableSource.logger
+        let prevLogger = AutoLogSource.logger
         let prevEmitStart = AutoLogSettingsStorage.emitStartEvents
-        LoggableSource.logger = LoggableLogger(formatter: CapturingFormatter(box: box))
+        AutoLogSource.logger = AutoLogLogger(formatter: CapturingFormatter(box: box))
         AutoLogSettingsStorage.emitStartEvents = false
         defer {
-            LoggableSource.logger = prevLogger
+            AutoLogSource.logger = prevLogger
             AutoLogSettingsStorage.emitStartEvents = prevEmitStart
         }
 
@@ -284,7 +284,7 @@ struct ArrowStyleTests {
       arrowStyle: LogFormat.ArrowStyle(start: "~", repeater: "~", end: ">")
     )
     let formatter = CompactFormatter(profile: .mvvm, format: format)
-    var event = LoggableEvent(
+    var event = AutoLogEvent(
       location: "App/MyViewModel.swift:1:1",
       declaration: "func doWork()"
     )
@@ -332,7 +332,7 @@ struct StatusStyleTests {
       statusStyle: LogFormat.StatusStyle(success: "✓")
     )
     let formatter = CompactFormatter(profile: .mvvm, format: format)
-    var event = LoggableEvent(
+    var event = AutoLogEvent(
       location: "App/MyViewModel.swift:1:1",
       declaration: "func doWork()"
     )
@@ -349,7 +349,7 @@ struct StatusStyleTests {
       statusStyle: LogFormat.StatusStyle(failure: "✗")
     )
     let formatter = CompactFormatter(profile: .mvvm, format: format)
-    var event = LoggableEvent(
+    var event = AutoLogEvent(
       location: "App/MyViewModel.swift:1:1",
       declaration: "func doWork()"
     )

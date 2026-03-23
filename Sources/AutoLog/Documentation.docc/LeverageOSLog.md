@@ -11,11 +11,11 @@ This article explains how to leverage the [`Logger`](https://developer.apple.com
 
 ### Import the loggable library
 
-To import loggable library, add the following to the Swift source file.
+To import AutoLog library, add the following to the Swift source file.
 ```swift
 // StorageClient.swift
 
-import Loggable
+import AutoLog
 ```
 ### Conform to OSLogger protocol
 

@@ -4,7 +4,7 @@ import Foundation
 ///
 /// Consumers can override these values during app startup to customize
 /// persistence keys, backing storage, and fallback values.
-public enum LoggableSettingsStorage {
+public enum AutoLogSettingsStorage {
   public static nonisolated(unsafe) var userDefaults: UserDefaults = .standard
 
   // MARK: - Omit parameters
@@ -63,14 +63,52 @@ public enum LoggableSettingsStorage {
   public static func setMeasureTiming(_ value: Bool) {
     userDefaults.set(value, forKey: measureTimingKey)
   }
+
+  // MARK: - Log Format
+
+  /// The UserDefaults key used to persist the active ``LogFormat``.
+  ///
+  /// Override before app launch if you need a custom key.
+  public static nonisolated(unsafe) var formatKey: String = "log.format"
+
+  /// Returns the currently stored ``LogFormat``, or ``LogFormat/default`` if none is set.
+  public static func logFormat() -> LogFormat {
+    guard
+      let data = userDefaults.data(forKey: formatKey),
+      let format = try? JSONDecoder().decode(LogFormat.self, from: data)
+    else { return .default }
+    return format
+  }
+
+  /// Persists a ``LogFormat`` to UserDefaults so ``CompactFormatter`` picks it up.
+  ///
+  /// Call this from your app's startup code, or let the AutoLogSettings companion
+  /// app write it for you.
+  ///
+  /// ```swift
+  /// // App startup
+  /// AutoLogSettingsStorage.setLogFormat(
+  ///   LogFormat(mainLine: [.depthArrow, .statusEmoji, .functionName, .parameters])
+  /// )
+  /// ```
+  public static func setLogFormat(_ format: LogFormat) {
+    guard let data = try? JSONEncoder().encode(format) else { return }
+    userDefaults.set(data, forKey: formatKey)
+  }
+
+  /// Removes any stored format, causing ``CompactFormatter`` to revert to
+  /// ``LogFormat/default``.
+  public static func resetLogFormat() {
+    userDefaults.removeObject(forKey: formatKey)
+  }
 }
 
-extension Loggable where Self == LoggableLogger {
+extension AutoLogger where Self == AutoLogLogger {
   public static var cleanArchitecture: Self {
-    LoggableLogger(formatter: CompactFormatter(profile: .cleanArchitecture))
+    AutoLogLogger(formatter: CompactFormatter(profile: .cleanArchitecture))
   }
 
   public static var mvvm: Self {
-    LoggableLogger(formatter: CompactFormatter(profile: .mvvm))
+    AutoLogLogger(formatter: CompactFormatter(profile: .mvvm))
   }
 }

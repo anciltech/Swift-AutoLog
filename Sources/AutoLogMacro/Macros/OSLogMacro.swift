@@ -2,7 +2,7 @@ import SwiftSyntax
 
 public struct OSLogMacro {}
 
-extension OSLogMacro: LoggableMacro {
+extension OSLogMacro: AutoLogMacro {
   static func initialize(for node: AttributeSyntax) -> ExprSyntax {
     ExprSyntax(
       MemberAccessExprSyntax(

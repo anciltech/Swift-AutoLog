@@ -145,32 +145,32 @@ public macro Logged() = #externalMacro(
 )
 
 @attached(memberAttribute)
-public macro Logged(using loggable: any Loggable) = #externalMacro(
+public macro Logged(using loggable: any AutoLogger) = #externalMacro(
   module: "AutoLogMacro",
   type: "LoggedMacro"
 )
 
 @attached(memberAttribute)
-public macro Logged(architecture loggable: any Loggable) = #externalMacro(
+public macro Logged(architecture loggable: any AutoLogger) = #externalMacro(
   module: "AutoLogMacro",
   type: "LoggedMacro"
 )
 
-/// Overload for concrete `LoggableLogger` to avoid existential boxing in
+/// Overload for concrete `AutoLogLogger` to avoid existential boxing in
 /// macro argument type-checking on Swift 6.2.x.
 @attached(memberAttribute)
-public macro Logged(using loggable: LoggableLogger) = #externalMacro(
+public macro Logged(using loggable: AutoLogLogger) = #externalMacro(
   module: "AutoLogMacro",
   type: "LoggedMacro"
 )
 
 @attached(memberAttribute)
-public macro Logged(architecture loggable: LoggableLogger) = #externalMacro(
+public macro Logged(architecture loggable: AutoLogLogger) = #externalMacro(
   module: "AutoLogMacro",
   type: "LoggedMacro"
 )
 
-/// Logs annotated function and send captured event to a ``Loggable`` instance.
+/// Logs annotated function and send captured event to a ``AutoLogger`` instance.
 ///
 /// - Parameter loggable: The type that handles captured events.
 @attached(body)
@@ -213,41 +213,41 @@ public macro Log(
 )
 
 @attached(body)
-public macro Log(using loggable: any Loggable) = #externalMacro(
+public macro Log(using loggable: any AutoLogger) = #externalMacro(
   module: "AutoLogMacro",
   type: "LogMacro"
 )
 
 @attached(body)
-public macro Log(architecture loggable: any Loggable) = #externalMacro(
+public macro Log(architecture loggable: any AutoLogger) = #externalMacro(
   module: "AutoLogMacro",
   type: "LogMacro"
 )
 
-/// Overload for concrete `LoggableLogger` to avoid existential boxing in
+/// Overload for concrete `AutoLogLogger` to avoid existential boxing in
 /// macro argument type-checking on Swift 6.2.x.
 @attached(body)
-public macro Log(using loggable: LoggableLogger) = #externalMacro(
+public macro Log(using loggable: AutoLogLogger) = #externalMacro(
   module: "AutoLogMacro",
   type: "LogMacro"
 )
 
 @attached(body)
-public macro Log(architecture loggable: LoggableLogger) = #externalMacro(
+public macro Log(architecture loggable: AutoLogLogger) = #externalMacro(
   module: "AutoLogMacro",
   type: "LogMacro"
 )
 
-/// Logs annotated function and send captured event to a ``Loggable`` instance.
+/// Logs annotated function and send captured event to a ``AutoLogger`` instance.
 ///
 /// - Parameters:
-///   - loggable: An instance of ``Loggable`` that handles events.
+///   - loggable: An instance of ``AutoLogger`` that handles events.
 ///   - level: The logging level of which event should be emitted.
 ///   - omit: The information to be omitted when capturing event.
 ///   - tag: The tags to be associated with captured event.
 @attached(body)
 public macro Log(
-  using loggable: any Loggable,
+  using loggable: any AutoLogger,
   level: (any Levelable)? = nil,
   omit: any Omittable... = [],
   tag: any Taggable... = []
@@ -258,7 +258,7 @@ public macro Log(
 
 @attached(body)
 public macro Log(
-  architecture loggable: any Loggable,
+  architecture loggable: any AutoLogger,
   level: (any Levelable)? = nil,
   omit: any Omittable... = [],
   tag: any Taggable... = []
@@ -267,11 +267,11 @@ public macro Log(
   type: "LogMacro"
 )
 
-/// Overload for concrete `LoggableLogger` to avoid existential boxing in
+/// Overload for concrete `AutoLogLogger` to avoid existential boxing in
 /// macro argument type-checking on Swift 6.2.x.
 @attached(body)
 public macro Log(
-  using loggable: LoggableLogger,
+  using loggable: AutoLogLogger,
   level: (any Levelable)? = nil,
   omit: any Omittable... = [],
   tag: any Taggable... = []
@@ -282,7 +282,7 @@ public macro Log(
 
 @attached(body)
 public macro Log(
-  using loggable: LoggableLogger,
+  using loggable: AutoLogLogger,
   level: (any Levelable)? = nil,
   omit: any Omittable... = [],
   tag: any Taggable... = [],
@@ -294,7 +294,7 @@ public macro Log(
 
 @attached(body)
 public macro Log(
-  architecture loggable: LoggableLogger,
+  architecture loggable: AutoLogLogger,
   level: (any Levelable)? = nil,
   omit: any Omittable... = [],
   tag: any Taggable... = []
@@ -305,7 +305,7 @@ public macro Log(
 
 @attached(body)
 public macro Log(
-  architecture loggable: LoggableLogger,
+  architecture loggable: AutoLogLogger,
   level: (any Levelable)? = nil,
   omit: any Omittable... = [],
   tag: any Taggable... = [],

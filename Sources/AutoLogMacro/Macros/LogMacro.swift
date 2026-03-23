@@ -1,3 +1,3 @@
 public struct LogMacro {}
 
-extension LogMacro: LoggableMacro {}
+extension LogMacro: AutoLogMacro {}

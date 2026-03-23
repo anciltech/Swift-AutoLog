@@ -4,19 +4,19 @@
 
 /// A protocol that provides instances of conforming types with the ability to
 /// handle emitted events.
-public protocol Loggable: Sendable {
+public protocol AutoLogger: Sendable {
   /// Handle an emitted event.
   ///
   /// Events are currently emitted in the following cases:
   ///   - When the function completes successfully
   ///   - When the function throws an error.
   ///
-  func emit(event: LoggableEvent)
+  func emit(event: AutoLogEvent)
 }
 
 // TODO: 23122K - Make this type conform to Sendable and use CustomDebugStringConvertible
 /// A type representing captured metadata from an invoked function.
-public struct LoggableEvent: CustomStringConvertible, CustomDebugStringConvertible {
+public struct AutoLogEvent: CustomStringConvertible, CustomDebugStringConvertible {
   /// The logging level associated with the event.
   public let level: (any Levelable)?
 
@@ -105,9 +105,9 @@ public struct LoggableEvent: CustomStringConvertible, CustomDebugStringConvertib
   }
 
   /// A copy of this event representing the function's start, with `.start` level
-  /// and default void result. Used by `emitStart(event:)` on `Loggable`.
-  public var asStartEvent: LoggableEvent {
-    LoggableEvent(
+  /// and default void result. Used by `emitStart(event:)` on `AutoLogger`.
+  public var asStartEvent: AutoLogEvent {
+    AutoLogEvent(
       level: LogLevel.start,
       source: source,
       location: location,
@@ -120,19 +120,19 @@ public struct LoggableEvent: CustomStringConvertible, CustomDebugStringConvertib
 }
 
 // TODO: 23122K - Consider using swift-log as a fallback when not running on Apple platforms
-/// A default `Loggable` implementation that
+/// A default `AutoLogger` implementation that
 /// uses a ``Logger`` instance to log to the default subsystem.
-public struct LoggableLogger: Loggable {
+public struct AutoLogLogger: AutoLogger {
   /// The logger instance used for logging.
   let logger: Logger
-  let formatter: any LoggableFormatter
+  let formatter: any AutoLogFormatter
 
   /// Logs captured event metadata to the default subsystem.
   ///
   /// The event's logging level is inherited from the function result unless explicitly specified:
   /// - ``OSLogType.info`` for successful function executions.
   /// - ``OSLogType.error`` for functions that throw errors.
-  public func emit(event: LoggableEvent) {
+  public func emit(event: AutoLogEvent) {
     let message = formatter.format(event: event)
     if let level = event.level as? OSLogType {
       self.logger.log(level: level, "\(message)")
@@ -157,34 +157,34 @@ public struct LoggableLogger: Loggable {
   ///   - formatter: Formatter used to produce the log message string.
   public init(
     logger: Logger = Logger(),
-    formatter: any LoggableFormatter = CompactFormatter()
+    formatter: any AutoLogFormatter = CompactFormatter()
   ) {
     self.logger = logger
     self.formatter = formatter
   }
 }
 
-extension Loggable {
+extension AutoLogger {
   /// Emits a start event (🔵) for the given event, respecting the global
-  /// `LoggableSettingsStorage.emitStartEvents` flag.
+  /// `AutoLogSettingsStorage.emitStartEvents` flag.
   ///
   /// Called automatically by macro-generated code at function entry.
-  public func emitStart(event: LoggableEvent) {
-    guard LoggableSettingsStorage.emitStartEvents else { return }
+  public func emitStart(event: AutoLogEvent) {
+    guard AutoLogSettingsStorage.emitStartEvents else { return }
     emit(event: event.asStartEvent)
   }
 }
 
-extension Loggable where Self == LoggableLogger {
-  /// A default loggable instance. Logs to default subsystem.
-  public static var logger: Self { LoggableLogger() }
+extension AutoLogger where Self == AutoLogLogger {
+  /// A default logger instance. Logs to default subsystem.
+  public static var logger: Self { AutoLogLogger() }
 }
 
-extension Logger: Loggable {
+extension Logger: AutoLogger {
   // Uses event.description (verbose multi-line format) intentionally.
   // This conformance supports the @OSLog / @OSLogged macro path.
-  // Formatter-based output is only available via LoggableLogger.
-  public func emit(event: LoggableEvent) {
+  // Formatter-based output is only available via AutoLogLogger.
+  public func emit(event: AutoLogEvent) {
     if let level = event.level as? OSLogType {
       self.log(level: level, "\(String(describing: event))")
     } else {

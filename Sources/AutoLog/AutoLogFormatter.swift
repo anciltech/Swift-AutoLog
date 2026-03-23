@@ -1,6 +1,6 @@
-/// A type that formats a ``LoggableEvent`` into a printable string.
-public protocol LoggableFormatter: Sendable {
-  func format(event: LoggableEvent) -> String
+/// A type that formats a ``AutoLogEvent`` into a printable string.
+public protocol AutoLogFormatter: Sendable {
+  func format(event: AutoLogEvent) -> String
 }
 
 /// A compact formatter that renders events in a readable, structured format.
@@ -33,7 +33,7 @@ public protocol LoggableFormatter: Sendable {
 ///
 /// ```swift
 /// // Static — this formatter always uses this layout, ignoring global settings.
-/// let logger = LoggableLogger(
+/// let logger = AutoLogLogger(
 ///   formatter: CompactFormatter(format: LogFormat(mainLine: [
 ///     .depthArrow, .statusEmoji, .functionName, .parameters
 ///   ]))
@@ -44,7 +44,7 @@ public protocol LoggableFormatter: Sendable {
 ///   LogFormat(mainLine: [.depthArrow, .statusEmoji, .functionName, .parameters])
 /// )
 /// ```
-public struct CompactFormatter: LoggableFormatter {
+public struct CompactFormatter: AutoLogFormatter {
   public let profile: DepthProfile
 
   /// A fixed format override. When `nil`, ``AutoLogSettingsStorage/logFormat()``
@@ -56,14 +56,14 @@ public struct CompactFormatter: LoggableFormatter {
     self.format  = format
   }
 
-  public func format(event: LoggableEvent) -> String {
+  public func format(event: AutoLogEvent) -> String {
     let typeName = extractTypeName(from: event.location)
     let fmt      = format ?? AutoLogSettingsStorage.logFormat()
     let depth    = profile.depth(for: typeName) ?? 1
     let arrow    = fmt.arrowStyle.arrow(for: depth)
 
     // ── Interaction event ────────────────────────────────────────────────────
-    // Detected when declaration matches the source's description (set by LoggableSource.run).
+    // Detected when declaration matches the source's description (set by AutoLogSource.run).
     if let source = event.source, event.declaration == source.description {
       let label = source.label ?? source.description
       let line  = extractLine(from: event.location)
@@ -176,12 +176,12 @@ public struct CompactFormatter: LoggableFormatter {
 
   // MARK: - Private helpers
 
-  private func isStartEvent(_ event: LoggableEvent) -> Bool {
+  private func isStartEvent(_ event: AutoLogEvent) -> Bool {
     guard let level = event.level as? LogLevel else { return false }
     return level == .start
   }
 
-  private func emoji(for event: LoggableEvent, style: LogFormat.StatusStyle) -> String {
+  private func emoji(for event: AutoLogEvent, style: LogFormat.StatusStyle) -> String {
     // LogLevel takes priority — it carries explicit semantic meaning.
     if let logLevel = event.level as? LogLevel {
       switch logLevel {
@@ -206,7 +206,7 @@ public struct CompactFormatter: LoggableFormatter {
     return style.success
   }
 
-  private func timingSuffix(for event: LoggableEvent, depth: Int) -> String {
+  private func timingSuffix(for event: AutoLogEvent, depth: Int) -> String {
     // Start events never show timing (they haven't run yet).
     guard !isStartEvent(event) else { return "" }
     guard let duration = event.duration else { return "" }
@@ -228,7 +228,7 @@ public struct CompactFormatter: LoggableFormatter {
     }
   }
 
-  private func sourceAttributionLine(for event: LoggableEvent) -> String? {
+  private func sourceAttributionLine(for event: AutoLogEvent) -> String? {
     guard let ctx = event.source as? SourceContext else { return nil }
     let typeName = extractTypeName(from: ctx.location)
     let line     = extractLine(from: ctx.location)

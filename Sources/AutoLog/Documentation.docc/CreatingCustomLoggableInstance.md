@@ -16,7 +16,7 @@ Since we will be extending types from both libraries, their imports must be mark
 ```swift
 // SentryLogger.swift
 
-public import Loggable
+public import AutoLog
 public import Sentry
 ```
 
@@ -31,7 +31,7 @@ This method is called each time a function either completes successfully or thro
 ```swift
 // SentryLogger.swift
 
-public import Loggable
+public import AutoLog
 public import Sentry
 
 struct SentryLogger: Loggable {
@@ -82,7 +82,7 @@ Now that we've identified the information to log on both success and failure, it
 // SentryLogger.swift
 
 public import Sentry
-public import Loggable
+public import AutoLog
 
 struct SentryLogger: Loggable {
   func emit(event: LoggableEvent) {

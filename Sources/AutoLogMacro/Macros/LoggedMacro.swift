@@ -2,7 +2,7 @@ import SwiftSyntax
 
 public struct LoggedMacro {}
 
-extension LoggedMacro: LoggableAttributeMacro {
+extension LoggedMacro: AutoLogAttributeMacro {
   static func ignore(_ attribute: AttributeSyntax) -> Bool {
     guard let identifierType = IdentifierTypeSyntax(attribute.attributeName) else {
       return false

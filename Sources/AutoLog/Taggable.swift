@@ -1,5 +1,5 @@
 /// A protocol representing a value that can be used to modify
-/// ``LoggableEvent`` values at pre-expansion time.
+/// ``AutoLogEvent`` values at pre-expansion time.
 ///
 /// A type should implement this protocol if it represents
 /// common logic or a way to customize behavior of

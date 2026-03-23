@@ -26,7 +26,7 @@ After importing Loggable for the first time, you will be prompted to enable macr
 ```swift
 // FavoriteFactsModel.swift
 import Observation
-import Loggable
+import AutoLog
 
 // ...
 ```

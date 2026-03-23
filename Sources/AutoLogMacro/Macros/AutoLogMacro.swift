@@ -2,11 +2,11 @@ import SwiftDiagnostics
 import SwiftSyntax
 import SwiftSyntaxMacros
 
-protocol LoggableMacro: BodyMacro {
+protocol AutoLogMacro: BodyMacro {
   static func initialize(for node: AttributeSyntax) -> ExprSyntax
 }
 
-extension LoggableMacro {
+extension AutoLogMacro {
   public static func initialize(for node: AttributeSyntax) -> ExprSyntax {
     if let expression = node.extract(argument: .architecture, as: ExprSyntax.self) {
       return expression
@@ -19,7 +19,7 @@ extension LoggableMacro {
     return ExprSyntax(
       MemberAccessExprSyntax(
         base: DeclReferenceExprSyntax(
-          baseName: .predefined(.LoggableSource)
+          baseName: .predefined(.AutoLogSource)
         ),
         period: .periodToken(),
         name: .predefined(.logger)
@@ -74,7 +74,7 @@ extension LoggableMacro {
         self.captureExplicitMeasure()
       }
 
-      // Emit 🔵 start event (respects LoggableSettingsStorage.emitStartEvents at runtime).
+      // Emit 🔵 start event (respects AutoLogSettingsStorage.emitStartEvents at runtime).
       self.emitStart()
 
       // Capture timing start (compile-time opt-out via measure: false).
@@ -148,13 +148,13 @@ extension LoggableMacro {
         bindings: PatternBindingListSyntax(
           arrayLiteral: PatternBindingSyntax(
             pattern: IdentifierPatternSyntax(
-              identifier: .predefined(.loggable)
+              identifier: .predefined(.autoLogger)
             ),
             typeAnnotation: TypeAnnotationSyntax(
               type: SomeOrAnyTypeSyntax(
                 someOrAnySpecifier: .keyword(.any),
                 constraint: IdentifierTypeSyntax(
-                  name: .predefined(.Loggable)
+                  name: .predefined(.AutoLogger)
                 )
               )
             ),
@@ -185,7 +185,7 @@ extension LoggableMacro {
             initializer: InitializerClauseSyntax(
               value: FunctionCallExprSyntax(
                 calledExpression: DeclReferenceExprSyntax(
-                  baseName: .predefined(.LoggableEvent)
+                  baseName: .predefined(.AutoLogEvent)
                 ),
                 leftParen: .leftParenToken(),
                 arguments: LabeledExprListSyntax {
@@ -207,7 +207,7 @@ extension LoggableMacro {
                     colon: .colonToken(),
                     expression: MemberAccessExprSyntax(
                       base: DeclReferenceExprSyntax(
-                        baseName: .predefined(.LoggableSource)
+                        baseName: .predefined(.AutoLogSource)
                       ),
                       period: .periodToken(),
                       name: TokenSyntax.identifier("current")
@@ -321,13 +321,13 @@ extension LoggableMacro {
     )
   }
 
-  /// Generates: `loggable.emit(event: event)`
+  /// Generates: `autoLogger.emit(event: event)`
   static func emit() -> CodeBlockItemSyntax {
     CodeBlockItemSyntax(
       FunctionCallExprSyntax(
         calledExpression: MemberAccessExprSyntax(
           base: DeclReferenceExprSyntax(
-            baseName: .predefined(.loggable)
+            baseName: .predefined(.autoLogger)
           ),
           period: .periodToken(),
           name: .predefined(.emit)
@@ -345,15 +345,15 @@ extension LoggableMacro {
     )
   }
 
-  /// Generates: `loggable.emitStart(event: event)`
+  /// Generates: `autoLogger.emitStart(event: event)`
   ///
-  /// The `emitStart` default implementation on `Loggable` checks
-  /// `LoggableSettingsStorage.emitStartEvents` at runtime before emitting.
+  /// The `emitStart` default implementation on `AutoLogger` checks
+  /// `AutoLogSettingsStorage.emitStartEvents` at runtime before emitting.
   static func emitStart() -> CodeBlockItemSyntax {
     CodeBlockItemSyntax(
       FunctionCallExprSyntax(
         calledExpression: MemberAccessExprSyntax(
-          base: DeclReferenceExprSyntax(baseName: .predefined(.loggable)),
+          base: DeclReferenceExprSyntax(baseName: .predefined(.autoLogger)),
           period: .periodToken(),
           name: .predefined(.emitStart)
         ),
@@ -373,7 +373,7 @@ extension LoggableMacro {
   /// Generates: `event.isMeasuredExplicitly = true`
   ///
   /// Injected when `@Log(measure: true)` is used, so the formatter shows timing
-  /// even when `LoggableSettingsStorage.measureTimingDefault` is `false`.
+  /// even when `AutoLogSettingsStorage.measureTimingDefault` is `false`.
   static func captureExplicitMeasure() -> CodeBlockItemSyntax {
     CodeBlockItemSyntax(
       InfixOperatorExprSyntax(
@@ -700,7 +700,7 @@ extension LoggableMacro {
     let emitUpdate = CodeBlockItemSyntax(
       FunctionCallExprSyntax(
         calledExpression: MemberAccessExprSyntax(
-          base: DeclReferenceExprSyntax(baseName: .predefined(.LoggableSource)),
+          base: DeclReferenceExprSyntax(baseName: .predefined(.AutoLogSource)),
           period: .periodToken(),
           name: .predefined(.emit)
         ),

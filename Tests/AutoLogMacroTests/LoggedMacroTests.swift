@@ -58,7 +58,7 @@ struct LoggedMacroTests {
   }
 
   @Test
-  func class_withLoggableAsStaticParameter_noAdditionalAnnotations() throws {
+  func class_withAutoLoggerAsStaticParameter_noAdditionalAnnotations() throws {
     assertMacro {
       #"""
       @Logged(using: .custom)
@@ -105,7 +105,7 @@ struct LoggedMacroTests {
   }
 
   @Test
-  func class_withLoggableAsInitializer_noAdditionalAnnotations() throws {
+  func class_withAutoLoggerAsInitializer_noAdditionalAnnotations() throws {
     assertMacro {
       #"""
       @Logged(using: Custom())
@@ -152,7 +152,7 @@ struct LoggedMacroTests {
   }
 
   @Test
-  func class_withLoggableAsFunction_noAdditionalAnnotations() throws {
+  func class_withAutoLoggerAsFunction_noAdditionalAnnotations() throws {
     assertMacro {
       #"""
       @Logged(using: .custom(module: "Foo"))

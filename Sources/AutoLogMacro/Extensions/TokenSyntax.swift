@@ -18,16 +18,16 @@ extension TokenSyntax {
     case `default`
     case failure
     case success
-    case loggable
+    case autoLogger
     case logger
     case Logger
-    case Loggable
+    case AutoLogger
     case parameters
     case declaration
     case source
-    case LoggableSource
+    case AutoLogSource
     case Conformance
-    case LoggableEvent
+    case AutoLogEvent
     case Omit
     case Redact
     case subsystem
@@ -113,11 +113,11 @@ extension TokenSyntax {
       case .default:
         return TokenSyntax.identifier("default")
 
-      case .loggable:
-        return TokenSyntax.identifier("loggable")
+      case .autoLogger:
+        return TokenSyntax.identifier("autoLogger")
 
-      case .Loggable:
-        return TokenSyntax.identifier("Loggable")
+      case .AutoLogger:
+        return TokenSyntax.identifier("AutoLogger")
 
       case .parameters:
         return TokenSyntax.identifier("parameters")
@@ -128,8 +128,8 @@ extension TokenSyntax {
       case .Conformance:
         return TokenSyntax.identifier("Conformance")
 
-      case .LoggableEvent:
-        return TokenSyntax.identifier("LoggableEvent")
+      case .AutoLogEvent:
+        return TokenSyntax.identifier("AutoLogEvent")
 
       case .Omit:
         return TokenSyntax.identifier("Omit")
@@ -140,8 +140,8 @@ extension TokenSyntax {
       case .source:
         return TokenSyntax.identifier("source")
 
-      case .LoggableSource:
-        return TokenSyntax.identifier("LoggableSource")
+      case .AutoLogSource:
+        return TokenSyntax.identifier("AutoLogSource")
 
       case .emitStart:
         return TokenSyntax.identifier("emitStart")

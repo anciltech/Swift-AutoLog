@@ -2,12 +2,12 @@ import SwiftDiagnostics
 import SwiftSyntax
 import SwiftSyntaxMacros
 
-protocol LoggableAttributeMacro: MemberAttributeMacro {
+protocol AutoLogAttributeMacro: MemberAttributeMacro {
   static func introduce(for node: AttributeSyntax) -> AttributeSyntax
   static func ignore(_ attribute: AttributeSyntax) -> Bool
 }
 
-extension LoggableAttributeMacro {
+extension AutoLogAttributeMacro {
   public static func expansion(
     of node: AttributeSyntax,
     attachedTo declaration: some DeclGroupSyntax,
@@ -22,7 +22,7 @@ extension LoggableAttributeMacro {
       guard case let .attribute(syntax) = attribute else { return false }
       return self.ignore(syntax)
     }
-//    
+//
 //    context.diagnose(
 //      .init(
 //        node: node,
