@@ -313,14 +313,13 @@ struct FormatEditorView: View {
   // MARK: - Status style section
 
   private var statusStyleRows: [(label: String, preview: String,
-                                  get: KeyPath<LogFormat.StatusStyle, String>,
-                                  set: WritableKeyPath<LogFormat.StatusStyle, String>)] {
+                                  path: WritableKeyPath<LogFormat.StatusStyle, String>)] {
     [
-      ("Start",   "🔵", \.start,   \.start),
-      ("Success", "🟢", \.success, \.success),
-      ("Failure", "🔴", \.failure, \.failure),
-      ("Warning", "🟡", \.warning, \.warning),
-      ("Update",  "🟣", \.update,  \.update),
+      ("Start",   "🔵", \.start),
+      ("Success", "🟢", \.success),
+      ("Failure", "🔴", \.failure),
+      ("Warning", "🟡", \.warning),
+      ("Update",  "🟣", \.update),
     ]
   }
 
@@ -335,10 +334,10 @@ struct FormatEditorView: View {
             label:   row.label,
             preview: row.preview,
             value: Binding(
-              get: { viewModel.statusStyle[keyPath: row.get] },
+              get: { viewModel.statusStyle[keyPath: row.path] },
               set: {
                 var s = viewModel.statusStyle
-                s[keyPath: row.set] = $0
+                s[keyPath: row.path] = $0
                 viewModel.updateStatusStyle(s)
               }
             )
