@@ -1,22 +1,22 @@
 import SwiftUI
 import AppKit
 
-/// A text field that:
-/// 1. Selects all its content when it becomes first responder, so the user
-///    can immediately type a replacement value.
-/// 2. Blocks external @Observable re-renders from resetting the displayed
-///    text while the user is actively editing.
+/// A text field for short style values (arrow characters, status emoji) that:
 ///
-/// The SwiftUI TextField approach fails for (2): when the binding setter
-/// mutates an @Observable ViewModel, SwiftUI re-renders the view immediately,
-/// which can reset the field's content before the deletion completes.
-/// NSViewRepresentable gives us direct access to the NSTextField delegate so
-/// we can guard updateNSView with an `isEditing` flag.
+/// 1. **Selects all content on focus** — clicking anywhere in the field
+///    immediately selects the current value so the user can replace it by
+///    typing, without needing to manually select first.
+///
+/// 2. **Never re-renders during editing** — changes are buffered locally and
+///    only written to the binding when the field loses focus.  Committing mid-
+///    edit would mutate the @Observable ViewModel, trigger a SwiftUI re-render,
+///    and call updateNSView before the deletion animation finished — snapping
+///    the displayed text back to the old value even though deletion succeeded.
 struct StyleTextField: NSViewRepresentable {
   @Binding var text: String
 
-  func makeNSView(context: Context) -> NSTextField {
-    let field = NSTextField()
+  func makeNSView(context: Context) -> AutoSelectTextField {
+    let field = AutoSelectTextField()
     field.stringValue = text
     field.placeholderString = ""
     field.delegate = context.coordinator
@@ -29,10 +29,10 @@ struct StyleTextField: NSViewRepresentable {
     return field
   }
 
-  func updateNSView(_ nsView: NSTextField, context: Context) {
-    // While the user is editing, never override what they've typed —
-    // the binding's setter already stored the value; we just don't want
-    // @Observable-triggered re-renders to snap the displayed text back.
+  func updateNSView(_ nsView: AutoSelectTextField, context: Context) {
+    // Only accept external updates when the field is not being edited.
+    // Skipping during editing prevents @Observable re-renders from resetting
+    // the displayed text while the user is still interacting with the field.
     guard !context.coordinator.isEditing else { return }
     if nsView.stringValue != text {
       nsView.stringValue = text
@@ -42,6 +42,17 @@ struct StyleTextField: NSViewRepresentable {
   func makeCoordinator() -> Coordinator { Coordinator(text: $text) }
 }
 
+// MARK: - AutoSelectTextField
+
+/// NSTextField subclass that selects all text on mouse-click, so the user
+/// immediately sees their current value highlighted and ready to replace.
+final class AutoSelectTextField: NSTextField {
+  override func mouseDown(with event: NSEvent) {
+    super.mouseDown(with: event)
+    selectText(nil)
+  }
+}
+
 // MARK: - Coordinator
 
 extension StyleTextField {
@@ -49,23 +60,28 @@ extension StyleTextField {
   final class Coordinator: NSObject, NSTextFieldDelegate {
     @Binding var text: String
     var isEditing = false
+    /// Local buffer — changes stay here until focus leaves the field.
+    private var pendingText: String = ""
 
     init(text: Binding<String>) { _text = text }
 
-    /// Called the moment the field editor activates — guaranteed timing for selectAll.
     func controlTextDidBeginEditing(_ obj: Notification) {
       isEditing = true
-      guard let field  = obj.object as? NSTextField,
-            let editor = field.currentEditor() else { return }
-      editor.selectAll(nil)
+      pendingText = text
     }
 
+    /// Buffer changes locally — do NOT write to the binding here.
+    /// Writing mid-edit triggers an @Observable re-render which calls
+    /// updateNSView and resets the field's displayed text.
     func controlTextDidChange(_ obj: Notification) {
       guard let field = obj.object as? NSTextField else { return }
-      text = field.stringValue
+      pendingText = field.stringValue
     }
 
+    /// Only commit to the binding once editing ends (focus lost / Tab / Return).
+    /// At this point there are no active re-renders to interfere.
     func controlTextDidEndEditing(_ obj: Notification) {
+      text = pendingText
       isEditing = false
     }
   }
