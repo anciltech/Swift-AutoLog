@@ -262,7 +262,7 @@ public struct LogFormat: Sendable, Codable, Equatable {
 
   // MARK: - Init
 
-  /// Creates a format with the given ordered element list and arrow style.
+  /// Creates a format with the given ordered element list, arrow style, and status style.
   public init(
     mainLine:    [Element],
     arrowStyle:  ArrowStyle  = .default,
