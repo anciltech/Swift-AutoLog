@@ -294,3 +294,69 @@ struct ArrowStyleTests {
     #expect(output.hasPrefix("~~>"))
   }
 }
+
+// MARK: - StatusStyleTests
+
+@Suite
+struct StatusStyleTests {
+
+  @Test func defaultStyle_matchesOriginalEmojis() {
+    let s = LogFormat.StatusStyle.default
+    #expect(s.start   == "🔵")
+    #expect(s.success == "🟢")
+    #expect(s.failure == "🔴")
+    #expect(s.warning == "🟡")
+    #expect(s.update  == "🟣")
+  }
+
+  @Test func logFormat_decodesLegacyJsonWithoutStatusStyle() throws {
+    // Simulate JSON written by an older version that has no statusStyle key.
+    let json = #"{"mainLine":["statusEmoji"],"arrowStyle":{"start":"-","repeater":"-","end":">"}}"#
+    let format = try JSONDecoder().decode(LogFormat.self, from: Data(json.utf8))
+    #expect(format.statusStyle == .default)
+  }
+
+  @Test func logFormat_roundTripsStatusStyle() throws {
+    let original = LogFormat(
+      mainLine: [.statusEmoji],
+      statusStyle: LogFormat.StatusStyle(start: "▶", success: "✓", failure: "✗", warning: "!", update: "•")
+    )
+    let data    = try JSONEncoder().encode(original)
+    let decoded = try JSONDecoder().decode(LogFormat.self, from: data)
+    #expect(decoded.statusStyle == original.statusStyle)
+  }
+
+  @Test func compactFormatter_usesCustomSuccessChar() {
+    let format = LogFormat(
+      mainLine: [.statusEmoji, .functionName],
+      statusStyle: LogFormat.StatusStyle(success: "✓")
+    )
+    let formatter = CompactFormatter(profile: .mvvm, format: format)
+    var event = LoggableEvent(
+      location: "App/MyViewModel.swift:1:1",
+      declaration: "func doWork()"
+    )
+    event.result   = .success(())
+    event.duration = .milliseconds(0)
+    let output = formatter.format(event: event)
+    #expect(output.contains("✓"))
+    #expect(!output.contains("🟢"))
+  }
+
+  @Test func compactFormatter_usesCustomFailureChar() {
+    let format = LogFormat(
+      mainLine: [.statusEmoji, .functionName],
+      statusStyle: LogFormat.StatusStyle(failure: "✗")
+    )
+    let formatter = CompactFormatter(profile: .mvvm, format: format)
+    var event = LoggableEvent(
+      location: "App/MyViewModel.swift:1:1",
+      declaration: "func doWork()"
+    )
+    event.result   = .failure(NSError(domain: "test", code: 0))
+    event.duration = .milliseconds(0)
+    let output = formatter.format(event: event)
+    #expect(output.contains("✗"))
+    #expect(!output.contains("🔴"))
+  }
+}
