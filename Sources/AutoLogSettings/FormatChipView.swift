@@ -12,38 +12,41 @@ enum ChipRole {
 struct FormatChipView: View {
   let element: LogFormat.Element
   let role: ChipRole
-  /// When `true` a small × button appears (active chips only).
-  var showRemove: Bool = false
   var onRemove: (() -> Void)? = nil
 
   var body: some View {
-    HStack(spacing: 5) {
-      Text(element.previewFragment)
-        .font(.system(.caption, design: element.isSpacer ? .monospaced : .rounded))
-        .fontWeight(.semibold)
-
-      if element.isSpacer {
-        // No extra label for spacers — the preview fragment is the whole chip
-      } else {
-        Text(element.displayName)
-          .font(.system(.caption, design: .rounded))
-          .fontWeight(.medium)
-          .lineLimit(1)
+    HStack(spacing: 0) {
+      // ── Label ──────────────────────────────────────────────────────────
+      // Spacers: show only the preview glyph (·, ↵, |, …)
+      // Data elements: show the display name only (Depth, Function, …)
+      Group {
+        if element.isSpacer {
+          Text(element.previewFragment)
+            .font(.system(.caption, design: .monospaced))
+            .fontWeight(.semibold)
+        } else {
+          Text(element.displayName)
+            .font(.system(.caption, design: .rounded))
+            .fontWeight(.medium)
+            .lineLimit(1)
+        }
       }
+      .padding(.horizontal, 10)
+      .padding(.vertical, 5)
 
-      if showRemove {
-        Button {
-          onRemove?()
-        } label: {
+      // ── Remove button (active chips only) ──────────────────────────────
+      if role == .active, let onRemove {
+        Divider().frame(height: 14)
+        Button(action: onRemove) {
           Image(systemName: "xmark")
             .font(.system(size: 8, weight: .bold))
         }
         .buttonStyle(.plain)
         .foregroundStyle(.secondary)
+        .padding(.horizontal, 7)
+        .padding(.vertical, 5)
       }
     }
-    .padding(.horizontal, 10)
-    .padding(.vertical, 5)
     .background(background)
     .foregroundStyle(foreground)
     .clipShape(RoundedRectangle(cornerRadius: 7))

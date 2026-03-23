@@ -49,8 +49,6 @@ struct FormatEditorView: View {
   @State private var insertionIndex: Int? = nil
   /// Whether the palette is currently highlighted as a drop target.
   @State private var paletteIsTargeted = false
-  /// Index of the hovered active chip (shows × button).
-  @State private var hoveredActiveIndex: Int? = nil
 
   var body: some View {
     VStack(alignment: .leading, spacing: 0) {
@@ -186,10 +184,8 @@ struct FormatEditorView: View {
     FormatChipView(
       element: element,
       role: .active,
-      showRemove: hoveredActiveIndex == i,
       onRemove: { viewModel.deactivate(at: i) }
     )
-    .onHover { hoveredActiveIndex = $0 ? i : nil }
     // Make it draggable
     .onDrag {
       NSItemProvider(object: encodeActive(index: i, element: element) as NSString)
