@@ -182,6 +182,7 @@ public struct CompactFormatter: LoggableFormatter {
   }
 
   private func emoji(for event: LoggableEvent, style: LogFormat.StatusStyle) -> String {
+    // LogLevel takes priority — it carries explicit semantic meaning.
     if let logLevel = event.level as? LogLevel {
       switch logLevel {
       case .start:   return style.start
@@ -191,7 +192,9 @@ public struct CompactFormatter: LoggableFormatter {
       case .update:  return style.update
       }
     }
+    // Failure always wins for non-LogLevel events.
     if case .failure = event.result { return style.failure }
+    // OSLogType mapping for the @OSLog path.
     if let osLevel = event.level as? OSLogType {
       switch osLevel {
       case .error, .fault: return style.failure
