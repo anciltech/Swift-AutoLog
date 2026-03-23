@@ -21,6 +21,9 @@ final class SettingsViewModel {
   /// The current arrow style, kept in sync with ``AutoLogSettingsStorage``.
   var arrowStyle: LogFormat.ArrowStyle = .default
 
+  /// The current status style, kept in sync with ``AutoLogSettingsStorage``.
+  var statusStyle: LogFormat.StatusStyle = .default
+
   // MARK: - Init
 
   init() {
@@ -31,7 +34,7 @@ final class SettingsViewModel {
 
   /// The format produced by the current active element ordering.
   var currentFormat: LogFormat {
-    LogFormat(mainLine: activeElements, arrowStyle: arrowStyle)
+    LogFormat(mainLine: activeElements, arrowStyle: arrowStyle, statusStyle: statusStyle)
   }
 
   // MARK: - Persistence
@@ -89,6 +92,11 @@ final class SettingsViewModel {
     saveToStorage()
   }
 
+  func updateStatusStyle(_ style: LogFormat.StatusStyle) {
+    statusStyle = style
+    saveToStorage()
+  }
+
   // MARK: - Code snippet
 
   var codeSnippet: String {
@@ -109,6 +117,7 @@ final class SettingsViewModel {
   private func rebuildState(from format: LogFormat) {
     activeElements = format.mainLine
     arrowStyle     = format.arrowStyle
+    statusStyle    = format.statusStyle
 
     // Data elements in the palette = all non-spacer elements not used in active strip.
     let activeDataSet = Set(format.mainLine.filter { !$0.isSpacer })
