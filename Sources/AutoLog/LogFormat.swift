@@ -222,30 +222,75 @@ public struct LogFormat: Sendable, Codable, Equatable {
   /// The arrow style used when rendering the ``Element/depthArrow`` component.
   public var arrowStyle: ArrowStyle
 
+  // MARK: - StatusStyle
+
+  /// Controls which character/emoji is rendered for each visual status state.
+  ///
+  /// The five states map every event outcome regardless of source:
+  /// `LogLevel`, `OSLogType`, or a raw `.failure` result all resolve to one
+  /// of these five slots before rendering.
+  ///
+  /// Defaults match the original emoji set:
+  /// `start` 🔵 · `success` 🟢 · `failure` 🔴 · `warning` 🟡 · `update` 🟣
+  public struct StatusStyle: Sendable, Codable, Equatable {
+    public var start:   String
+    public var success: String
+    public var failure: String
+    public var warning: String
+    public var update:  String
+
+    public init(
+      start:   String = "🔵",
+      success: String = "🟢",
+      failure: String = "🔴",
+      warning: String = "🟡",
+      update:  String = "🟣"
+    ) {
+      self.start   = start
+      self.success = success
+      self.failure = failure
+      self.warning = warning
+      self.update  = update
+    }
+
+    /// The default set, matching the original `CompactFormatter` output.
+    public static let `default` = StatusStyle()
+  }
+
+  /// The status style used when rendering the ``Element/statusEmoji`` component.
+  public var statusStyle: StatusStyle
+
   // MARK: - Init
 
   /// Creates a format with the given ordered element list and arrow style.
-  public init(mainLine: [Element], arrowStyle: ArrowStyle = .default) {
-    self.mainLine   = mainLine
-    self.arrowStyle = arrowStyle
+  public init(
+    mainLine:    [Element],
+    arrowStyle:  ArrowStyle  = .default,
+    statusStyle: StatusStyle = .default
+  ) {
+    self.mainLine    = mainLine
+    self.arrowStyle  = arrowStyle
+    self.statusStyle = statusStyle
   }
 
   // MARK: - Codable
 
   private enum CodingKeys: String, CodingKey {
-    case mainLine, arrowStyle
+    case mainLine, arrowStyle, statusStyle
   }
 
   public init(from decoder: Decoder) throws {
-    let c      = try decoder.container(keyedBy: CodingKeys.self)
-    mainLine   = try c.decode([Element].self,          forKey: .mainLine)
-    arrowStyle = try c.decodeIfPresent(ArrowStyle.self, forKey: .arrowStyle) ?? .default
+    let c        = try decoder.container(keyedBy: CodingKeys.self)
+    mainLine     = try c.decode([Element].self,           forKey: .mainLine)
+    arrowStyle   = try c.decodeIfPresent(ArrowStyle.self,  forKey: .arrowStyle)  ?? .default
+    statusStyle  = try c.decodeIfPresent(StatusStyle.self, forKey: .statusStyle) ?? .default
   }
 
   public func encode(to encoder: Encoder) throws {
     var c = encoder.container(keyedBy: CodingKeys.self)
-    try c.encode(mainLine,   forKey: .mainLine)
-    try c.encode(arrowStyle, forKey: .arrowStyle)
+    try c.encode(mainLine,    forKey: .mainLine)
+    try c.encode(arrowStyle,  forKey: .arrowStyle)
+    try c.encode(statusStyle, forKey: .statusStyle)
   }
 
   /// The default format, equivalent to the original ``CompactFormatter`` output.
