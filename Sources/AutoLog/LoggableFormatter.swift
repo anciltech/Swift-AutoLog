@@ -70,7 +70,7 @@ public struct CompactFormatter: LoggableFormatter {
       return "\(arrow) \(source.emoji) \(label) [\(typeName):\(line)]"
     }
 
-    let em         = emoji(for: event)
+    let em         = emoji(for: event, style: fmt.statusStyle)
     let funcName   = extractFuncName(from: event.declaration)
     let params     = formatParameters(event.parameters)
     let specifiers = effectSpecifiers(from: event.declaration)
@@ -181,26 +181,26 @@ public struct CompactFormatter: LoggableFormatter {
     return level == .start
   }
 
-  private func emoji(for event: LoggableEvent) -> String {
-    // LogLevel takes priority — it carries explicit semantic meaning.
+  private func emoji(for event: LoggableEvent, style: LogFormat.StatusStyle) -> String {
     if let logLevel = event.level as? LogLevel {
-      return logLevel.emoji
-    }
-
-    // Failure always wins for non-LogLevel events.
-    if case .failure = event.result { return "🔴" }
-
-    // OSLogType mapping for the @OSLog path.
-    if let osLevel = event.level as? OSLogType {
-      switch osLevel {
-      case .error, .fault: return "🔴"
-      case .default:       return "🟡"
-      case .info, .debug:  return "🔵"
-      default:             return "🟢"
+      switch logLevel {
+      case .start:   return style.start
+      case .success: return style.success
+      case .failure: return style.failure
+      case .warning: return style.warning
+      case .update:  return style.update
       }
     }
-
-    return "🟢"
+    if case .failure = event.result { return style.failure }
+    if let osLevel = event.level as? OSLogType {
+      switch osLevel {
+      case .error, .fault: return style.failure
+      case .default:       return style.warning
+      case .info, .debug:  return style.start
+      default:             return style.success
+      }
+    }
+    return style.success
   }
 
   private func timingSuffix(for event: LoggableEvent, depth: Int) -> String {
