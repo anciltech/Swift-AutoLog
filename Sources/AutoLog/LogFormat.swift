@@ -127,21 +127,21 @@ public struct LogFormat: Sendable, Codable, Equatable {
     /// A short human-readable label for use in settings UIs.
     public var displayName: String {
       switch self {
-      case .depthArrow:    return "Depth Arrow"
-      case .statusEmoji:   return "Status Emoji"
-      case .typeName:      return "Type Name"
-      case .functionName:  return "Function Name"
-      case .parameters:    return "Parameters"
-      case .effectSpecifiers: return "Async/Throws"
-      case .returnValue:   return "Return Value"
-      case .timing:        return "Timing"
-      case .lineNumber:    return "Line Number"
-      case .dotSeparator:  return "Dot"
-      case .space:         return "Space"
-      case .comma:         return "Comma"
-      case .pipe:          return "Pipe"
-      case .slash:         return "Slash"
-      case .newline:       return "New Line"
+      case .depthArrow:       return "Depth"
+      case .statusEmoji:      return "Status"
+      case .typeName:         return "Type"
+      case .functionName:     return "Function"
+      case .parameters:       return "Params"
+      case .effectSpecifiers: return "Async"
+      case .returnValue:      return "Return"
+      case .timing:           return "Timing"
+      case .lineNumber:       return "Line"
+      case .dotSeparator:     return "·"
+      case .space:            return "Space"
+      case .comma:            return "Comma"
+      case .pipe:             return "Pipe"
+      case .slash:            return "Slash"
+      case .newline:          return "↵"
       }
     }
 
