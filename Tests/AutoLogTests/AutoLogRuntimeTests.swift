@@ -45,6 +45,20 @@ struct AutoLogRuntimeTests {
   }
 
   @Test
+  func bootstrap_withConfigurationInstallsCustomConfiguration() {
+    let configuration = AutoLogConfiguration(
+      emitStartEvents: false,
+      measureTimingDefault: false,
+      measureTimingDepths: [2, 3]
+    )
+    defer { AutoLog.bootstrap() }
+
+    AutoLog.bootstrap(configuration: configuration)
+
+    #expect(AutoLog.runtimeSnapshot().configuration == configuration)
+  }
+
+  @Test
   func runtimeSnapshot_reloadsPersistedConfigurationWhenRevisionChanges() {
     let suiteName = "AutoLogRuntimeTests.reload.\(UUID().uuidString)"
     let defaults = UserDefaults(suiteName: suiteName)!
@@ -68,12 +82,10 @@ struct AutoLogRuntimeTests {
     )
 
     AutoLog.bootstrap(
-      .init(
-        logger: MockLogger(),
-        configuration: initial,
-        configurationStore: store,
-        refreshInterval: .seconds(0)
-      )
+      logger: MockLogger(),
+      configuration: initial,
+      configurationStore: store,
+      refreshInterval: .seconds(0)
     )
 
     #expect(AutoLog.runtimeSnapshot().configuration == initial)
@@ -108,12 +120,10 @@ struct AutoLogRuntimeTests {
     )
 
     AutoLog.bootstrap(
-      .init(
-        logger: logger,
-        configuration: initial,
-        configurationStore: store,
-        refreshInterval: .seconds(0)
-      )
+      logger: logger,
+      configuration: initial,
+      configurationStore: store,
+      refreshInterval: .seconds(0)
     )
 
     let fixture = SnapshotFixture(updatedConfiguration: updated)

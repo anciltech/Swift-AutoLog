@@ -114,15 +114,13 @@ final class SettingsViewModel {
       .joined(separator: ",\n")
     return """
     AutoLog.bootstrap(
-      .init(
-        configuration: AutoLogConfiguration(
-          emitStartEvents: \(configuration.emitStartEvents),
-          measureTimingDefault: \(configuration.measureTimingDefault),
-          measureTimingDepths: \(renderDepths(configuration.measureTimingDepths)),
-          logFormat: LogFormat(mainLine: [
+      configuration: AutoLogConfiguration(
+        emitStartEvents: \(configuration.emitStartEvents),
+        measureTimingDefault: \(configuration.measureTimingDefault),
+        measureTimingDepths: \(renderDepths(configuration.measureTimingDepths)),
+        logFormat: LogFormat(mainLine: [
     """ + "\n" + list + "\n" + """
-          ], arrowStyle: \(renderArrowStyle(arrowStyle)), statusStyle: \(renderStatusStyle(statusStyle)))
-        )
+        ], arrowStyle: \(renderArrowStyle(arrowStyle)), statusStyle: \(renderStatusStyle(statusStyle))
       )
     )
     """
