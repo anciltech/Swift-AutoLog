@@ -24,7 +24,7 @@ public struct SourceContext: Sourceable, Sendable {
 
 /// Manages the current interaction source via TaskLocal and emits
 /// standalone interaction events when sources are activated.
-public enum AutoLogSource {
+public enum AutoLog {
   /// The current interaction source context, automatically propagated
   /// through structured concurrency (async/await, TaskGroup).
   ///
@@ -113,4 +113,61 @@ public enum AutoLogSource {
       parameters: [:]
     ))
   }
+
+  /// Emits a manual inline note using the default `.update` level.
+  public static func manual(
+    _ message: String,
+    fileID: String = #fileID,
+    line: Int = #line
+  ) {
+    emit(.update, message, fileID: fileID, line: line)
+  }
+
+  /// Emits a developer-authored inline note.
+  public static func note(
+    _ message: String,
+    fileID: String = #fileID,
+    line: Int = #line
+  ) {
+    manual(message, fileID: fileID, line: line)
+  }
+
+  /// Emits a manual update event.
+  public static func update(
+    _ message: String,
+    fileID: String = #fileID,
+    line: Int = #line
+  ) {
+    emit(.update, message, fileID: fileID, line: line)
+  }
+
+  /// Emits a manual warning event.
+  public static func warning(
+    _ message: String,
+    fileID: String = #fileID,
+    line: Int = #line
+  ) {
+    emit(.warning, message, fileID: fileID, line: line)
+  }
+
+  /// Emits a manual success event.
+  public static func success(
+    _ message: String,
+    fileID: String = #fileID,
+    line: Int = #line
+  ) {
+    emit(.success, message, fileID: fileID, line: line)
+  }
+
+  /// Emits a manual failure event.
+  public static func failure(
+    _ message: String,
+    fileID: String = #fileID,
+    line: Int = #line
+  ) {
+    emit(.failure, message, fileID: fileID, line: line)
+  }
 }
+
+/// Backward-compatible alias for the previous API entry point name.
+public typealias AutoLogSource = AutoLog

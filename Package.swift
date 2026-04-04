@@ -13,6 +13,10 @@ let package = Package(
       name: "AutoLog",
       targets: ["AutoLog"]
     ),
+    .executable(
+      name: "AutoLogSettings",
+      targets: ["AutoLogSettings"]
+    ),
   ],
   dependencies: [
     .package(
@@ -66,6 +70,16 @@ let package = Package(
       name: "AutoLogTests",
       dependencies: [
         "AutoLog",
+      ]
+    ),
+    .executableTarget(
+      name: "AutoLogSettings",
+      dependencies: [
+        "AutoLog"
+      ],
+      // macOS-only companion settings app
+      swiftSettings: [
+        .define("AUTOLOG_SETTINGS_APP")
       ]
     ),
   ]
