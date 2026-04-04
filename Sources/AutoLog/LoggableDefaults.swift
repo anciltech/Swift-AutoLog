@@ -5,169 +5,185 @@ private struct UserDefaultsBox: @unchecked Sendable {
   var value: UserDefaults
 }
 
-private struct AutoLogSettingsState {
-  var userDefaultsBox: UserDefaultsBox = UserDefaultsBox(value: .standard)
-  var omitParametersKey: String = "log.omitParameters"
-  var omitResultKey: String = "log.omitResult"
-  var omitParametersDefault: Bool = false
-  var omitResultDefault: Bool = false
-  var emitStartEvents: Bool = true
-  var measureTimingDefault: Bool = true
-  var measureTimingKey: String = "log.measureTiming"
-  var measureTimingDepths: Set<Int>? = nil
-  var formatKey: String = "log.format"
-
-  var userDefaults: UserDefaults {
-    get { userDefaultsBox.value }
-    set { userDefaultsBox = UserDefaultsBox(value: newValue) }
-  }
-}
-
-/// Shared defaults used by app-level settings UIs.
-///
-/// Consumers can override these values during app startup to customize
-/// persistence keys, backing storage, and fallback values.
-public enum AutoLogSettingsStorage {
-  private static let state = Mutex(AutoLogSettingsState())
-
-  private static func snapshot() -> AutoLogSettingsState {
-    state.withLock { $0 }
-  }
-
-  public static var userDefaults: UserDefaults {
-    get { snapshot().userDefaults }
-    set { state.withLock { $0.userDefaults = newValue } }
-  }
-
-  // MARK: - Omit parameters
-
-  public static var omitParametersKey: String {
-    get { snapshot().omitParametersKey }
-    set { state.withLock { $0.omitParametersKey = newValue } }
-  }
-  public static var omitResultKey: String {
-    get { snapshot().omitResultKey }
-    set { state.withLock { $0.omitResultKey = newValue } }
-  }
-
-  public static var omitParametersDefault: Bool {
-    get { snapshot().omitParametersDefault }
-    set { state.withLock { $0.omitParametersDefault = newValue } }
-  }
-  public static var omitResultDefault: Bool {
-    get { snapshot().omitResultDefault }
-    set { state.withLock { $0.omitResultDefault = newValue } }
-  }
-
-  public static func omitParameters() -> Bool {
-    let snapshot = snapshot()
-    guard snapshot.userDefaults.object(forKey: snapshot.omitParametersKey) != nil
-    else { return snapshot.omitParametersDefault }
-    return snapshot.userDefaults.bool(forKey: snapshot.omitParametersKey)
-  }
-
-  public static func setOmitParameters(_ value: Bool) {
-    let snapshot = snapshot()
-    snapshot.userDefaults.set(value, forKey: snapshot.omitParametersKey)
-  }
-
-  public static func omitResult() -> Bool {
-    let snapshot = snapshot()
-    guard snapshot.userDefaults.object(forKey: snapshot.omitResultKey) != nil
-    else { return snapshot.omitResultDefault }
-    return snapshot.userDefaults.bool(forKey: snapshot.omitResultKey)
-  }
-
-  public static func setOmitResult(_ value: Bool) {
-    let snapshot = snapshot()
-    snapshot.userDefaults.set(value, forKey: snapshot.omitResultKey)
-  }
-
-  // MARK: - Start events
-
+/// Live-tunable logging behavior shared across app processes.
+public struct AutoLogConfiguration: Sendable, Codable, Equatable {
   /// Whether the macro should emit a 🔵 start event before a function executes.
-  /// Defaults to `true`. Set to `false` during app init to suppress start events globally.
-  public static var emitStartEvents: Bool {
-    get { snapshot().emitStartEvents }
-    set { state.withLock { $0.emitStartEvents = newValue } }
-  }
-
-  // MARK: - Timing
+  public var emitStartEvents: Bool
 
   /// Whether `@AutoLog` functions should display timing by default.
-  /// Individual functions may override this with `@Log(measure: true/false)`.
-  /// Defaults to `true`.
-  public static var measureTimingDefault: Bool {
-    get { snapshot().measureTimingDefault }
-    set { state.withLock { $0.measureTimingDefault = newValue } }
-  }
-
-  public static var measureTimingKey: String {
-    get { snapshot().measureTimingKey }
-    set { state.withLock { $0.measureTimingKey = newValue } }
-  }
+  public var measureTimingDefault: Bool
 
   /// Restrict timing display to specific depth levels (e.g. `[2]` for ViewModel only).
   /// `nil` means show timing for all depths when enabled.
-  public static var measureTimingDepths: Set<Int>? {
-    get { snapshot().measureTimingDepths }
-    set { state.withLock { $0.measureTimingDepths = newValue } }
+  public var measureTimingDepths: Set<Int>?
+
+  /// The visual layout used by ``CompactFormatter`` when no formatter-local override exists.
+  public var logFormat: LogFormat
+
+  public init(
+    emitStartEvents: Bool = true,
+    measureTimingDefault: Bool = true,
+    measureTimingDepths: Set<Int>? = nil,
+    logFormat: LogFormat = .default
+  ) {
+    self.emitStartEvents = emitStartEvents
+    self.measureTimingDefault = measureTimingDefault
+    self.measureTimingDepths = measureTimingDepths
+    self.logFormat = logFormat
   }
 
-  public static func measureTiming() -> Bool {
-    let snapshot = snapshot()
-    guard snapshot.userDefaults.object(forKey: snapshot.measureTimingKey) != nil
-    else { return snapshot.measureTimingDefault }
-    return snapshot.userDefaults.bool(forKey: snapshot.measureTimingKey)
+  public static let `default` = AutoLogConfiguration()
+}
+
+/// A process-local runtime snapshot used by the logging hot path.
+public struct AutoLogRuntime: Sendable {
+  public let logger: any AutoLogger
+  public let configuration: AutoLogConfiguration
+
+  public init(
+    logger: any AutoLogger,
+    configuration: AutoLogConfiguration
+  ) {
+    self.logger = logger
+    self.configuration = configuration
+  }
+}
+
+/// Bootstraps the process-local logging runtime.
+public struct AutoLogBootstrap {
+  public var logger: any AutoLogger
+  public var configuration: AutoLogConfiguration
+  public var configurationStore: AutoLogConfigurationStore
+  public var refreshInterval: Duration
+
+  public init(
+    logger: any AutoLogger = AutoLogLogger(),
+    configuration: AutoLogConfiguration = .default,
+    configurationStore: AutoLogConfigurationStore = .shared,
+    refreshInterval: Duration = .seconds(2)
+  ) {
+    self.logger = logger
+    self.configuration = configuration
+    self.configurationStore = configurationStore
+    self.refreshInterval = refreshInterval
+  }
+}
+
+/// Persists live configuration shared by the companion settings app and host apps.
+public struct AutoLogConfigurationStore: @unchecked Sendable {
+  public static let sharedSuiteName = "SwiftAutoLog.Configuration"
+
+  private let userDefaultsBox: UserDefaultsBox
+  public let configurationKey: String
+  public let revisionKey: String
+
+  public init(
+    userDefaults: UserDefaults,
+    configurationKey: String = "autolog.configuration",
+    revisionKey: String = "autolog.configuration.revision"
+  ) {
+    self.userDefaultsBox = UserDefaultsBox(value: userDefaults)
+    self.configurationKey = configurationKey
+    self.revisionKey = revisionKey
   }
 
-  public static func setMeasureTiming(_ value: Bool) {
-    let snapshot = snapshot()
-    snapshot.userDefaults.set(value, forKey: snapshot.measureTimingKey)
+  public init(
+    suiteName: String = AutoLogConfigurationStore.sharedSuiteName,
+    configurationKey: String = "autolog.configuration",
+    revisionKey: String = "autolog.configuration.revision"
+  ) {
+    self.init(
+      userDefaults: UserDefaults(suiteName: suiteName) ?? .standard,
+      configurationKey: configurationKey,
+      revisionKey: revisionKey
+    )
   }
 
-  // MARK: - Log Format
+  public static var shared: Self { AutoLogConfigurationStore() }
 
-  /// The UserDefaults key used to persist the active ``LogFormat``.
-  ///
-  /// Override before app launch if you need a custom key.
-  public static var formatKey: String {
-    get { snapshot().formatKey }
-    set { state.withLock { $0.formatKey = newValue } }
-  }
-
-  /// Returns the currently stored ``LogFormat``, or ``LogFormat/default`` if none is set.
-  public static func logFormat() -> LogFormat {
-    let snapshot = snapshot()
+  public func loadConfiguration() -> AutoLogConfiguration? {
     guard
-      let data = snapshot.userDefaults.data(forKey: snapshot.formatKey),
-      let format = try? JSONDecoder().decode(LogFormat.self, from: data)
-    else { return .default }
-    return format
+      let data = userDefaults.data(forKey: configurationKey),
+      let configuration = try? JSONDecoder().decode(AutoLogConfiguration.self, from: data)
+    else { return nil }
+
+    return configuration
   }
 
-  /// Persists a ``LogFormat`` to UserDefaults so ``CompactFormatter`` picks it up.
-  ///
-  /// Call this from your app's startup code, or let the AutoLogSettings companion
-  /// app write it for you.
-  ///
-  /// ```swift
-  /// // App startup
-  /// AutoLogSettingsStorage.setLogFormat(
-  ///   LogFormat(mainLine: [.depthArrow, .statusEmoji, .functionName, .parameters])
-  /// )
-  /// ```
-  public static func setLogFormat(_ format: LogFormat) {
-    let snapshot = snapshot()
-    guard let data = try? JSONEncoder().encode(format) else { return }
-    snapshot.userDefaults.set(data, forKey: snapshot.formatKey)
+  public func saveConfiguration(_ configuration: AutoLogConfiguration) {
+    guard let data = try? JSONEncoder().encode(configuration) else { return }
+
+    let nextRevision = loadRevision() + 1
+    userDefaults.set(data, forKey: configurationKey)
+    userDefaults.set(NSNumber(value: nextRevision), forKey: revisionKey)
   }
 
-  /// Removes any stored format, causing ``CompactFormatter`` to revert to
-  /// ``LogFormat/default``.
-  public static func resetLogFormat() {
-    let snapshot = snapshot()
-    snapshot.userDefaults.removeObject(forKey: snapshot.formatKey)
+  public func loadRevision() -> UInt64 {
+    (userDefaults.object(forKey: revisionKey) as? NSNumber)?.uint64Value ?? 0
+  }
+
+  private var userDefaults: UserDefaults { userDefaultsBox.value }
+}
+
+struct AutoLogRuntimeState {
+  var runtime: AutoLogRuntime
+  var configurationStore: AutoLogConfigurationStore
+  var refreshInterval: Duration
+  var lastRefresh: ContinuousClock.Instant?
+  var lastSeenRevision: UInt64
+
+  init(_ bootstrap: AutoLogBootstrap = AutoLogBootstrap()) {
+    let persisted = bootstrap.configurationStore.loadConfiguration()
+    let configuration = persisted ?? bootstrap.configuration
+    self.runtime = AutoLogRuntime(
+      logger: bootstrap.logger,
+      configuration: configuration
+    )
+    self.configurationStore = bootstrap.configurationStore
+    self.refreshInterval = bootstrap.refreshInterval
+    self.lastRefresh = nil
+    self.lastSeenRevision = bootstrap.configurationStore.loadRevision()
+  }
+
+  mutating func reloadConfigurationIfNeeded(now: ContinuousClock.Instant = .now) {
+    if let lastRefresh, now - lastRefresh < refreshInterval {
+      return
+    }
+
+    lastRefresh = now
+
+    let revision = configurationStore.loadRevision()
+    guard revision != lastSeenRevision else { return }
+
+    lastSeenRevision = revision
+
+    guard let configuration = configurationStore.loadConfiguration() else { return }
+
+    runtime = AutoLogRuntime(
+      logger: runtime.logger,
+      configuration: configuration
+    )
+  }
+
+  mutating func updateConfiguration(
+    _ configuration: AutoLogConfiguration,
+    persist: Bool
+  ) {
+    runtime = AutoLogRuntime(
+      logger: runtime.logger,
+      configuration: configuration
+    )
+
+    if persist {
+      configurationStore.saveConfiguration(configuration)
+      lastSeenRevision = configurationStore.loadRevision()
+    }
+
+    lastRefresh = .now
+  }
+
+  mutating func bootstrap(_ bootstrap: AutoLogBootstrap) {
+    self = AutoLogRuntimeState(bootstrap)
   }
 }
 

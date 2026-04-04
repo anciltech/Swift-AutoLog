@@ -4,6 +4,7 @@ import Testing
 
 @Suite
 struct CompactFormatterTests {
+    let configuration = AutoLogConfiguration.default
 
     func makeEvent(
         level: (any Levelable)? = nil,
@@ -29,75 +30,75 @@ struct CompactFormatterTests {
         let formatter = CompactFormatter()
         // Default profile is MVVM; a ViewModel type should get depth-2 arrow
         let event = makeEvent(location: "App/MyViewModel.swift:1:1")
-        #expect(formatter.format(event: event).hasPrefix("-->"))
+        #expect(formatter.format(event: event, configuration: configuration).hasPrefix("-->"))
     }
 
     // MARK: - Emoji
 
     @Test func success_noLevel_emitsGreen() {
         let event = makeEvent(result: .success(()))
-        #expect(CompactFormatter().format(event: event).contains(" 🟢 "))
+        #expect(CompactFormatter().format(event: event, configuration: configuration).contains(" 🟢 "))
     }
 
     @Test func failure_emitsRed() {
         struct E: Error {}
         let event = makeEvent(result: .failure(E()))
-        #expect(CompactFormatter().format(event: event).contains(" 🔴 "))
+        #expect(CompactFormatter().format(event: event, configuration: configuration).contains(" 🔴 "))
     }
 
     @Test func osLogError_emitsRed() {
         let event = makeEvent(level: OSLogType.error, result: .success(()))
-        #expect(CompactFormatter().format(event: event).contains(" 🔴 "))
+        #expect(CompactFormatter().format(event: event, configuration: configuration).contains(" 🔴 "))
     }
 
     @Test func osLogFault_emitsRed() {
         let event = makeEvent(level: OSLogType.fault, result: .success(()))
-        #expect(CompactFormatter().format(event: event).contains(" 🔴 "))
+        #expect(CompactFormatter().format(event: event, configuration: configuration).contains(" 🔴 "))
     }
 
     @Test func osLogDefault_emitsYellow() {
         let event = makeEvent(level: OSLogType.default, result: .success(()))
-        #expect(CompactFormatter().format(event: event).contains(" 🟡 "))
+        #expect(CompactFormatter().format(event: event, configuration: configuration).contains(" 🟡 "))
     }
 
     @Test func osLogInfo_emitsBlue() {
         let event = makeEvent(level: OSLogType.info, result: .success(()))
-        #expect(CompactFormatter().format(event: event).contains(" 🔵 "))
+        #expect(CompactFormatter().format(event: event, configuration: configuration).contains(" 🔵 "))
     }
 
     @Test func osLogDebug_emitsBlue() {
         let event = makeEvent(level: OSLogType.debug, result: .success(()))
-        #expect(CompactFormatter().format(event: event).contains(" 🔵 "))
+        #expect(CompactFormatter().format(event: event, configuration: configuration).contains(" 🔵 "))
     }
 
     @Test func failure_winsOverLevel() {
         struct E: Error {}
         let event = makeEvent(level: OSLogType.info, result: .failure(E()))
-        #expect(CompactFormatter().format(event: event).contains(" 🔴 "))
+        #expect(CompactFormatter().format(event: event, configuration: configuration).contains(" 🔴 "))
     }
 
     // MARK: - Type name + depth arrow
 
     @Test func typeName_extractedFromLocation() {
         let event = makeEvent(location: "App/LoggingDemoViewModel.swift:79:5")
-        let output = CompactFormatter().format(event: event)
+        let output = CompactFormatter().format(event: event, configuration: configuration)
         #expect(output.contains("LoggingDemoViewModel."))
     }
 
     @Test func typeName_withoutPath_stillWorks() {
         let event = makeEvent(location: "SimpleView.swift:10:5")
-        let output = CompactFormatter().format(event: event)
+        let output = CompactFormatter().format(event: event, configuration: configuration)
         #expect(output.contains("SimpleView."))
     }
 
     @Test func viewModel_getsDoubleArrow() {
         let event = makeEvent(location: "App/MyViewModel.swift:1:1")
-        #expect(CompactFormatter(profile: .mvvm).format(event: event).hasPrefix("-->"))
+        #expect(CompactFormatter(profile: .mvvm).format(event: event, configuration: configuration).hasPrefix("-->"))
     }
 
     @Test func view_getsSingleArrow() {
         let event = makeEvent(location: "App/ContentView.swift:1:1")
-        let output = CompactFormatter(profile: .mvvm).format(event: event)
+        let output = CompactFormatter(profile: .mvvm).format(event: event, configuration: configuration)
         #expect(output.hasPrefix("->"))
         #expect(!output.hasPrefix("-->"))
     }
@@ -106,7 +107,7 @@ struct CompactFormatterTests {
 
     @Test func funcName_extractedFromDeclaration() {
         let event = makeEvent(declaration: "func runAsyncScenario() async")
-        #expect(CompactFormatter().format(event: event).contains("runAsyncScenario()"))
+        #expect(CompactFormatter().format(event: event, configuration: configuration).contains("runAsyncScenario()"))
     }
 
     @Test func parameters_shownInSignature() {
@@ -114,7 +115,7 @@ struct CompactFormatterTests {
             declaration: "func fetchUser(id: Int) async throws -> String",
             parameters: ["id": 1]
         )
-        #expect(CompactFormatter().format(event: event).contains("fetchUser(id: 1)"))
+        #expect(CompactFormatter().format(event: event, configuration: configuration).contains("fetchUser(id: 1)"))
     }
 
     @Test func identifiableParameter_prefersShortIDSummary() {
@@ -132,7 +133,7 @@ struct CompactFormatterTests {
             result: .success(false)
         )
 
-        #expect(CompactFormatter().format(event: event).contains("isHovered(frame: Frame.id: ...2341)"))
+        #expect(CompactFormatter().format(event: event, configuration: configuration).contains("isHovered(frame: Frame.id: ...2341)"))
     }
 
     @Test func identifierParameter_prefersShortIDSummary() {
@@ -149,7 +150,7 @@ struct CompactFormatterTests {
             parameters: ["session": Session(identifier: "session-abcdef12")]
         )
 
-        #expect(CompactFormatter().format(event: event).contains("attach(session: Session.identifier: ...ef12)"))
+        #expect(CompactFormatter().format(event: event, configuration: configuration).contains("attach(session: Session.identifier: ...ef12)"))
     }
 
     @Test func shortTypeDescriptionStillPrefersShortIDSummary() {
@@ -169,7 +170,7 @@ struct CompactFormatterTests {
             result: .success(false)
         )
 
-        #expect(CompactFormatter().format(event: event).contains("isSelected(frame: Frame.id: ...2341)"))
+        #expect(CompactFormatter().format(event: event, configuration: configuration).contains("isSelected(frame: Frame.id: ...2341)"))
     }
 
     @Test func descriptiveValue_keepsItsDefaultDescription() {
@@ -183,7 +184,7 @@ struct CompactFormatterTests {
             parameters: ["frame": Frame(id: UUID(uuidString: "12345678-1234-1234-1234-123456782341")!, name: "Hero")]
         )
 
-        let output = CompactFormatter().format(event: event)
+        let output = CompactFormatter().format(event: event, configuration: configuration)
         #expect(output.contains("inspect(frame: Frame(id:"))
         #expect(!output.contains("Frame.id: ...2341"))
     }
@@ -194,25 +195,25 @@ struct CompactFormatterTests {
             parameters: ["type": Date.self]
         )
 
-        #expect(CompactFormatter().format(event: event).contains("register(type: Date)"))
+        #expect(CompactFormatter().format(event: event, configuration: configuration).contains("register(type: Date)"))
     }
 
     @Test func emptyParameters_showEmptyParens() {
         let event = makeEvent(declaration: "func doSomething()")
-        #expect(CompactFormatter().format(event: event).contains("doSomething()"))
+        #expect(CompactFormatter().format(event: event, configuration: configuration).contains("doSomething()"))
     }
 
     // MARK: - Effect specifiers
 
     @Test func asyncFunc_showsAsyncSuffix() {
         let event = makeEvent(declaration: "func run() async")
-        #expect(CompactFormatter().format(event: event).contains("run() async"))
+        #expect(CompactFormatter().format(event: event, configuration: configuration).contains("run() async"))
     }
 
     @Test func throwingFunc_showsThrowsSuffix() {
         // Compact format shows function name only — 'throws' is omitted for brevity.
         let event = makeEvent(declaration: "func run() throws")
-        let output = CompactFormatter().format(event: event)
+        let output = CompactFormatter().format(event: event, configuration: configuration)
         #expect(output.contains("run()"))
         #expect(!output.contains("throws"))
     }
@@ -220,7 +221,7 @@ struct CompactFormatterTests {
     @Test func asyncThrowingFunc_showsBoth() {
         // Compact format shows 'async' but omits 'throws'.
         let event = makeEvent(declaration: "func run() async throws")
-        let output = CompactFormatter().format(event: event)
+        let output = CompactFormatter().format(event: event, configuration: configuration)
         #expect(output.contains("run() async"))
         #expect(!output.contains("throws"))
     }
@@ -233,12 +234,12 @@ struct CompactFormatterTests {
             parameters: ["id": 1],
             result: .success("User1")
         )
-        #expect(CompactFormatter().format(event: event).contains("→ User1"))
+        #expect(CompactFormatter().format(event: event, configuration: configuration).contains("→ User1"))
     }
 
     @Test func successWithVoid_doesNotShowArrow() {
         let event = makeEvent(result: .success(()))
-        #expect(!CompactFormatter().format(event: event).contains("→"))
+        #expect(!CompactFormatter().format(event: event, configuration: configuration).contains("→"))
     }
 
     // MARK: - Second line
@@ -246,7 +247,7 @@ struct CompactFormatterTests {
     @Test func failure_showsErrorOnSecondLine() {
         enum NetworkError: Error { case notFound }
         let event = makeEvent(result: .failure(NetworkError.notFound))
-        let output = CompactFormatter().format(event: event)
+        let output = CompactFormatter().format(event: event, configuration: configuration)
         let lines = output.split(separator: "\n", omittingEmptySubsequences: false)
         #expect(lines.count == 2)
         #expect(lines[1].contains("↳"))
@@ -259,7 +260,7 @@ struct CompactFormatterTests {
             result: .success(()),
             tags: ["update", "user"] as [any Taggable]
         )
-        let output = CompactFormatter().format(event: event)
+        let output = CompactFormatter().format(event: event, configuration: configuration)
         let lines = output.split(separator: "\n", omittingEmptySubsequences: false)
         #expect(lines.count == 2)
         #expect(lines[1].contains("↳"))
@@ -269,7 +270,7 @@ struct CompactFormatterTests {
 
     @Test func noTagsNoError_noSecondLine() {
         let event = makeEvent(result: .success(()))
-        #expect(!CompactFormatter().format(event: event).contains("\n"))
+        #expect(!CompactFormatter().format(event: event, configuration: configuration).contains("\n"))
     }
 }
 
@@ -277,39 +278,37 @@ struct CompactFormatterTests {
 
 @Suite(.serialized)
 struct CompactFormatterIntegrationTests {
+    let configuration = AutoLogConfiguration.default
 
     @Test func loggedMacro_emitsCompactFormat() {
         // Use a class box to capture the last formatted output in a @Sendable closure.
         // Workaround: @AutoLog(using: AutoLogLogger(formatter:)) inside a function body
         // triggers a Swift compiler ICE (ExpandBodyMacroRequest crash). Instead we override
-        // AutoLogSource.logger temporarily and use @Log (no-arg) on the inner struct.
+        // Install a scoped runtime override and use @Log (no-arg) on the inner struct.
         final class Box: @unchecked Sendable { var value = "" }
         let box = Box()
 
         struct CapturingFormatter: AutoLogFormatter {
             let box: Box
-            func format(event: AutoLogEvent) -> String {
-                let output = CompactFormatter().format(event: event)
+            func format(event: AutoLogEvent, configuration: AutoLogConfiguration) -> String {
+                let output = CompactFormatter().format(event: event, configuration: configuration)
                 box.value = output
                 return output
             }
         }
-
-        let prevLogger = AutoLogSource.logger
-        let prevEmitStart = AutoLogSettingsStorage.emitStartEvents
-        AutoLogSource.logger = AutoLogLogger(formatter: CapturingFormatter(box: box))
-        AutoLogSettingsStorage.emitStartEvents = false
-        defer {
-            AutoLogSource.logger = prevLogger
-            AutoLogSettingsStorage.emitStartEvents = prevEmitStart
-        }
+        let runtime = AutoLogRuntime(
+            logger: AutoLogLogger(formatter: CapturingFormatter(box: box)),
+            configuration: AutoLogConfiguration(emitStartEvents: false)
+        )
 
         struct Subject {
             @Log
             func greet(name: String) -> String { "Hello, \(name)" }
         }
 
-        _ = Subject().greet(name: "World")
+        AutoLog.withRuntime(runtime) {
+            _ = Subject().greet(name: "World")
+        }
 
         #expect(box.value.contains("🟢"))
         #expect(box.value.contains("greet(name: World)"))
@@ -321,6 +320,7 @@ struct CompactFormatterIntegrationTests {
 
 @Suite
 struct ArrowStyleTests {
+  let configuration = AutoLogConfiguration.default
 
   @Test func default_producesStandardArrows() {
     let style = LogFormat.ArrowStyle.default
@@ -370,7 +370,7 @@ struct ArrowStyleTests {
       declaration: "func doWork()"
     )
     event.duration = .milliseconds(0)
-    let output = formatter.format(event: event)
+    let output = formatter.format(event: event, configuration: configuration)
     // ViewModel = depth 2 → "~~>"
     #expect(output.hasPrefix("~~>"))
   }
@@ -380,6 +380,7 @@ struct ArrowStyleTests {
 
 @Suite
 struct StatusStyleTests {
+  let configuration = AutoLogConfiguration.default
 
   @Test func defaultStyle_matchesOriginalEmojis() {
     let s = LogFormat.StatusStyle.default
@@ -419,7 +420,7 @@ struct StatusStyleTests {
     )
     event.result   = .success(())
     event.duration = .milliseconds(0)
-    let output = formatter.format(event: event)
+    let output = formatter.format(event: event, configuration: configuration)
     #expect(output.contains("✓"))
     #expect(!output.contains("🟢"))
   }
@@ -436,7 +437,7 @@ struct StatusStyleTests {
     )
     event.result   = .failure(NSError(domain: "test", code: 0))
     event.duration = .milliseconds(0)
-    let output = formatter.format(event: event)
+    let output = formatter.format(event: event, configuration: configuration)
     #expect(output.contains("✗"))
     #expect(!output.contains("🔴"))
   }

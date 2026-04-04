@@ -6,6 +6,18 @@ protocol AutoLogMacro: BodyMacro {
   static func initialize(for node: AttributeSyntax) -> ExprSyntax
 }
 
+struct EarlyExitContext {
+  enum Kind {
+    case `guard`
+    case `if`
+    case elseif
+    case `else`
+  }
+
+  let kind: Kind
+  let condition: String?
+}
+
 extension AutoLogMacro {
   public static func initialize(for node: AttributeSyntax) -> ExprSyntax {
     if let expression = node.extract(argument: .architecture, as: ExprSyntax.self) {
@@ -19,10 +31,10 @@ extension AutoLogMacro {
     return ExprSyntax(
       MemberAccessExprSyntax(
         base: DeclReferenceExprSyntax(
-          baseName: .predefined(.AutoLogSource)
+          baseName: .identifier("runtime")
         ),
         period: .periodToken(),
-        name: .predefined(.logger)
+        name: .identifier("logger")
       )
     )
   }
@@ -54,10 +66,10 @@ extension AutoLogMacro {
       isMeasuredExplicitly = false
     }
 
-    let instrumentedBody = self.instrumentedBody(of: function)
     let instrumentedPlain = self.instrumentedPlain(of: function)
 
     return body {
+      self.captureRuntime()
       self.hook(for: node)
       self.event(
         for: node,
@@ -74,7 +86,7 @@ extension AutoLogMacro {
         self.captureExplicitMeasure()
       }
 
-      // Emit 🔵 start event (respects AutoLogSettingsStorage.emitStartEvents at runtime).
+      // Emit 🔵 start event using the configuration captured at function entry.
       self.emitStart()
 
       // Capture timing start (compile-time opt-out via measure: false).
@@ -84,7 +96,8 @@ extension AutoLogMacro {
 
       switch function.isThrowing {
         case false where function.isVoid:
-          instrumentedBody
+          CodeBlockItemSyntax(instrumentedPlain)
+          CodeBlockItemSyntax.call(function)
           if shouldMeasure { self.captureTimingEnd() }
           self.emit()
 
@@ -160,6 +173,33 @@ extension AutoLogMacro {
             ),
             initializer: InitializerClauseSyntax(
               value: self.initialize(for: node)
+            )
+          )
+        )
+      )
+    )
+  }
+
+  static func captureRuntime() -> CodeBlockItemSyntax {
+    CodeBlockItemSyntax(
+      VariableDeclSyntax(
+        bindingSpecifier: .keyword(.let),
+        bindings: PatternBindingListSyntax(
+          arrayLiteral: PatternBindingSyntax(
+            pattern: IdentifierPatternSyntax(
+              identifier: .identifier("runtime")
+            ),
+            initializer: InitializerClauseSyntax(
+              value: FunctionCallExprSyntax(
+                calledExpression: MemberAccessExprSyntax(
+                  base: DeclReferenceExprSyntax(baseName: .identifier("AutoLog")),
+                  period: .periodToken(),
+                  name: .identifier("runtimeSnapshot")
+                ),
+                leftParen: .leftParenToken(),
+                arguments: LabeledExprListSyntax(),
+                rightParen: .rightParenToken()
+              )
             )
           )
         )
@@ -298,7 +338,7 @@ extension AutoLogMacro {
   }
 
   static func capture(_ baseName: TokenSyntax.Predefined) -> CodeBlockItemSyntax {
-    CodeBlockItemSyntax(
+    return CodeBlockItemSyntax(
       InfixOperatorExprSyntax(
         leftOperand: MemberAccessExprSyntax(
           base: DeclReferenceExprSyntax(baseName: .predefined(.event)),
@@ -321,7 +361,7 @@ extension AutoLogMacro {
     )
   }
 
-  /// Generates: `autoLogger.emit(event: event)`
+  /// Generates: `autoLogger.emit(event: event, configuration: runtime.configuration)`
   static func emit() -> CodeBlockItemSyntax {
     CodeBlockItemSyntax(
       FunctionCallExprSyntax(
@@ -334,21 +374,32 @@ extension AutoLogMacro {
         ),
         leftParen: .leftParenToken(),
         arguments: LabeledExprListSyntax(
-          arrayLiteral: LabeledExprSyntax(
-            label: .predefined(.event),
-            colon: .colonToken(),
-            expression: DeclReferenceExprSyntax(baseName: .predefined(.event))
-          )
+          arrayLiteral:
+            LabeledExprSyntax(
+              label: .predefined(.event),
+              colon: .colonToken(),
+              expression: DeclReferenceExprSyntax(baseName: .predefined(.event)),
+              trailingComma: .commaToken()
+            ),
+            LabeledExprSyntax(
+              label: .identifier("configuration"),
+              colon: .colonToken(),
+              expression: MemberAccessExprSyntax(
+                base: DeclReferenceExprSyntax(baseName: .identifier("runtime")),
+                period: .periodToken(),
+                name: .identifier("configuration")
+              )
+            )
         ),
         rightParen: .rightParenToken()
       )
     )
   }
 
-  /// Generates: `autoLogger.emitStart(event: event)`
+  /// Generates: `autoLogger.emitStart(event: event, configuration: runtime.configuration)`
   ///
-  /// The `emitStart` default implementation on `AutoLogger` checks
-  /// `AutoLogSettingsStorage.emitStartEvents` at runtime before emitting.
+  /// The `emitStart` default implementation on `AutoLogger` checks the
+  /// configuration captured at function entry before emitting.
   static func emitStart() -> CodeBlockItemSyntax {
     CodeBlockItemSyntax(
       FunctionCallExprSyntax(
@@ -359,11 +410,22 @@ extension AutoLogMacro {
         ),
         leftParen: .leftParenToken(),
         arguments: LabeledExprListSyntax(
-          arrayLiteral: LabeledExprSyntax(
-            label: .predefined(.event),
-            colon: .colonToken(),
-            expression: DeclReferenceExprSyntax(baseName: .predefined(.event))
-          )
+          arrayLiteral:
+            LabeledExprSyntax(
+              label: .predefined(.event),
+              colon: .colonToken(),
+              expression: DeclReferenceExprSyntax(baseName: .predefined(.event)),
+              trailingComma: .commaToken()
+            ),
+            LabeledExprSyntax(
+              label: .identifier("configuration"),
+              colon: .colonToken(),
+              expression: MemberAccessExprSyntax(
+                base: DeclReferenceExprSyntax(baseName: .identifier("runtime")),
+                period: .periodToken(),
+                name: .identifier("configuration")
+              )
+            )
         ),
         rightParen: .rightParenToken()
       )
@@ -373,9 +435,9 @@ extension AutoLogMacro {
   /// Generates: `event.isMeasuredExplicitly = true`
   ///
   /// Injected when `@Log(measure: true)` is used, so the formatter shows timing
-  /// even when `AutoLogSettingsStorage.measureTimingDefault` is `false`.
+  /// even when the runtime configuration has timing disabled by default.
   static func captureExplicitMeasure() -> CodeBlockItemSyntax {
-    CodeBlockItemSyntax(
+    return CodeBlockItemSyntax(
       InfixOperatorExprSyntax(
         leftOperand: MemberAccessExprSyntax(
           base: DeclReferenceExprSyntax(baseName: .predefined(.event)),
@@ -462,29 +524,54 @@ extension AutoLogMacro {
   static func rewriteStatements(
     _ statements: [CodeBlockItemSyntax],
     yieldCaptureIndex: inout Int,
-    earlyExitMessage: String? = nil
+    earlyExitContext: EarlyExitContext? = nil
   ) -> [CodeBlockItemSyntax] {
-    statements.flatMap { statement in
-      rewriteStatementItem(
-        statement,
-        yieldCaptureIndex: &yieldCaptureIndex,
-        earlyExitMessage: earlyExitMessage
+    var sawExplicitEarlyExit = false
+    var rewritten: [CodeBlockItemSyntax] = []
+
+    for statement in statements {
+      rewritten.append(
+        contentsOf: rewriteStatementItem(
+          statement,
+          yieldCaptureIndex: &yieldCaptureIndex,
+          earlyExitContext: earlyExitContext,
+          sawExplicitEarlyExit: &sawExplicitEarlyExit
+        )
       )
     }
+
+    return rewritten
   }
 
   static func rewriteStatementItem(
     _ item: CodeBlockItemSyntax,
     yieldCaptureIndex: inout Int,
-    earlyExitMessage: String? = nil
+    earlyExitContext: EarlyExitContext? = nil,
+    sawExplicitEarlyExit: inout Bool
   ) -> [CodeBlockItemSyntax] {
+    if case let .expr(expression) = item.item,
+       let call = expression.as(FunctionCallExprSyntax.self),
+       isExplicitEarlyExitCall(call)
+    {
+      sawExplicitEarlyExit = true
+      guard let earlyExitContext else { return [item] }
+      return [captureEarlyExit(earlyExitContext, explicitCall: call)]
+    }
+
     guard case let .stmt(statement) = item.item else {
       return [item]
     }
 
+    if let call = explicitEarlyExitCall(in: statement) {
+      sawExplicitEarlyExit = true
+      guard let earlyExitContext else { return [item] }
+      return [captureEarlyExit(earlyExitContext, explicitCall: call)]
+    }
+
     if let expanded = rewriteEarlyExitStatement(
       statement,
-      earlyExitMessage: earlyExitMessage
+      earlyExitContext: earlyExitContext,
+      sawExplicitEarlyExit: sawExplicitEarlyExit
     ) {
       return expanded
     }
@@ -500,7 +587,7 @@ extension AutoLogMacro {
       expressionStmt.expression = rewriteExpression(
         expressionStmt.expression,
         yieldCaptureIndex: &yieldCaptureIndex,
-        earlyExitMessage: earlyExitMessage
+        earlyExitContext: earlyExitContext
       )
       return [CodeBlockItemSyntax(expressionStmt)]
     }
@@ -510,7 +597,7 @@ extension AutoLogMacro {
         rewriteStatements(
           Array(forStmt.body.statements),
           yieldCaptureIndex: &yieldCaptureIndex,
-          earlyExitMessage: earlyExitMessage
+          earlyExitContext: earlyExitContext
         )
       )
       return [CodeBlockItemSyntax(forStmt)]
@@ -521,7 +608,7 @@ extension AutoLogMacro {
         rewriteStatements(
           Array(whileStmt.body.statements),
           yieldCaptureIndex: &yieldCaptureIndex,
-          earlyExitMessage: earlyExitMessage
+          earlyExitContext: earlyExitContext
         )
       )
       return [CodeBlockItemSyntax(whileStmt)]
@@ -532,19 +619,22 @@ extension AutoLogMacro {
         rewriteStatements(
           Array(repeatStmt.body.statements),
           yieldCaptureIndex: &yieldCaptureIndex,
-          earlyExitMessage: earlyExitMessage
+          earlyExitContext: earlyExitContext
         )
       )
       return [CodeBlockItemSyntax(repeatStmt)]
     }
 
     if var guardStmt = statement.as(GuardStmtSyntax.self) {
-      let guardFailureMessage = "[guard-failed] \(guardStmt.conditions.trimmedDescription)"
+      let guardFailureContext = EarlyExitContext(
+        kind: .guard,
+        condition: guardStmt.conditions.trimmedDescription
+      )
       guardStmt.body.statements = CodeBlockItemListSyntax(
         rewriteStatements(
           Array(guardStmt.body.statements),
           yieldCaptureIndex: &yieldCaptureIndex,
-          earlyExitMessage: guardFailureMessage
+          earlyExitContext: guardFailureContext
         )
       )
       return [CodeBlockItemSyntax(guardStmt)]
@@ -555,7 +645,7 @@ extension AutoLogMacro {
         rewriteStatements(
           Array(doStmt.body.statements),
           yieldCaptureIndex: &yieldCaptureIndex,
-          earlyExitMessage: earlyExitMessage
+          earlyExitContext: earlyExitContext
         )
       )
 
@@ -566,7 +656,7 @@ extension AutoLogMacro {
           rewriteStatements(
             Array(clause.body.statements),
             yieldCaptureIndex: &yieldCaptureIndex,
-            earlyExitMessage: earlyExitMessage
+            earlyExitContext: earlyExitContext
           )
         )
         catchClauses[index] = clause
@@ -581,7 +671,8 @@ extension AutoLogMacro {
   static func rewriteExpression(
     _ expression: ExprSyntax,
     yieldCaptureIndex: inout Int,
-    earlyExitMessage: String? = nil
+    earlyExitContext: EarlyExitContext? = nil,
+    isElseIfBranch: Bool = false
   ) -> ExprSyntax {
     if var closure = expression.as(ClosureExprSyntax.self) {
       closure.statements = CodeBlockItemListSyntax(
@@ -597,7 +688,7 @@ extension AutoLogMacro {
       functionCall.calledExpression = rewriteExpression(
         functionCall.calledExpression,
         yieldCaptureIndex: &yieldCaptureIndex,
-        earlyExitMessage: earlyExitMessage
+        earlyExitContext: earlyExitContext
       )
 
       var arguments = functionCall.arguments
@@ -606,7 +697,7 @@ extension AutoLogMacro {
         argument.expression = rewriteExpression(
           argument.expression,
           yieldCaptureIndex: &yieldCaptureIndex,
-          earlyExitMessage: earlyExitMessage
+          earlyExitContext: earlyExitContext
         )
         arguments[index] = argument
       }
@@ -641,11 +732,15 @@ extension AutoLogMacro {
     }
 
     if var ifExpr = expression.as(IfExprSyntax.self) {
+      let condition = ifExpr.conditions.trimmedDescription
       ifExpr.body.statements = CodeBlockItemListSyntax(
         rewriteStatements(
           Array(ifExpr.body.statements),
           yieldCaptureIndex: &yieldCaptureIndex,
-          earlyExitMessage: earlyExitMessage
+          earlyExitContext: EarlyExitContext(
+            kind: isElseIfBranch ? .elseif : .if,
+            condition: condition
+          )
         )
       )
 
@@ -656,7 +751,10 @@ extension AutoLogMacro {
             rewriteStatements(
               Array(codeBlock.statements),
               yieldCaptureIndex: &yieldCaptureIndex,
-              earlyExitMessage: earlyExitMessage
+              earlyExitContext: EarlyExitContext(
+                kind: .else,
+                condition: condition
+              )
             )
           )
           ifExpr.elseBody = .codeBlock(codeBlock)
@@ -665,7 +763,8 @@ extension AutoLogMacro {
           let rewrittenNested = rewriteExpression(
             ExprSyntax(nestedIf),
             yieldCaptureIndex: &yieldCaptureIndex,
-            earlyExitMessage: earlyExitMessage
+            earlyExitContext: earlyExitContext,
+            isElseIfBranch: true
           )
           if let nestedIfExpr = rewrittenNested.as(IfExprSyntax.self) {
             ifExpr.elseBody = .ifExpr(nestedIfExpr)
@@ -760,65 +859,149 @@ extension AutoLogMacro {
 
   static func rewriteEarlyExitStatement(
     _ statement: StmtSyntax,
-    earlyExitMessage: String?
+    earlyExitContext: EarlyExitContext?,
+    sawExplicitEarlyExit: Bool
   ) -> [CodeBlockItemSyntax]? {
-    guard let earlyExitMessage else { return nil }
+    guard let earlyExitContext else { return nil }
+    guard !sawExplicitEarlyExit else { return nil }
 
     if let returnStmt = statement.as(ReturnStmtSyntax.self) {
       return [
-        emitEarlyExit(message: earlyExitMessage),
+        captureEarlyExit(earlyExitContext),
         CodeBlockItemSyntax(returnStmt.trimmed),
       ]
     }
 
     if let throwStmt = statement.as(ThrowStmtSyntax.self) {
       return [
-        emitEarlyExit(message: earlyExitMessage),
+        captureEarlyExit(earlyExitContext),
         CodeBlockItemSyntax(throwStmt.trimmed),
-      ]
-    }
-
-    if let breakStmt = statement.as(BreakStmtSyntax.self) {
-      return [
-        emitEarlyExit(message: earlyExitMessage),
-        CodeBlockItemSyntax(breakStmt.trimmed),
-      ]
-    }
-
-    if let continueStmt = statement.as(ContinueStmtSyntax.self) {
-      return [
-        emitEarlyExit(message: earlyExitMessage),
-        CodeBlockItemSyntax(continueStmt.trimmed),
       ]
     }
 
     return nil
   }
 
-  static func emitEarlyExit(message: String) -> CodeBlockItemSyntax {
-    CodeBlockItemSyntax(
-      FunctionCallExprSyntax(
-        calledExpression: MemberAccessExprSyntax(
-          base: DeclReferenceExprSyntax(baseName: .predefined(.AutoLogSource)),
+  static func captureEarlyExit(
+    _ context: EarlyExitContext,
+    explicitCall: FunctionCallExprSyntax? = nil
+  ) -> CodeBlockItemSyntax {
+    let explicitArguments = explicitEarlyExitArguments(from: explicitCall)
+    let intentExpression = explicitArguments.intent
+      ?? ExprSyntax(MemberAccessExprSyntax(period: .periodToken(), name: .identifier("unknown")))
+    let messageExpression = explicitArguments.message
+      ?? (explicitArguments.shouldDefaultMessageToUnknown
+        ? ExprSyntax(StringLiteralExprSyntax(content: "unknown"))
+        : ExprSyntax(NilLiteralExprSyntax(nilKeyword: .keyword(.nil))))
+    let conditionExpression: ExprSyntax = context.condition.map {
+      ExprSyntax(StringLiteralExprSyntax(content: $0))
+    } ?? ExprSyntax(NilLiteralExprSyntax(nilKeyword: .keyword(.nil)))
+
+    return CodeBlockItemSyntax(
+      InfixOperatorExprSyntax(
+        leftOperand: MemberAccessExprSyntax(
+          base: DeclReferenceExprSyntax(baseName: .predefined(.event)),
           period: .periodToken(),
-          name: .predefined(.emit)
+          name: .identifier("earlyExit")
         ),
-        leftParen: .leftParenToken(),
-        arguments: LabeledExprListSyntax {
-          LabeledExprSyntax(
-            expression: MemberAccessExprSyntax(
-              period: .periodToken(),
-              name: .identifier("warning")
-            ),
-            trailingComma: .commaToken()
-          )
-          LabeledExprSyntax(
-            expression: StringLiteralExprSyntax(content: message)
-          )
-        },
-        rightParen: .rightParenToken()
+        operator: AssignmentExprSyntax(),
+        rightOperand: FunctionCallExprSyntax(
+          calledExpression: DeclReferenceExprSyntax(
+            baseName: .identifier("AutoLogEarlyExit")
+          ),
+          leftParen: .leftParenToken(),
+          arguments: LabeledExprListSyntax {
+            LabeledExprSyntax(
+              label: .identifier("kind"),
+              colon: .colonToken(),
+              expression: earlyExitKindExpression(context.kind),
+              trailingComma: .commaToken()
+            )
+            LabeledExprSyntax(
+              label: .identifier("intent"),
+              colon: .colonToken(),
+              expression: intentExpression,
+              trailingComma: .commaToken()
+            )
+            LabeledExprSyntax(
+              label: .identifier("condition"),
+              colon: .colonToken(),
+              expression: conditionExpression,
+              trailingComma: .commaToken()
+            )
+            LabeledExprSyntax(
+              label: .identifier("message"),
+              colon: .colonToken(),
+              expression: messageExpression
+            )
+          },
+          rightParen: .rightParenToken()
+        )
       )
     )
+  }
+
+  static func earlyExitKindExpression(_ kind: EarlyExitContext.Kind) -> ExprSyntax {
+    let kindName: String
+    switch kind {
+    case .guard:
+      kindName = "guard"
+    case .if:
+      kindName = "if"
+    case .elseif:
+      kindName = "elseif"
+    case .else:
+      kindName = "else"
+    }
+
+    return ExprSyntax(
+      MemberAccessExprSyntax(
+        base: MemberAccessExprSyntax(
+          base: DeclReferenceExprSyntax(baseName: .identifier("AutoLogEarlyExit")),
+          period: .periodToken(),
+          name: .identifier("Kind")
+        ),
+        period: .periodToken(),
+        name: .identifier(kindName)
+      )
+    )
+  }
+
+  static func explicitEarlyExitCall(in statement: StmtSyntax) -> FunctionCallExprSyntax? {
+    guard
+      let expressionStmt = statement.as(ExpressionStmtSyntax.self),
+      let call = expressionStmt.expression.as(FunctionCallExprSyntax.self),
+      isExplicitEarlyExitCall(call)
+    else { return nil }
+
+    return call
+  }
+
+  static func isExplicitEarlyExitCall(_ call: FunctionCallExprSyntax) -> Bool {
+    guard let member = call.calledExpression.as(MemberAccessExprSyntax.self) else {
+      return false
+    }
+
+    guard member.declName.baseName.text == "earlyExit" else {
+      return false
+    }
+
+    let base = member.base?.trimmedDescription
+    return base == "AutoLog" || base == "AutoLogSource"
+  }
+
+  static func explicitEarlyExitArguments(
+    from call: FunctionCallExprSyntax?
+  ) -> (intent: ExprSyntax?, message: ExprSyntax?, shouldDefaultMessageToUnknown: Bool) {
+    guard let call else {
+      return (nil, nil, false)
+    }
+
+    let arguments = Array(call.arguments)
+    let intent = arguments.first?.expression
+    let message = arguments.count > 1 ? arguments[1].expression : nil
+    let shouldDefaultMessageToUnknown = arguments.isEmpty
+    return (intent, message, shouldDefaultMessageToUnknown)
   }
 
   static func isYieldCall(_ call: FunctionCallExprSyntax) -> Bool {

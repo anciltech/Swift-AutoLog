@@ -22,7 +22,8 @@ struct LogMacroTests {
     } expansion: {
       """
       func foo() {
-        let autoLogger: any AutoLogger = AutoLogSource.logger
+        let runtime = AutoLog.runtimeSnapshot()
+        let autoLogger: any AutoLogger = runtime.logger
         var event = AutoLogEvent(
           source: AutoLogSource.current,
 
@@ -31,11 +32,14 @@ struct LogMacroTests {
           parameters: [:],
           tags: []
         )
-        autoLogger.emitStart(event: event)
+        autoLogger.emitStart(event: event, configuration: runtime.configuration)
         let __logStart = ContinuousClock.now
-        print("Foo")
+        func _foo() {
+          print("Foo")
+        }
+        let _ = _foo()
         event.duration = ContinuousClock.now - __logStart
-        autoLogger.emit(event: event)
+        autoLogger.emit(event: event, configuration: runtime.configuration)
       }
       """
     }
@@ -53,6 +57,7 @@ struct LogMacroTests {
     } expansion: {
       """
       func foo() {
+        let runtime = AutoLog.runtimeSnapshot()
         let autoLogger: any AutoLogger = CustomLogger()
         var event = AutoLogEvent(
           source: AutoLogSource.current,
@@ -62,11 +67,14 @@ struct LogMacroTests {
           parameters: [:],
           tags: []
         )
-        autoLogger.emitStart(event: event)
+        autoLogger.emitStart(event: event, configuration: runtime.configuration)
         let __logStart = ContinuousClock.now
-        print("Foo")
+        func _foo() {
+          print("Foo")
+        }
+        let _ = _foo()
         event.duration = ContinuousClock.now - __logStart
-        autoLogger.emit(event: event)
+        autoLogger.emit(event: event, configuration: runtime.configuration)
       }
       """
     }
@@ -84,6 +92,7 @@ struct LogMacroTests {
     } expansion: {
       """
       func foo() {
+        let runtime = AutoLog.runtimeSnapshot()
         let autoLogger: any AutoLogger = .custom
         var event = AutoLogEvent(
           source: AutoLogSource.current,
@@ -93,11 +102,14 @@ struct LogMacroTests {
           parameters: [:],
           tags: []
         )
-        autoLogger.emitStart(event: event)
+        autoLogger.emitStart(event: event, configuration: runtime.configuration)
         let __logStart = ContinuousClock.now
-        print("Foo")
+        func _foo() {
+          print("Foo")
+        }
+        let _ = _foo()
         event.duration = ContinuousClock.now - __logStart
-        autoLogger.emit(event: event)
+        autoLogger.emit(event: event, configuration: runtime.configuration)
       }
       """
     }
@@ -115,7 +127,8 @@ struct LogMacroTests {
     } expansion: {
       """
       func foo() -> String {
-        let autoLogger: any AutoLogger = AutoLogSource.logger
+        let runtime = AutoLog.runtimeSnapshot()
+        let autoLogger: any AutoLogger = runtime.logger
         var event = AutoLogEvent(
           source: AutoLogSource.current,
 
@@ -124,7 +137,7 @@ struct LogMacroTests {
           parameters: [:],
           tags: []
         )
-        autoLogger.emitStart(event: event)
+        autoLogger.emitStart(event: event, configuration: runtime.configuration)
         let __logStart = ContinuousClock.now
         func _foo() -> String {
           return "Foo"
@@ -132,7 +145,7 @@ struct LogMacroTests {
         let result = _foo()
         event.result = .success(result)
         event.duration = ContinuousClock.now - __logStart
-        autoLogger.emit(event: event)
+        autoLogger.emit(event: event, configuration: runtime.configuration)
         return result
       }
       """
@@ -155,7 +168,8 @@ struct LogMacroTests {
     } expansion: {
       """
       func deleteActiveLayout(collection: LayoutCollection) -> Bool {
-        let autoLogger: any AutoLogger = AutoLogSource.logger
+        let runtime = AutoLog.runtimeSnapshot()
+        let autoLogger: any AutoLogger = runtime.logger
         var event = AutoLogEvent(
           source: AutoLogSource.current,
 
@@ -166,11 +180,11 @@ struct LogMacroTests {
           ],
           tags: []
         )
-        autoLogger.emitStart(event: event)
+        autoLogger.emitStart(event: event, configuration: runtime.configuration)
         let __logStart = ContinuousClock.now
         func _deleteActiveLayout(collection: LayoutCollection) -> Bool {
           guard collection.layouts.count > 1 else {
-            AutoLogSource.emit(.warning, "[guard-failed] collection.layouts.count > 1")
+            event.earlyExit = AutoLogEarlyExit(kind: AutoLogEarlyExit.Kind.guard, intent: .unknown, condition: "collection.layouts.count > 1", message: nil)
             return false
           }
 
@@ -179,7 +193,7 @@ struct LogMacroTests {
         let result = _deleteActiveLayout(collection: collection)
         event.result = .success(result)
         event.duration = ContinuousClock.now - __logStart
-        autoLogger.emit(event: event)
+        autoLogger.emit(event: event, configuration: runtime.configuration)
         return result
       }
       """
@@ -202,7 +216,8 @@ struct LogMacroTests {
     } expansion: {
       """
       func refresh(sessionToken: String?) {
-        let autoLogger: any AutoLogger = AutoLogSource.logger
+        let runtime = AutoLog.runtimeSnapshot()
+        let autoLogger: any AutoLogger = runtime.logger
         var event = AutoLogEvent(
           source: AutoLogSource.current,
 
@@ -213,15 +228,214 @@ struct LogMacroTests {
           ],
           tags: []
         )
-        autoLogger.emitStart(event: event)
+        autoLogger.emitStart(event: event, configuration: runtime.configuration)
         let __logStart = ContinuousClock.now
-        guard let sessionToken else {
-          AutoLogSource.emit(.warning, "[guard-failed] let sessionToken")
-          return
+        func _refresh(sessionToken: String?) {
+          guard let sessionToken else {
+            event.earlyExit = AutoLogEarlyExit(kind: AutoLogEarlyExit.Kind.guard, intent: .unknown, condition: "let sessionToken", message: nil)
+            return
           }
-        print(sessionToken)
+
+          print(sessionToken)
+        }
+        let _ = _refresh(sessionToken: sessionToken)
         event.duration = ContinuousClock.now - __logStart
-        autoLogger.emit(event: event)
+        autoLogger.emit(event: event, configuration: runtime.configuration)
+      }
+      """
+    }
+  }
+
+  @Test
+  func boolFunction_logsIfBranchEarlyReturn() throws {
+    assertMacro {
+      #"""
+      @Log
+      func deleteActiveLayout(collection: LayoutCollection) -> Bool {
+        if collection.layouts.isEmpty {
+          return false
+        }
+
+        return true
+      }
+      """#
+    } expansion: {
+      """
+      func deleteActiveLayout(collection: LayoutCollection) -> Bool {
+        let runtime = AutoLog.runtimeSnapshot()
+        let autoLogger: any AutoLogger = runtime.logger
+        var event = AutoLogEvent(
+          source: AutoLogSource.current,
+
+          location: "TestModule/Test.swift:1:1",
+          declaration: "func deleteActiveLayout(collection: LayoutCollection) -> Bool",
+          parameters: [
+            "collection": collection
+          ],
+          tags: []
+        )
+        autoLogger.emitStart(event: event, configuration: runtime.configuration)
+        let __logStart = ContinuousClock.now
+        func _deleteActiveLayout(collection: LayoutCollection) -> Bool {
+          if collection.layouts.isEmpty {
+            event.earlyExit = AutoLogEarlyExit(kind: AutoLogEarlyExit.Kind.if, intent: .unknown, condition: "collection.layouts.isEmpty", message: nil)
+            return false
+          }
+
+          return true
+        }
+        let result = _deleteActiveLayout(collection: collection)
+        event.result = .success(result)
+        event.duration = ContinuousClock.now - __logStart
+        autoLogger.emit(event: event, configuration: runtime.configuration)
+        return result
+      }
+      """
+    }
+  }
+
+  @Test
+  func boolFunction_usesExplicitEarlyExitIntentAndMessage() throws {
+    assertMacro {
+      #"""
+      @Log
+      func cachedLookup(hit: Bool) -> Bool {
+        if hit {
+          AutoLog.earlyExit(.optimize, "cache hit")
+          return true
+        }
+
+        return false
+      }
+      """#
+    } expansion: {
+      """
+      func cachedLookup(hit: Bool) -> Bool {
+        let runtime = AutoLog.runtimeSnapshot()
+        let autoLogger: any AutoLogger = runtime.logger
+        var event = AutoLogEvent(
+          source: AutoLogSource.current,
+
+          location: "TestModule/Test.swift:1:1",
+          declaration: "func cachedLookup(hit: Bool) -> Bool",
+          parameters: [
+            "hit": hit
+          ],
+          tags: []
+        )
+        autoLogger.emitStart(event: event, configuration: runtime.configuration)
+        let __logStart = ContinuousClock.now
+        func _cachedLookup(hit: Bool) -> Bool {
+          if hit {
+            event.earlyExit = AutoLogEarlyExit(kind: AutoLogEarlyExit.Kind.if, intent: .optimize, condition: "hit", message: "cache hit")
+                return true
+          }
+
+          return false
+        }
+        let result = _cachedLookup(hit: hit)
+        event.result = .success(result)
+        event.duration = ContinuousClock.now - __logStart
+        autoLogger.emit(event: event, configuration: runtime.configuration)
+        return result
+      }
+      """
+    }
+  }
+
+  @Test
+  func boolFunction_usesExplicitEarlyExitIntentWithoutMessage() throws {
+    assertMacro {
+      #"""
+      @Log
+      func cachedLookup(hit: Bool) -> Bool {
+        if hit {
+          AutoLog.earlyExit(.optimize)
+          return true
+        }
+
+        return false
+      }
+      """#
+    } expansion: {
+      """
+      func cachedLookup(hit: Bool) -> Bool {
+        let runtime = AutoLog.runtimeSnapshot()
+        let autoLogger: any AutoLogger = runtime.logger
+        var event = AutoLogEvent(
+          source: AutoLogSource.current,
+
+          location: "TestModule/Test.swift:1:1",
+          declaration: "func cachedLookup(hit: Bool) -> Bool",
+          parameters: [
+            "hit": hit
+          ],
+          tags: []
+        )
+        autoLogger.emitStart(event: event, configuration: runtime.configuration)
+        let __logStart = ContinuousClock.now
+        func _cachedLookup(hit: Bool) -> Bool {
+          if hit {
+            event.earlyExit = AutoLogEarlyExit(kind: AutoLogEarlyExit.Kind.if, intent: .optimize, condition: "hit", message: nil)
+                return true
+          }
+
+          return false
+        }
+        let result = _cachedLookup(hit: hit)
+        event.result = .success(result)
+        event.duration = ContinuousClock.now - __logStart
+        autoLogger.emit(event: event, configuration: runtime.configuration)
+        return result
+      }
+      """
+    }
+  }
+
+  @Test
+  func boolFunction_usesExplicitEarlyExitDefaults() throws {
+    assertMacro {
+      #"""
+      @Log
+      func deleteActiveLayout(collection: LayoutCollection) -> Bool {
+        guard collection.layouts.count > 1 else {
+          AutoLog.earlyExit()
+          return false
+        }
+
+        return true
+      }
+      """#
+    } expansion: {
+      """
+      func deleteActiveLayout(collection: LayoutCollection) -> Bool {
+        let runtime = AutoLog.runtimeSnapshot()
+        let autoLogger: any AutoLogger = runtime.logger
+        var event = AutoLogEvent(
+          source: AutoLogSource.current,
+
+          location: "TestModule/Test.swift:1:1",
+          declaration: "func deleteActiveLayout(collection: LayoutCollection) -> Bool",
+          parameters: [
+            "collection": collection
+          ],
+          tags: []
+        )
+        autoLogger.emitStart(event: event, configuration: runtime.configuration)
+        let __logStart = ContinuousClock.now
+        func _deleteActiveLayout(collection: LayoutCollection) -> Bool {
+          guard collection.layouts.count > 1 else {
+            event.earlyExit = AutoLogEarlyExit(kind: AutoLogEarlyExit.Kind.guard, intent: .unknown, condition: "collection.layouts.count > 1", message: "unknown")
+                return false
+          }
+
+          return true
+        }
+        let result = _deleteActiveLayout(collection: collection)
+        event.result = .success(result)
+        event.duration = ContinuousClock.now - __logStart
+        autoLogger.emit(event: event, configuration: runtime.configuration)
+        return result
       }
       """
     }
@@ -239,6 +453,7 @@ struct LogMacroTests {
     } expansion: {
       #"""
       func foo(bar: String) -> String {
+        let runtime = AutoLog.runtimeSnapshot()
         let autoLogger: any AutoLogger = .foo
         var event = AutoLogEvent(
           level: .debug,
@@ -251,7 +466,7 @@ struct LogMacroTests {
           ],
           tags: []
         )
-        autoLogger.emitStart(event: event)
+        autoLogger.emitStart(event: event, configuration: runtime.configuration)
         let __logStart = ContinuousClock.now
         func _foo(bar: String) -> String {
           print("Foo: \(bar)")
@@ -259,7 +474,7 @@ struct LogMacroTests {
         let result = _foo(bar: bar)
         event.result = .success(result)
         event.duration = ContinuousClock.now - __logStart
-        autoLogger.emit(event: event)
+        autoLogger.emit(event: event, configuration: runtime.configuration)
         return result
       }
       """#
@@ -278,7 +493,8 @@ struct LogMacroTests {
     } expansion: {
       #"""
       func foo(bar: String) -> String {
-        let autoLogger: any AutoLogger = AutoLogSource.logger
+        let runtime = AutoLog.runtimeSnapshot()
+        let autoLogger: any AutoLogger = runtime.logger
         var event = AutoLogEvent(
           source: AutoLogSource.current,
 
@@ -289,7 +505,7 @@ struct LogMacroTests {
           ],
           tags: ["example"]
         )
-        autoLogger.emitStart(event: event)
+        autoLogger.emitStart(event: event, configuration: runtime.configuration)
         let __logStart = ContinuousClock.now
         func _foo(bar: String) -> String {
           return "Foo: \(bar)"
@@ -297,7 +513,7 @@ struct LogMacroTests {
         let result = _foo(bar: bar)
         event.result = .success(result)
         event.duration = ContinuousClock.now - __logStart
-        autoLogger.emit(event: event)
+        autoLogger.emit(event: event, configuration: runtime.configuration)
         return result
       }
       """#
@@ -316,7 +532,8 @@ struct LogMacroTests {
     } expansion: {
       #"""
       func foo(_ bar: String, baz biz: Int) -> (String, Int) {
-        let autoLogger: any AutoLogger = AutoLogSource.logger
+        let runtime = AutoLog.runtimeSnapshot()
+        let autoLogger: any AutoLogger = runtime.logger
         var event = AutoLogEvent(
           source: AutoLogSource.current,
 
@@ -328,7 +545,7 @@ struct LogMacroTests {
           ],
           tags: []
         )
-        autoLogger.emitStart(event: event)
+        autoLogger.emitStart(event: event, configuration: runtime.configuration)
         let __logStart = ContinuousClock.now
         func _foo(bar: String, biz: Int) -> (String, Int) {
           return ("Bar: \(bar)", biz * 2)
@@ -336,7 +553,7 @@ struct LogMacroTests {
         let result = _foo(bar: bar, biz: biz)
         event.result = .success(result)
         event.duration = ContinuousClock.now - __logStart
-        autoLogger.emit(event: event)
+        autoLogger.emit(event: event, configuration: runtime.configuration)
         return result
       }
       """#
@@ -357,7 +574,8 @@ struct LogMacroTests {
       """
       @Level(.debug)
       mutating func foo() {
-        let autoLogger: any AutoLogger = AutoLogSource.logger
+        let runtime = AutoLog.runtimeSnapshot()
+        let autoLogger: any AutoLogger = runtime.logger
         var event = AutoLogEvent(
           level: .debug,
           source: AutoLogSource.current,
@@ -367,11 +585,14 @@ struct LogMacroTests {
           parameters: [:],
           tags: []
         )
-        autoLogger.emitStart(event: event)
+        autoLogger.emitStart(event: event, configuration: runtime.configuration)
         let __logStart = ContinuousClock.now
-        self.counter += 1
+        func _foo() {
+          self.counter += 1
+        }
+        let _ = _foo()
         event.duration = ContinuousClock.now - __logStart
-        autoLogger.emit(event: event)
+        autoLogger.emit(event: event, configuration: runtime.configuration)
       }
       """
     }
@@ -389,7 +610,8 @@ struct LogMacroTests {
     } expansion: {
       """
       mutating func foo(bar: String) {
-        let autoLogger: any AutoLogger = AutoLogSource.logger
+        let runtime = AutoLog.runtimeSnapshot()
+        let autoLogger: any AutoLogger = runtime.logger
         var event = AutoLogEvent(
           level: .debug,
           source: AutoLogSource.current,
@@ -401,11 +623,14 @@ struct LogMacroTests {
           ],
           tags: [.common, "example"]
         )
-        autoLogger.emitStart(event: event)
+        autoLogger.emitStart(event: event, configuration: runtime.configuration)
         let __logStart = ContinuousClock.now
-        self.bar = bar
+        func _foo(bar: String) {
+          self.bar = bar
+        }
+        let _ = _foo(bar: bar)
         event.duration = ContinuousClock.now - __logStart
-        autoLogger.emit(event: event)
+        autoLogger.emit(event: event, configuration: runtime.configuration)
       }
       """
     }
@@ -427,7 +652,8 @@ struct LogMacroTests {
     } expansion: {
       """
       mutating func foo() throws {
-        let autoLogger: any AutoLogger = AutoLogSource.logger
+        let runtime = AutoLog.runtimeSnapshot()
+        let autoLogger: any AutoLogger = runtime.logger
         var event = AutoLogEvent(
           source: AutoLogSource.current,
 
@@ -436,10 +662,11 @@ struct LogMacroTests {
           parameters: [:],
           tags: []
         )
-        autoLogger.emitStart(event: event)
+        autoLogger.emitStart(event: event, configuration: runtime.configuration)
         let __logStart = ContinuousClock.now
         func _foo() throws {
           if self.counter == 0 {
+            event.earlyExit = AutoLogEarlyExit(kind: AutoLogEarlyExit.Kind.if, intent: .unknown, condition: "self.counter == 0", message: nil)
             throw NSError(domain: com.foo.test, code: .zero)
           } else {
             self.counter -= 1
@@ -448,11 +675,11 @@ struct LogMacroTests {
         do {
           let _ = try _foo()
           event.duration = ContinuousClock.now - __logStart
-          autoLogger.emit(event: event)
+          autoLogger.emit(event: event, configuration: runtime.configuration)
         } catch {
           event.result = .failure(error)
           event.duration = ContinuousClock.now - __logStart
-          autoLogger.emit(event: event)
+          autoLogger.emit(event: event, configuration: runtime.configuration)
           throw error
         }
       }
@@ -476,7 +703,8 @@ struct LogMacroTests {
       @Level(.error)
       @Tag("example")
       func foo() throws {
-        let autoLogger: any AutoLogger = AutoLogSource.logger
+        let runtime = AutoLog.runtimeSnapshot()
+        let autoLogger: any AutoLogger = runtime.logger
         var event = AutoLogEvent(
           level: .error,
           source: AutoLogSource.current,
@@ -486,7 +714,7 @@ struct LogMacroTests {
           parameters: [:],
           tags: ["example"]
         )
-        autoLogger.emitStart(event: event)
+        autoLogger.emitStart(event: event, configuration: runtime.configuration)
         let __logStart = ContinuousClock.now
         func _foo() throws {
           throw NSError()
@@ -494,11 +722,11 @@ struct LogMacroTests {
         do {
           let _ = try _foo()
           event.duration = ContinuousClock.now - __logStart
-          autoLogger.emit(event: event)
+          autoLogger.emit(event: event, configuration: runtime.configuration)
         } catch {
           event.result = .failure(error)
           event.duration = ContinuousClock.now - __logStart
-          autoLogger.emit(event: event)
+          autoLogger.emit(event: event, configuration: runtime.configuration)
           throw error
         }
       }
@@ -522,7 +750,8 @@ struct LogMacroTests {
     } expansion: {
       """
       func foo() throws -> Int {
-        let autoLogger: any AutoLogger = AutoLogSource.logger
+        let runtime = AutoLog.runtimeSnapshot()
+        let autoLogger: any AutoLogger = runtime.logger
         var event = AutoLogEvent(
           source: AutoLogSource.current,
 
@@ -531,12 +760,14 @@ struct LogMacroTests {
           parameters: [:],
           tags: []
         )
-        autoLogger.emitStart(event: event)
+        autoLogger.emitStart(event: event, configuration: runtime.configuration)
         let __logStart = ContinuousClock.now
         func _foo() throws -> Int {
           if Bool.random() {
+            event.earlyExit = AutoLogEarlyExit(kind: AutoLogEarlyExit.Kind.if, intent: .unknown, condition: "Bool.random()", message: nil)
             throw NSError(domain: com.foo.test, code: .zero)
           } else {
+            event.earlyExit = AutoLogEarlyExit(kind: AutoLogEarlyExit.Kind.else, intent: .unknown, condition: "Bool.random()", message: nil)
             return .zero
           }
         }
@@ -544,12 +775,12 @@ struct LogMacroTests {
           let result = try _foo()
           event.result = .success(result)
           event.duration = ContinuousClock.now - __logStart
-          autoLogger.emit(event: event)
+          autoLogger.emit(event: event, configuration: runtime.configuration)
           return result
         } catch {
           event.result = .failure(error)
           event.duration = ContinuousClock.now - __logStart
-          autoLogger.emit(event: event)
+          autoLogger.emit(event: event, configuration: runtime.configuration)
           throw error
         }
       }
@@ -576,7 +807,8 @@ struct LogMacroTests {
       """
       @Omit("value")
       func foo(_ value: Int) throws {
-        let autoLogger: any AutoLogger = AutoLogSource.logger
+        let runtime = AutoLog.runtimeSnapshot()
+        let autoLogger: any AutoLogger = runtime.logger
         var event = AutoLogEvent(
           source: AutoLogSource.current,
 
@@ -587,11 +819,12 @@ struct LogMacroTests {
           ],
           tags: []
         )
-        autoLogger.emitStart(event: event)
+        autoLogger.emitStart(event: event, configuration: runtime.configuration)
         let __logStart = ContinuousClock.now
         func _foo(value: Int) throws {
           if Bool.random() {
             print("true")
+            event.earlyExit = AutoLogEarlyExit(kind: AutoLogEarlyExit.Kind.if, intent: .unknown, condition: "Bool.random()", message: nil)
             throw NSError(domain: com.foo.test, code: .zero)
           } else {
             print("false")
@@ -600,11 +833,11 @@ struct LogMacroTests {
         do {
           let _ = try _foo(value: value)
           event.duration = ContinuousClock.now - __logStart
-          autoLogger.emit(event: event)
+          autoLogger.emit(event: event, configuration: runtime.configuration)
         } catch {
           event.result = .failure(error)
           event.duration = ContinuousClock.now - __logStart
-          autoLogger.emit(event: event)
+          autoLogger.emit(event: event, configuration: runtime.configuration)
           throw error
         }
       }
@@ -628,7 +861,8 @@ struct LogMacroTests {
     } expansion: {
       #"""
       func foo(_ value: Int, content: String) throws -> (Int, String) {
-        let autoLogger: any AutoLogger = AutoLogSource.logger
+        let runtime = AutoLog.runtimeSnapshot()
+        let autoLogger: any AutoLogger = runtime.logger
         var event = AutoLogEvent(
           source: AutoLogSource.current,
 
@@ -636,12 +870,14 @@ struct LogMacroTests {
           declaration: "func foo(_ value: Int, content: String) throws -> (Int, String)",
           tags: []
         )
-        autoLogger.emitStart(event: event)
+        autoLogger.emitStart(event: event, configuration: runtime.configuration)
         let __logStart = ContinuousClock.now
         func _foo(value: Int, content: String) throws -> (Int, String) {
           if Bool.random() {
+            event.earlyExit = AutoLogEarlyExit(kind: AutoLogEarlyExit.Kind.if, intent: .unknown, condition: "Bool.random()", message: nil)
             throw NSError(domain: com.foo.test, code: .zero)
           } else {
+            event.earlyExit = AutoLogEarlyExit(kind: AutoLogEarlyExit.Kind.else, intent: .unknown, condition: "Bool.random()", message: nil)
             return (value, "\(content): \(value)")
           }
         }
@@ -649,12 +885,12 @@ struct LogMacroTests {
           let result = try _foo(value: value, content: content)
           event.result = .success(result)
           event.duration = ContinuousClock.now - __logStart
-          autoLogger.emit(event: event)
+          autoLogger.emit(event: event, configuration: runtime.configuration)
           return result
         } catch {
           event.result = .failure(error)
           event.duration = ContinuousClock.now - __logStart
-          autoLogger.emit(event: event)
+          autoLogger.emit(event: event, configuration: runtime.configuration)
           throw error
         }
       }
@@ -676,7 +912,8 @@ struct LogMacroTests {
       """
       @Tag("example")
       func foo() async throws {
-        let autoLogger: any AutoLogger = AutoLogSource.logger
+        let runtime = AutoLog.runtimeSnapshot()
+        let autoLogger: any AutoLogger = runtime.logger
         var event = AutoLogEvent(
           level: "fault",
           source: AutoLogSource.current,
@@ -686,7 +923,7 @@ struct LogMacroTests {
           parameters: [:],
           tags: ["example"]
         )
-        autoLogger.emitStart(event: event)
+        autoLogger.emitStart(event: event, configuration: runtime.configuration)
         let __logStart = ContinuousClock.now
         func _foo() async throws {
           try await Task.sleep(nanoseconds: 100_000_000)
@@ -694,11 +931,11 @@ struct LogMacroTests {
         do {
           let _ = try await _foo()
           event.duration = ContinuousClock.now - __logStart
-          autoLogger.emit(event: event)
+          autoLogger.emit(event: event, configuration: runtime.configuration)
         } catch {
           event.result = .failure(error)
           event.duration = ContinuousClock.now - __logStart
-          autoLogger.emit(event: event)
+          autoLogger.emit(event: event, configuration: runtime.configuration)
           throw error
         }
       }
@@ -718,7 +955,8 @@ struct LogMacroTests {
     } expansion: {
       """
       func performTask(completion: @escaping () -> Void) {
-        let autoLogger: any AutoLogger = AutoLogSource.logger
+        let runtime = AutoLog.runtimeSnapshot()
+        let autoLogger: any AutoLogger = runtime.logger
         var event = AutoLogEvent(
           source: AutoLogSource.current,
 
@@ -729,11 +967,14 @@ struct LogMacroTests {
           ],
           tags: []
         )
-        autoLogger.emitStart(event: event)
+        autoLogger.emitStart(event: event, configuration: runtime.configuration)
         let __logStart = ContinuousClock.now
-        completion()
+        func _performTask(completion: @escaping () -> Void) {
+          completion()
+        }
+        let _ = _performTask(completion: completion)
         event.duration = ContinuousClock.now - __logStart
-        autoLogger.emit(event: event)
+        autoLogger.emit(event: event, configuration: runtime.configuration)
       }
       """
     }
@@ -753,7 +994,8 @@ struct LogMacroTests {
       """
       @Level(.info)
       func check(condition: @autoclosure () -> Bool) -> Bool {
-        let autoLogger: any AutoLogger = AutoLogSource.logger
+        let runtime = AutoLog.runtimeSnapshot()
+        let autoLogger: any AutoLogger = runtime.logger
         var event = AutoLogEvent(
           level: .info,
           source: AutoLogSource.current,
@@ -765,14 +1007,14 @@ struct LogMacroTests {
           ],
           tags: []
         )
-        autoLogger.emitStart(event: event)
+        autoLogger.emitStart(event: event, configuration: runtime.configuration)
         let __logStart = ContinuousClock.now
         func _check(condition: @autoclosure () -> Bool) -> Bool {
           return condition()
         }
         let result = _check(condition: condition())
         event.duration = ContinuousClock.now - __logStart
-        autoLogger.emit(event: event)
+        autoLogger.emit(event: event, configuration: runtime.configuration)
         return result
       }
       """
@@ -791,7 +1033,8 @@ struct LogMacroTests {
     } expansion: {
       """
       func update(value: inout Int, with newValue: Int) {
-        let autoLogger: any AutoLogger = AutoLogSource.logger
+        let runtime = AutoLog.runtimeSnapshot()
+        let autoLogger: any AutoLogger = runtime.logger
         var event = AutoLogEvent(
           source: AutoLogSource.current,
 
@@ -803,11 +1046,14 @@ struct LogMacroTests {
           ],
           tags: []
         )
-        autoLogger.emitStart(event: event)
+        autoLogger.emitStart(event: event, configuration: runtime.configuration)
         let __logStart = ContinuousClock.now
-        value = newValue
+        func _update(value: inout Int, newValue: Int) {
+          value = newValue
+        }
+        let _ = _update(value: &value, newValue: newValue)
         event.duration = ContinuousClock.now - __logStart
-        autoLogger.emit(event: event)
+        autoLogger.emit(event: event, configuration: runtime.configuration)
       }
       """
     }
@@ -827,7 +1073,8 @@ struct LogMacroTests {
       #"""
       @Omit(.result)
       static func staticMethod(info: String) -> String {
-        let autoLogger: any AutoLogger = AutoLogSource.logger
+        let runtime = AutoLog.runtimeSnapshot()
+        let autoLogger: any AutoLogger = runtime.logger
         var event = AutoLogEvent(
           source: AutoLogSource.current,
 
@@ -838,14 +1085,14 @@ struct LogMacroTests {
           ],
           tags: []
         )
-        autoLogger.emitStart(event: event)
+        autoLogger.emitStart(event: event, configuration: runtime.configuration)
         let __logStart = ContinuousClock.now
         func _staticMethod(info: String) -> String {
           return "Static: \(info)"
         }
         let result = _staticMethod(info: info)
         event.duration = ContinuousClock.now - __logStart
-        autoLogger.emit(event: event)
+        autoLogger.emit(event: event, configuration: runtime.configuration)
         return result
       }
       """#
@@ -866,7 +1113,8 @@ struct LogMacroTests {
       """
       @Omit("operation")
       func execute(operation: () throws -> Void) rethrows {
-        let autoLogger: any AutoLogger = AutoLogSource.logger
+        let runtime = AutoLog.runtimeSnapshot()
+        let autoLogger: any AutoLogger = runtime.logger
         var event = AutoLogEvent(
           source: AutoLogSource.current,
 
@@ -877,7 +1125,7 @@ struct LogMacroTests {
           ],
           tags: []
         )
-        autoLogger.emitStart(event: event)
+        autoLogger.emitStart(event: event, configuration: runtime.configuration)
         let __logStart = ContinuousClock.now
         func _execute(operation: () throws -> Void) rethrows {
           try operation()
@@ -885,11 +1133,11 @@ struct LogMacroTests {
         do {
           let _ = try _execute(operation: operation)
           event.duration = ContinuousClock.now - __logStart
-          autoLogger.emit(event: event)
+          autoLogger.emit(event: event, configuration: runtime.configuration)
         } catch {
           event.result = .failure(error)
           event.duration = ContinuousClock.now - __logStart
-          autoLogger.emit(event: event)
+          autoLogger.emit(event: event, configuration: runtime.configuration)
           throw error
         }
       }
@@ -909,6 +1157,7 @@ struct LogMacroTests {
     } expansion: {
       """
       func transform(value: Int, using transform: (Int) -> String) -> String {
+        let runtime = AutoLog.runtimeSnapshot()
         let autoLogger: any AutoLogger = .custom
         var event = AutoLogEvent(
           level: .debug,
@@ -918,14 +1167,14 @@ struct LogMacroTests {
           declaration: "func transform(value: Int, using transform: (Int) -> String) -> String",
           tags: [.commonTag, "example"]
         )
-        autoLogger.emitStart(event: event)
+        autoLogger.emitStart(event: event, configuration: runtime.configuration)
         let __logStart = ContinuousClock.now
         func _transform(value: Int, transform: (Int) -> String) -> String {
           return transform(value)
         }
         let result = _transform(value: value, transform: transform)
         event.duration = ContinuousClock.now - __logStart
-        autoLogger.emit(event: event)
+        autoLogger.emit(event: event, configuration: runtime.configuration)
         return result
       }
       """
@@ -952,7 +1201,7 @@ struct LogMacroTests {
 //      @Tag(.commonTag)
 //      @Level(.info)
 //      func identity<T>(_ value: T) -> T {
-//        let autoLogger: any AutoLogger = AutoLogSource.logger
+//        let autoLogger: any AutoLogger = runtime.logger
 //        var event = AutoLogEvent(
 //          level: "level_info",
 //          location: "TestModule/Test.swift:5:1",
@@ -967,7 +1216,7 @@ struct LogMacroTests {
 //        }
 //        let result = _identity(value: value)
 //        event.duration = ContinuousClock.now - __logStart
-//        autoLogger.emit(event: event)
+//        autoLogger.emit(event: event, configuration: runtime.configuration)
 //        return result
 //      }
 //      """
@@ -988,7 +1237,8 @@ struct LogMacroTests {
       """
       @Tag(.example, "example")
       func combine<T, U>(first: T, second: U) -> (T, U) where T: CustomStringConvertible, U: CustomStringConvertible {
-        let autoLogger: any AutoLogger = AutoLogSource.logger
+        let runtime = AutoLog.runtimeSnapshot()
+        let autoLogger: any AutoLogger = runtime.logger
         var event = AutoLogEvent(
           source: AutoLogSource.current,
 
@@ -1000,7 +1250,7 @@ struct LogMacroTests {
           ],
           tags: [.example, "example"]
         )
-        autoLogger.emitStart(event: event)
+        autoLogger.emitStart(event: event, configuration: runtime.configuration)
         let __logStart = ContinuousClock.now
         func _combine(first: T, second: U) -> (T, U) {
           return (first, second)
@@ -1008,7 +1258,7 @@ struct LogMacroTests {
         let result = _combine(first: first, second: second)
         event.result = .success(result)
         event.duration = ContinuousClock.now - __logStart
-        autoLogger.emit(event: event)
+        autoLogger.emit(event: event, configuration: runtime.configuration)
         return result
       }
       """
@@ -1027,7 +1277,8 @@ struct LogMacroTests {
     } expansion: {
       #"""
       func greet(name: String = "Guest") -> String {
-        let autoLogger: any AutoLogger = AutoLogSource.logger
+        let runtime = AutoLog.runtimeSnapshot()
+        let autoLogger: any AutoLogger = runtime.logger
         var event = AutoLogEvent(
           source: AutoLogSource.current,
 
@@ -1038,7 +1289,7 @@ struct LogMacroTests {
           ],
           tags: []
         )
-        autoLogger.emitStart(event: event)
+        autoLogger.emitStart(event: event, configuration: runtime.configuration)
         let __logStart = ContinuousClock.now
         func _greet(name: String) -> String {
           return "Hello, \(name)!"
@@ -1046,7 +1297,7 @@ struct LogMacroTests {
         let result = _greet(name: name)
         event.result = .success(result)
         event.duration = ContinuousClock.now - __logStart
-        autoLogger.emit(event: event)
+        autoLogger.emit(event: event, configuration: runtime.configuration)
         return result
       }
       """#
@@ -1065,7 +1316,8 @@ struct LogMacroTests {
     } expansion: {
       """
       func sum(numbers: Int...) -> Int {
-        let autoLogger: any AutoLogger = AutoLogSource.logger
+        let runtime = AutoLog.runtimeSnapshot()
+        let autoLogger: any AutoLogger = runtime.logger
         var event = AutoLogEvent(
           source: AutoLogSource.current,
 
@@ -1076,7 +1328,7 @@ struct LogMacroTests {
           ],
           tags: []
         )
-        autoLogger.emitStart(event: event)
+        autoLogger.emitStart(event: event, configuration: runtime.configuration)
         let __logStart = ContinuousClock.now
         func _sum(numbers: Int...) -> Int {
           return numbers.reduce(0, +)
@@ -1084,7 +1336,7 @@ struct LogMacroTests {
         let result = _sum(numbers: numbers)
         event.result = .success(result)
         event.duration = ContinuousClock.now - __logStart
-        autoLogger.emit(event: event)
+        autoLogger.emit(event: event, configuration: runtime.configuration)
         return result
       }
       """
@@ -1107,7 +1359,8 @@ struct LogMacroTests {
       @Omit(.result)
       @discardableResult
       func compute(value: Int) -> Int {
-        let autoLogger: any AutoLogger = AutoLogSource.logger
+        let runtime = AutoLog.runtimeSnapshot()
+        let autoLogger: any AutoLogger = runtime.logger
         var event = AutoLogEvent(
           source: AutoLogSource.current,
 
@@ -1118,14 +1371,14 @@ struct LogMacroTests {
           ],
           tags: []
         )
-        autoLogger.emitStart(event: event)
+        autoLogger.emitStart(event: event, configuration: runtime.configuration)
         let __logStart = ContinuousClock.now
         func _compute(value: Int) -> Int {
           return value * value
         }
         let result = _compute(value: value)
         event.duration = ContinuousClock.now - __logStart
-        autoLogger.emit(event: event)
+        autoLogger.emit(event: event, configuration: runtime.configuration)
         return result
       }
       """
@@ -1144,7 +1397,8 @@ struct LogMacroTests {
     } expansion: {
       """
       func makeIncrementer() -> (Int) -> Int {
-        let autoLogger: any AutoLogger = AutoLogSource.logger
+        let runtime = AutoLog.runtimeSnapshot()
+        let autoLogger: any AutoLogger = runtime.logger
         var event = AutoLogEvent(
           source: AutoLogSource.current,
 
@@ -1153,7 +1407,7 @@ struct LogMacroTests {
           parameters: [:],
           tags: []
         )
-        autoLogger.emitStart(event: event)
+        autoLogger.emitStart(event: event, configuration: runtime.configuration)
         let __logStart = ContinuousClock.now
         func _makeIncrementer() -> (Int) -> Int {
           return {
@@ -1163,7 +1417,7 @@ struct LogMacroTests {
         let result = _makeIncrementer()
         event.result = .success(result)
         event.duration = ContinuousClock.now - __logStart
-        autoLogger.emit(event: event)
+        autoLogger.emit(event: event, configuration: runtime.configuration)
         return result
       }
       """
@@ -1185,7 +1439,8 @@ struct LogMacroTests {
     } expansion: {
       """
       func fetchData(completion: @escaping () async -> String) {
-        let autoLogger: any AutoLogger = AutoLogSource.logger
+        let runtime = AutoLog.runtimeSnapshot()
+        let autoLogger: any AutoLogger = runtime.logger
         var event = AutoLogEvent(
           source: AutoLogSource.current,
 
@@ -1196,14 +1451,17 @@ struct LogMacroTests {
           ],
           tags: []
         )
-        autoLogger.emitStart(event: event)
+        autoLogger.emitStart(event: event, configuration: runtime.configuration)
         let __logStart = ContinuousClock.now
-        Task {
+        func _fetchData(completion: @escaping () async -> String) {
+          Task {
             let data = await completion()
             print(data)
           }
+        }
+        let _ = _fetchData(completion: completion)
         event.duration = ContinuousClock.now - __logStart
-        autoLogger.emit(event: event)
+        autoLogger.emit(event: event, configuration: runtime.configuration)
       }
       """
     }
@@ -1223,7 +1481,8 @@ struct LogMacroTests {
       """
       @MainActor
       func updateUI(message: String) {
-        let autoLogger: any AutoLogger = AutoLogSource.logger
+        let runtime = AutoLog.runtimeSnapshot()
+        let autoLogger: any AutoLogger = runtime.logger
         var event = AutoLogEvent(
           source: AutoLogSource.current,
 
@@ -1234,11 +1493,14 @@ struct LogMacroTests {
           ],
           tags: []
         )
-        autoLogger.emitStart(event: event)
+        autoLogger.emitStart(event: event, configuration: runtime.configuration)
         let __logStart = ContinuousClock.now
-        print(message)
+        func _updateUI(message: String) {
+          print(message)
+        }
+        let _ = _updateUI(message: message)
         event.duration = ContinuousClock.now - __logStart
-        autoLogger.emit(event: event)
+        autoLogger.emit(event: event, configuration: runtime.configuration)
       }
       """
     }
@@ -1256,7 +1518,8 @@ struct LogMacroTests {
     } expansion: {
       """
       func process<T: Equatable, U: Numeric>(first: T, second: U) -> Bool {
-        let autoLogger: any AutoLogger = AutoLogSource.logger
+        let runtime = AutoLog.runtimeSnapshot()
+        let autoLogger: any AutoLogger = runtime.logger
         var event = AutoLogEvent(
           source: AutoLogSource.current,
 
@@ -1268,7 +1531,7 @@ struct LogMacroTests {
           ],
           tags: []
         )
-        autoLogger.emitStart(event: event)
+        autoLogger.emitStart(event: event, configuration: runtime.configuration)
         let __logStart = ContinuousClock.now
         func _process(first: T, second: U) -> Bool {
           return true
@@ -1276,7 +1539,7 @@ struct LogMacroTests {
         let result = _process(first: first, second: second)
         event.result = .success(result)
         event.duration = ContinuousClock.now - __logStart
-        autoLogger.emit(event: event)
+        autoLogger.emit(event: event, configuration: runtime.configuration)
         return result
       }
       """
@@ -1297,7 +1560,8 @@ struct LogMacroTests {
       """
       @objc
       func performAction() {
-        let autoLogger: any AutoLogger = AutoLogSource.logger
+        let runtime = AutoLog.runtimeSnapshot()
+        let autoLogger: any AutoLogger = runtime.logger
         var event = AutoLogEvent(
           source: AutoLogSource.current,
 
@@ -1306,11 +1570,14 @@ struct LogMacroTests {
           parameters: [:],
           tags: []
         )
-        autoLogger.emitStart(event: event)
+        autoLogger.emitStart(event: event, configuration: runtime.configuration)
         let __logStart = ContinuousClock.now
-        print("Action performed")
+        func _performAction() {
+          print("Action performed")
+        }
+        let _ = _performAction()
         event.duration = ContinuousClock.now - __logStart
-        autoLogger.emit(event: event)
+        autoLogger.emit(event: event, configuration: runtime.configuration)
       }
       """
     }
@@ -1328,7 +1595,8 @@ struct LogMacroTests {
     } expansion: {
       """
       func getOptionalValue() -> Int? {
-        let autoLogger: any AutoLogger = AutoLogSource.logger
+        let runtime = AutoLog.runtimeSnapshot()
+        let autoLogger: any AutoLogger = runtime.logger
         var event = AutoLogEvent(
           source: AutoLogSource.current,
 
@@ -1337,7 +1605,7 @@ struct LogMacroTests {
           parameters: [:],
           tags: []
         )
-        autoLogger.emitStart(event: event)
+        autoLogger.emitStart(event: event, configuration: runtime.configuration)
         let __logStart = ContinuousClock.now
         func _getOptionalValue() -> Int? {
           return nil
@@ -1345,7 +1613,7 @@ struct LogMacroTests {
         let result = _getOptionalValue()
         event.result = .success(result)
         event.duration = ContinuousClock.now - __logStart
-        autoLogger.emit(event: event)
+        autoLogger.emit(event: event, configuration: runtime.configuration)
         return result
       }
       """
@@ -1365,7 +1633,8 @@ struct LogMacroTests {
     } expansion: {
       """
       func performAsyncTask(completion: @escaping () async throws -> String) async throws -> String {
-        let autoLogger: any AutoLogger = AutoLogSource.logger
+        let runtime = AutoLog.runtimeSnapshot()
+        let autoLogger: any AutoLogger = runtime.logger
         var event = AutoLogEvent(
           source: AutoLogSource.current,
 
@@ -1376,7 +1645,7 @@ struct LogMacroTests {
           ],
           tags: []
         )
-        autoLogger.emitStart(event: event)
+        autoLogger.emitStart(event: event, configuration: runtime.configuration)
         let __logStart = ContinuousClock.now
         func _performAsyncTask(completion: @escaping () async throws -> String) async throws -> String {
           return try await completion()
@@ -1385,12 +1654,12 @@ struct LogMacroTests {
           let result = try await _performAsyncTask(completion: completion)
           event.result = .success(result)
           event.duration = ContinuousClock.now - __logStart
-          autoLogger.emit(event: event)
+          autoLogger.emit(event: event, configuration: runtime.configuration)
           return result
         } catch {
           event.result = .failure(error)
           event.duration = ContinuousClock.now - __logStart
-          autoLogger.emit(event: event)
+          autoLogger.emit(event: event, configuration: runtime.configuration)
           throw error
         }
       }
@@ -1410,7 +1679,8 @@ struct LogMacroTests {
     } expansion: {
       """
       override func description() -> String {
-        let autoLogger: any AutoLogger = AutoLogSource.logger
+        let runtime = AutoLog.runtimeSnapshot()
+        let autoLogger: any AutoLogger = runtime.logger
         var event = AutoLogEvent(
           source: AutoLogSource.current,
 
@@ -1419,7 +1689,7 @@ struct LogMacroTests {
           parameters: [:],
           tags: []
         )
-        autoLogger.emitStart(event: event)
+        autoLogger.emitStart(event: event, configuration: runtime.configuration)
         let __logStart = ContinuousClock.now
         func _description() -> String {
           return "Override"
@@ -1427,7 +1697,7 @@ struct LogMacroTests {
         let result = _description()
         event.result = .success(result)
         event.duration = ContinuousClock.now - __logStart
-        autoLogger.emit(event: event)
+        autoLogger.emit(event: event, configuration: runtime.configuration)
         return result
       }
       """
@@ -1446,7 +1716,8 @@ struct LogMacroTests {
     } expansion: {
       """
       func updateScore(score: inout Int, increment: Int = 1) {
-        let autoLogger: any AutoLogger = AutoLogSource.logger
+        let runtime = AutoLog.runtimeSnapshot()
+        let autoLogger: any AutoLogger = runtime.logger
         var event = AutoLogEvent(
           source: AutoLogSource.current,
 
@@ -1458,11 +1729,14 @@ struct LogMacroTests {
           ],
           tags: []
         )
-        autoLogger.emitStart(event: event)
+        autoLogger.emitStart(event: event, configuration: runtime.configuration)
         let __logStart = ContinuousClock.now
-        score += increment
+        func _updateScore(score: inout Int, increment: Int) {
+          score += increment
+        }
+        let _ = _updateScore(score: &score, increment: increment)
         event.duration = ContinuousClock.now - __logStart
-        autoLogger.emit(event: event)
+        autoLogger.emit(event: event, configuration: runtime.configuration)
       }
       """
     }
@@ -1480,7 +1754,8 @@ struct LogMacroTests {
     } expansion: {
       """
       func optionalTest(value: String?) -> String {
-        let autoLogger: any AutoLogger = AutoLogSource.logger
+        let runtime = AutoLog.runtimeSnapshot()
+        let autoLogger: any AutoLogger = runtime.logger
         var event = AutoLogEvent(
           source: AutoLogSource.current,
 
@@ -1491,7 +1766,7 @@ struct LogMacroTests {
           ],
           tags: []
         )
-        autoLogger.emitStart(event: event)
+        autoLogger.emitStart(event: event, configuration: runtime.configuration)
         let __logStart = ContinuousClock.now
         func _optionalTest(value: String?) -> String {
           return value ?? "Default"
@@ -1499,7 +1774,7 @@ struct LogMacroTests {
         let result = _optionalTest(value: value)
         event.result = .success(result)
         event.duration = ContinuousClock.now - __logStart
-        autoLogger.emit(event: event)
+        autoLogger.emit(event: event, configuration: runtime.configuration)
         return result
       }
       """
@@ -1523,7 +1798,8 @@ struct LogMacroTests {
       @Omit("second")
       func merge<T, U>(_ first: [T], with second: [U]) -> [(T, U)]
         where T: Comparable, U: Comparable{
-        let autoLogger: any AutoLogger = AutoLogSource.logger
+        let runtime = AutoLog.runtimeSnapshot()
+        let autoLogger: any AutoLogger = runtime.logger
         var event = AutoLogEvent(
           source: AutoLogSource.current,
 
@@ -1535,7 +1811,7 @@ struct LogMacroTests {
           ],
           tags: []
         )
-        autoLogger.emitStart(event: event)
+        autoLogger.emitStart(event: event, configuration: runtime.configuration)
         let __logStart = ContinuousClock.now
         func _merge(first: [T], second: [U]) -> [(T, U)]
         {
@@ -1544,7 +1820,7 @@ struct LogMacroTests {
         let result = _merge(first: first, second: second)
         event.result = .success(result)
         event.duration = ContinuousClock.now - __logStart
-        autoLogger.emit(event: event)
+        autoLogger.emit(event: event, configuration: runtime.configuration)
         return result
       }
       """#
@@ -1563,7 +1839,8 @@ struct LogMacroTests {
     } expansion: {
       """
       func perform(action: (() -> Void)? = nil) {
-        let autoLogger: any AutoLogger = AutoLogSource.logger
+        let runtime = AutoLog.runtimeSnapshot()
+        let autoLogger: any AutoLogger = runtime.logger
         var event = AutoLogEvent(
           source: AutoLogSource.current,
 
@@ -1574,11 +1851,14 @@ struct LogMacroTests {
           ],
           tags: []
         )
-        autoLogger.emitStart(event: event)
+        autoLogger.emitStart(event: event, configuration: runtime.configuration)
         let __logStart = ContinuousClock.now
-        action?()
+        func _perform(action: (() -> Void)?) {
+          action?()
+        }
+        let _ = _perform(action: action)
         event.duration = ContinuousClock.now - __logStart
-        autoLogger.emit(event: event)
+        autoLogger.emit(event: event, configuration: runtime.configuration)
       }
       """
     }
@@ -1598,7 +1878,8 @@ struct LogMacroTests {
       """
       @discardableResult
       static func create<T>(value: T) -> [T] {
-        let autoLogger: any AutoLogger = AutoLogSource.logger
+        let runtime = AutoLog.runtimeSnapshot()
+        let autoLogger: any AutoLogger = runtime.logger
         var event = AutoLogEvent(
           source: AutoLogSource.current,
 
@@ -1609,7 +1890,7 @@ struct LogMacroTests {
           ],
           tags: []
         )
-        autoLogger.emitStart(event: event)
+        autoLogger.emitStart(event: event, configuration: runtime.configuration)
         let __logStart = ContinuousClock.now
         func _create(value: T) -> [T] {
           return [value]
@@ -1617,7 +1898,7 @@ struct LogMacroTests {
         let result = _create(value: value)
         event.result = .success(result)
         event.duration = ContinuousClock.now - __logStart
-        autoLogger.emit(event: event)
+        autoLogger.emit(event: event, configuration: runtime.configuration)
         return result
       }
       """
@@ -1636,7 +1917,8 @@ struct LogMacroTests {
     } expansion: {
       #"""
       func process(pair: (Int, String)) -> String {
-        let autoLogger: any AutoLogger = AutoLogSource.logger
+        let runtime = AutoLog.runtimeSnapshot()
+        let autoLogger: any AutoLogger = runtime.logger
         var event = AutoLogEvent(
           source: AutoLogSource.current,
 
@@ -1647,7 +1929,7 @@ struct LogMacroTests {
           ],
           tags: []
         )
-        autoLogger.emitStart(event: event)
+        autoLogger.emitStart(event: event, configuration: runtime.configuration)
         let __logStart = ContinuousClock.now
         func _process(pair: (Int, String)) -> String {
           return "\(pair.0) - \(pair.1)"
@@ -1655,7 +1937,7 @@ struct LogMacroTests {
         let result = _process(pair: pair)
         event.result = .success(result)
         event.duration = ContinuousClock.now - __logStart
-        autoLogger.emit(event: event)
+        autoLogger.emit(event: event, configuration: runtime.configuration)
         return result
       }
       """#
@@ -1674,7 +1956,8 @@ struct LogMacroTests {
     } expansion: {
       """
       func filterElements<T>(elements: [T], using predicate: (T) -> Bool) -> [T] {
-        let autoLogger: any AutoLogger = AutoLogSource.logger
+        let runtime = AutoLog.runtimeSnapshot()
+        let autoLogger: any AutoLogger = runtime.logger
         var event = AutoLogEvent(
           source: AutoLogSource.current,
 
@@ -1686,7 +1969,7 @@ struct LogMacroTests {
           ],
           tags: []
         )
-        autoLogger.emitStart(event: event)
+        autoLogger.emitStart(event: event, configuration: runtime.configuration)
         let __logStart = ContinuousClock.now
         func _filterElements(elements: [T], predicate: (T) -> Bool) -> [T] {
           return elements.filter(predicate)
@@ -1694,7 +1977,7 @@ struct LogMacroTests {
         let result = _filterElements(elements: elements, predicate: predicate)
         event.result = .success(result)
         event.duration = ContinuousClock.now - __logStart
-        autoLogger.emit(event: event)
+        autoLogger.emit(event: event, configuration: runtime.configuration)
         return result
       }
       """
@@ -1714,7 +1997,8 @@ struct LogMacroTests {
     } expansion: {
       """
       func filterElements<T>(elements: [T], using predicate: (T) -> Bool) -> [T] {
-        let autoLogger: any AutoLogger = AutoLogSource.logger
+        let runtime = AutoLog.runtimeSnapshot()
+        let autoLogger: any AutoLogger = runtime.logger
         var event = AutoLogEvent(
           source: AutoLogSource.current,
 
@@ -1726,7 +2010,7 @@ struct LogMacroTests {
           ],
           tags: []
         )
-        autoLogger.emitStart(event: event)
+        autoLogger.emitStart(event: event, configuration: runtime.configuration)
         let __logStart = ContinuousClock.now
         func _filterElements(elements: [T], predicate: (T) -> Bool) -> [T] {
           return elements.filter(predicate)
@@ -1734,7 +2018,7 @@ struct LogMacroTests {
         let result = _filterElements(elements: elements, predicate: predicate)
         event.result = .success(result)
         event.duration = ContinuousClock.now - __logStart
-        autoLogger.emit(event: event)
+        autoLogger.emit(event: event, configuration: runtime.configuration)
         return result
       }
       """

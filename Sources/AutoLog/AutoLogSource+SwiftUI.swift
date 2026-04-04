@@ -5,7 +5,7 @@ import SwiftUI
 
 extension Button where Label == Text {
     /// Creates a button that automatically logs the interaction and
-    /// propagates the source to all downstream `@Logged` function calls.
+    /// propagates the source to all downstream `@AutoLog` function calls.
     @MainActor public static func log(
         _ title: String,
         role: ButtonRole? = nil,
@@ -15,7 +15,7 @@ extension Button where Label == Text {
         action: @escaping @MainActor () -> Void
     ) -> some View {
         Button(title, role: role) {
-            InteractionSource.button(title).log(
+            AutoLogInteraction.button(title).log(
                 fileID: fileID,
                 line: line,
                 column: column
@@ -36,7 +36,7 @@ extension Button where Label == Text {
     ) -> some View {
         Button(title, role: role) {
             Task {
-                await InteractionSource.button(title).log(
+                await AutoLogInteraction.button(title).log(
                     fileID: fileID,
                     line: line,
                     column: column
@@ -78,14 +78,14 @@ extension Button where Label == Text {
 
 extension Binding {
     /// Returns a new binding that logs interactions when the value is set,
-    /// propagating the source to all downstream `@Logged` function calls.
+    /// propagating the source to all downstream `@AutoLog` function calls.
     ///
     /// Use the ``InteractionSource``-typed overload for dot-shorthand syntax:
     /// ```swift
     /// Toggle("Dark Mode", isOn: $vm.darkMode.log(.toggle("Dark Mode")))
     /// ```
     @MainActor public func log(
-        _ source: InteractionSource,
+        _ source: AutoLogInteraction,
         fileID: String = #fileID,
         line: Int = #line,
         column: Int = #column
@@ -119,7 +119,7 @@ extension Binding {
     /// Backward-compatible alias for ``log(_:fileID:line:column:)``.
     @available(*, deprecated, renamed: "log(_:fileID:line:column:)")
     @MainActor public func logged(
-        _ source: InteractionSource,
+        _ source: AutoLogInteraction,
         fileID: String = #fileID,
         line: Int = #line,
         column: Int = #column

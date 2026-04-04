@@ -11,14 +11,18 @@ import Foundation
 /// ### Customising the format
 /// ```swift
 /// // Slim format: emoji + function name only — no type prefix, no timing.
-/// AutoLogSettingsStorage.setLogFormat(
-///   LogFormat(mainLine: [.depthArrow, .statusEmoji, .functionName, .parameters, .effectSpecifiers])
+/// AutoLog.updateConfiguration(
+///   AutoLogConfiguration(
+///     logFormat: LogFormat(
+///       mainLine: [.depthArrow, .statusEmoji, .functionName, .parameters, .effectSpecifiers]
+///     )
+///   )
 /// )
 /// ```
 ///
 /// ### Restoring the default
 /// ```swift
-/// AutoLogSettingsStorage.setLogFormat(.default)
+/// AutoLog.updateConfiguration(.default)
 /// ```
 public struct LogFormat: Sendable, Codable, Equatable {
 

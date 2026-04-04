@@ -97,6 +97,10 @@ struct LivePreviewView: View {
     CompactFormatter(profile: profile, format: format)
   }
 
+  private var configuration: AutoLogConfiguration {
+    AutoLogConfiguration(logFormat: format)
+  }
+
   private func successLines() -> [String] {
     [
       formatter.format(event: makeEvent(
@@ -104,7 +108,7 @@ struct LivePreviewView: View {
         declaration: "func fetchData(userId: Int) async",
         parameters: ["userId": 42],
         result: .success("User(id: 1)")
-      ))
+      ), configuration: configuration)
     ]
   }
 
@@ -118,7 +122,7 @@ struct LivePreviewView: View {
         declaration: "func fetchData(userId: Int) async",
         parameters: ["userId": 99],
         result: .failure(NetworkError())
-      ))
+      ), configuration: configuration)
     ]
   }
 
@@ -130,7 +134,7 @@ struct LivePreviewView: View {
         parameters: ["amount": "49.99"],
         result: .success(()),
         tags: ["payments", "critical"]
-      ))
+      ), configuration: configuration)
     ]
   }
 
@@ -139,9 +143,9 @@ struct LivePreviewView: View {
       formatter.format(event: makeEvent(
         location: "App/ContentView.swift:30:5",
         declaration: "button(\"Deposit\")",
-        source: InteractionSource.button("Deposit"),
+        source: AutoLogInteraction.button("Deposit"),
         result: .success(())
-      ))
+      ), configuration: configuration)
     ]
   }
 

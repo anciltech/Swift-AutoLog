@@ -22,6 +22,7 @@ struct OSLogMacroTests {
     } expansion: {
       """
       func foo() {
+        let runtime = AutoLog.runtimeSnapshot()
         let autoLogger: any AutoLogger = Self.logger
         var event = AutoLogEvent(
           source: AutoLogSource.current,
@@ -31,11 +32,14 @@ struct OSLogMacroTests {
           parameters: [:],
           tags: []
         )
-        autoLogger.emitStart(event: event)
+        autoLogger.emitStart(event: event, configuration: runtime.configuration)
         let __logStart = ContinuousClock.now
-        print("Foo")
+        func _foo() {
+          print("Foo")
+        }
+        let _ = _foo()
         event.duration = ContinuousClock.now - __logStart
-        autoLogger.emit(event: event)
+        autoLogger.emit(event: event, configuration: runtime.configuration)
       }
       """
     }
@@ -53,6 +57,7 @@ struct OSLogMacroTests {
     } expansion: {
       """
       func sum(numbers: Int...) -> Int {
+        let runtime = AutoLog.runtimeSnapshot()
         let autoLogger: any AutoLogger = Self.logger
         var event = AutoLogEvent(
           source: AutoLogSource.current,
@@ -64,7 +69,7 @@ struct OSLogMacroTests {
           ],
           tags: ["example"]
         )
-        autoLogger.emitStart(event: event)
+        autoLogger.emitStart(event: event, configuration: runtime.configuration)
         let __logStart = ContinuousClock.now
         func _sum(numbers: Int...) -> Int {
           return numbers.reduce(0, +)
@@ -72,7 +77,7 @@ struct OSLogMacroTests {
         let result = _sum(numbers: numbers)
         event.result = .success(result)
         event.duration = ContinuousClock.now - __logStart
-        autoLogger.emit(event: event)
+        autoLogger.emit(event: event, configuration: runtime.configuration)
         return result
       }
       """
@@ -91,6 +96,7 @@ struct OSLogMacroTests {
     } expansion: {
       """
       func transform(value: Int, using transform: (Int) -> String) -> String {
+        let runtime = AutoLog.runtimeSnapshot()
         let autoLogger: any AutoLogger = Self.logger
         var event = AutoLogEvent(
           level: .debug,
@@ -100,14 +106,14 @@ struct OSLogMacroTests {
           declaration: "func transform(value: Int, using transform: (Int) -> String) -> String",
           tags: [.commonTag, "example"]
         )
-        autoLogger.emitStart(event: event)
+        autoLogger.emitStart(event: event, configuration: runtime.configuration)
         let __logStart = ContinuousClock.now
         func _transform(value: Int, transform: (Int) -> String) -> String {
           return transform(value)
         }
         let result = _transform(value: value, transform: transform)
         event.duration = ContinuousClock.now - __logStart
-        autoLogger.emit(event: event)
+        autoLogger.emit(event: event, configuration: runtime.configuration)
         return result
       }
       """
@@ -149,7 +155,7 @@ struct OSLogMacroTests {
 //        }
 //        let result = _identity(value: value)
 //        event.duration = ContinuousClock.now - __logStart
-//        autoLogger.emit(event: event)
+//        autoLogger.emit(event: event, configuration: runtime.configuration)
 //        return result
 //      }
 //      """

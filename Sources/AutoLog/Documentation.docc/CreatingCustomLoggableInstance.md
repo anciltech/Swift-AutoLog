@@ -1,16 +1,16 @@
-# Defining custom Loggable instance
+# Defining a custom AutoLogger
 
-Define custom ``Loggable`` instance and use it with macros.
+Define a custom ``AutoLogger`` instance and use it with macros.
 
 ## Overview
 
-This article focuses on creating a custom `Loggable` instance.
+This article focuses on creating a custom `AutoLogger` instance.
 Below example depends on [SentrySDK](https://github.com/getsentry/sentry-cocoa) Additionaly, you can create a free account on [sentry.io](http://sentry.io/) to provide your own DNS.
 
 > Code examples used throughout this article are part of the example app [Count Me In](https://github.com/23122K/swift-loggable/tree/main/Examples/CountMeIn)
 > The first line in each code snippet refers to a file within the app.
 
-### Import Sentry and Loggable library
+### Import Sentry and AutoLog
 
 Since we will be extending types from both libraries, their imports must be marked as public.
 ```swift
@@ -20,11 +20,11 @@ public import AutoLog
 public import Sentry
 ```
 
-### Conform to Loggable protocol
+### Conform to AutoLogger protocol
 
-Loggable protocol has two requirements, conforming type must:
+`AutoLogger` has two requirements, conforming type must:
 * Be `Sendable`
-* Implement `emit(event: LoggableEvent)` method
+* Implement `emit(event: AutoLogEvent, configuration: AutoLogConfiguration)` method
 
 This method is called each time a function either completes successfully or throws an error.
 
@@ -34,8 +34,8 @@ This method is called each time a function either completes successfully or thro
 public import AutoLog
 public import Sentry
 
-struct SentryLogger: Loggable {
-  func emit(event: LoggableEvent) {
+struct SentryLogger: AutoLogger {
+  func emit(event: AutoLogEvent, configuration: AutoLogConfiguration) {
     // ...
   }
 }
@@ -43,7 +43,7 @@ struct SentryLogger: Loggable {
 
 ### Leverage Sentry's breadcrumbs and scope
 
-Note that not all events emitted via `emit(event: LoggableEvent)` represent errors - successful completions of functions are also captured. We can leverage this by using Sentry's ability to attach breadcrumbs to errors when they occur, effectively creating a backtrace of user actions leading up to the failure.
+Note that not all events emitted via `emit(event:configuration:)` represent errors - successful completions of functions are also captured. We can leverage this by using Sentry's ability to attach breadcrumbs to errors when they occur, effectively creating a backtrace of user actions leading up to the failure.
 
 > Note:
 > Learn more about [breadcrumbs](https://docs.sentry.io/product/issues/issue-details/breadcrumbs/) and [scopes](https://docs.sentry.io/platforms/apple/guides/ios/enriching-events/scopes/).
@@ -51,7 +51,7 @@ Note that not all events emitted via `emit(event: LoggableEvent)` represent erro
 ```swift
 // SentryLogger.swift
 
-extension LoggableEvent {
+extension AutoLogEvent {
   var sentryBreadcrumb: Sentry.Breadcrumb {
     let breadcrumb = Sentry.Breadcrumb()
     if let level = self.level as? SentryLevel {
@@ -84,8 +84,8 @@ Now that we've identified the information to log on both success and failure, it
 public import Sentry
 public import AutoLog
 
-struct SentryLogger: Loggable {
-  func emit(event: LoggableEvent) {
+struct SentryLogger: AutoLogger {
+  func emit(event: AutoLogEvent, configuration _: AutoLogConfiguration) {
     switch event.result {
       case .success:
         SentrySDK.addBreadcrumb(event.sentryBreadcrumb)
@@ -103,22 +103,22 @@ We can check weather function was that logger was attached to emited an event on
 
 On failure, we use `SentrySDK.capture(error:)`, passing in the error that triggered the event. Before sending the error to Sentry, we attach relevant metadata to the scope, providing additional context. Upon success, we simply add a breadcrumb that will be sent along with an error.
 
-### Loggable extension
+### AutoLogger extension
 
-For cleaner syntax and easier usage of `SentryLogger`, create an extension to the Loggable protocol and declare a conditional conformance to it.
+For cleaner syntax and easier usage of `SentryLogger`, create an extension to `AutoLogger` and declare a conditional conformance to it.
 
 ```swift
 // SentryLogger.swift
 
-extension Loggable where Self == SentryLogger {
-  static var sentry: any Loggable {
+extension AutoLogger where Self == SentryLogger {
+  static var sentry: any AutoLogger {
     SentryLogger()
   }
 }
 ```
 
 > Warning:
-> When creating an extension, always use `any Loggable` as a type, otherwise the `@AutoLog` macro will not work.
+> When creating an extension, always use `any AutoLogger` as a type, otherwise the `@AutoLog` macro will not work.
 
 ### Custom logger levels
 

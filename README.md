@@ -174,22 +174,43 @@ AutoLogInteraction.button("Save").log {
 }
 ```
 
-## Concurrency-safe runtime configuration
+## Live runtime configuration
 
-Swift AutoLog keeps its shared runtime configuration behind synchronized storage, so
-macro-generated `@Log` code can read the default logger from concurrently-executing
-functions without tripping Swift 6.2's `nonisolated(unsafe)` warnings.
+Swift AutoLog keeps a process-local runtime snapshot behind synchronized storage, so
+macro-generated `@Log` code can capture one logger/configuration pair at function
+entry without tripping Swift 6.2's `nonisolated(unsafe)` warnings.
 
-That means you can continue to customize global behavior with the existing APIs:
+Use `AutoLog.bootstrap(...)` to install the logger for the current process and the
+default live configuration:
 
 ```swift
-AutoLogSource.logger = AutoLogLogger(formatter: CompactFormatter(profile: .cleanArchitecture))
-AutoLogSettingsStorage.emitStartEvents = false
-AutoLogSettingsStorage.measureTimingDepths = [2, 3]
+AutoLog.bootstrap(
+  .init(
+    logger: AutoLogLogger(formatter: CompactFormatter(profile: .cleanArchitecture)),
+    configuration: AutoLogConfiguration(
+      emitStartEvents: false,
+      measureTimingDepths: [2, 3]
+    )
+  )
+)
 ```
 
-Swapping these values while work is already in flight is safe; future log calls pick
-up the most recent value they read at function entry.
+If you need to change behavior while the app is running, update the configuration
+snapshot atomically:
+
+```swift
+AutoLog.updateConfiguration(
+  AutoLogConfiguration(
+    emitStartEvents: false,
+    measureTimingDefault: true,
+    measureTimingDepths: [2, 3],
+    logFormat: .default
+  )
+)
+```
+
+Future log calls pick up the newest snapshot they read at function entry, while any
+function already in flight keeps using the snapshot it captured when it began.
 
 ## SwiftUI auto-logging
 

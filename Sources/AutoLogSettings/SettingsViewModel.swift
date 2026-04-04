@@ -2,10 +2,12 @@ import AutoLog
 import Foundation
 import Observation
 
-/// Manages the two-zone format editor state and synchronises with ``AutoLogSettingsStorage``.
+/// Manages the two-zone format editor state and synchronises with
+/// ``AutoLogConfigurationStore``.
 @MainActor
 @Observable
 final class SettingsViewModel {
+  let configurationStore: AutoLogConfigurationStore
 
   // MARK: - State
 
@@ -18,15 +20,20 @@ final class SettingsViewModel {
   /// Spacer elements are always present — they are infinitely reusable.
   var inactiveElements: [LogFormat.Element] = []
 
-  /// The current arrow style, kept in sync with ``AutoLogSettingsStorage``.
+  /// The current arrow style, kept in sync with the persisted configuration.
   var arrowStyle: LogFormat.ArrowStyle = .default
 
-  /// The current status style, kept in sync with ``AutoLogSettingsStorage``.
+  /// The current status style, kept in sync with the persisted configuration.
   var statusStyle: LogFormat.StatusStyle = .default
+
+  /// The full persisted runtime configuration. The editor currently adjusts the
+  /// log format only, but it preserves the rest of the snapshot.
+  private(set) var configuration: AutoLogConfiguration = .default
 
   // MARK: - Init
 
-  init() {
+  init(configurationStore: AutoLogConfigurationStore = .shared) {
+    self.configurationStore = configurationStore
     loadFromStorage()
   }
 
@@ -40,11 +47,13 @@ final class SettingsViewModel {
   // MARK: - Persistence
 
   func loadFromStorage() {
-    rebuildState(from: AutoLogSettingsStorage.logFormat())
+    configuration = configurationStore.loadConfiguration() ?? .default
+    rebuildState(from: configuration.logFormat)
   }
 
   func saveToStorage() {
-    AutoLogSettingsStorage.setLogFormat(currentFormat)
+    configuration.logFormat = currentFormat
+    configurationStore.saveConfiguration(configuration)
   }
 
   func resetToDefault() {
@@ -101,13 +110,20 @@ final class SettingsViewModel {
 
   var codeSnippet: String {
     let list = currentFormat.mainLine
-      .map { "      .\($0.rawValue)" }
+      .map { "            .\($0.rawValue)" }
       .joined(separator: ",\n")
     return """
-    AutoLogSettingsStorage.setLogFormat(
-      LogFormat(mainLine: [
-    \(list)
-      ])
+    AutoLog.bootstrap(
+      .init(
+        configuration: AutoLogConfiguration(
+          emitStartEvents: \(configuration.emitStartEvents),
+          measureTimingDefault: \(configuration.measureTimingDefault),
+          measureTimingDepths: \(renderDepths(configuration.measureTimingDepths)),
+          logFormat: LogFormat(mainLine: [
+    """ + "\n" + list + "\n" + """
+          ], arrowStyle: \(renderArrowStyle(arrowStyle)), statusStyle: \(renderStatusStyle(statusStyle)))
+        )
+      )
     )
     """
   }
@@ -134,5 +150,33 @@ final class SettingsViewModel {
     // Keep the allCases order so the palette is stable.
     let order = LogFormat.Element.allCases
     inactiveElements.sort { order.firstIndex(of: $0)! < order.firstIndex(of: $1)! }
+  }
+
+  private func renderDepths(_ depths: Set<Int>?) -> String {
+    guard let depths else { return "nil" }
+    return "[" + depths.sorted().map(\.description).joined(separator: ", ") + "]"
+  }
+
+  private func renderArrowStyle(_ style: LogFormat.ArrowStyle) -> String {
+    "LogFormat.ArrowStyle(start: \(literal(style.start)), repeater: \(literal(style.repeater)), end: \(literal(style.end)))"
+  }
+
+  private func renderStatusStyle(_ style: LogFormat.StatusStyle) -> String {
+    """
+    LogFormat.StatusStyle(
+      start: \(literal(style.start)),
+      success: \(literal(style.success)),
+      failure: \(literal(style.failure)),
+      warning: \(literal(style.warning)),
+      update: \(literal(style.update))
+    )
+    """
+      .replacingOccurrences(of: "\n", with: " ")
+  }
+
+  private func literal(_ value: String) -> String {
+    "\"" + value
+      .replacingOccurrences(of: "\\", with: "\\\\")
+      .replacingOccurrences(of: "\"", with: "\\\"") + "\""
   }
 }

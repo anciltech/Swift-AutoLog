@@ -9,7 +9,7 @@ In this article, you will learn how to utilize trait macros and their associated
 > Code examples used throughout this article are part of the example app [Count Me In](https://github.com/23122K/swift-loggable/tree/main/Examples/CountMeIn)
 > The first line in each code snippet refers to a file within the app.
 
-Trait macros are macros used to pass parameters to a ``LoggableEvent``. They must always be preceded by either the ``Log(using:)`` or ``OSLog(level:omit:tag:)`` macros - either explicitly, or implicitly when a type is annotated with ``AutoLog(using:)`` or ``OSLogged()``, respectively. Otherwise, an error is emitted.
+Trait macros are macros used to pass parameters to an ``AutoLogEvent``. They must always be preceded by either the ``Log(using:)`` or ``OSLog(level:omit:tag:)`` macros - either explicitly, or implicitly when a type is annotated with ``AutoLog(using:)`` or ``OSLogged()``, respectively. Otherwise, an error is emitted.
 
 The trait macros include:
 
@@ -175,7 +175,7 @@ There may be scenarios where logging function arguments or return values could e
 
 If you want to exclude the method from logging altogether—on both success and failure-use `Omit()` without any parameters.
 
-Loggable includes two predefined cases in the ``Omit`` enum:
+AutoLog includes two predefined cases in the ``Omit`` enum:
 
 * ``result``
   Strips the result metadata from the log. On success, the function is treated as returning `Void`.
@@ -187,7 +187,7 @@ Loggable includes two predefined cases in the ``Omit`` enum:
 You can omit a specific parameter by passing a string that represents the **parameter name**.
 
 > Important:
-> Internally, when a function is logged, `Loggable` strips all **argument labels**.
+> Internally, when a function is logged, `AutoLog` strips all **argument labels**.
 > To ensure a parameter is correctly omitted from being captured, always use its **parameter name**, not the argument label.
 > [Learn more about the difference between parameter names and argument labels.](https://docs.swift.org/swift-book/documentation/the-swift-programming-language/functions#Function-Argument-Labels-and-Parameter-Names)
 

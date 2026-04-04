@@ -128,123 +128,122 @@ struct SourceableTests {
 
 @Suite(.serialized)
 struct AutoLogSourceTests {
+    private func withMockRuntime<T>(
+        logger: MockLogger = MockLogger(),
+        operation: () throws -> T
+    ) rethrows -> T {
+        try AutoLog.withRuntime(
+            AutoLogRuntime(
+                logger: logger,
+                configuration: .default
+            ),
+            operation: operation
+        )
+    }
+
+    private func withMockRuntime<T>(
+        logger: MockLogger = MockLogger(),
+        operation: () async throws -> T
+    ) async rethrows -> T {
+        try await AutoLog.withRuntime(
+            AutoLogRuntime(
+                logger: logger,
+                configuration: .default
+            ),
+            operation: operation
+        )
+    }
 
     @Test func current_isNilByDefault() {
         #expect(AutoLogSource.current == nil)
     }
 
     @Test func run_setsCurrentDuringExecution() {
-        let originalLogger = AutoLogSource.logger
-        defer { AutoLogSource.logger = originalLogger }
-        AutoLogSource.logger = MockLogger()
-
-        var capturedEmoji: String?
-        AutoLogSource.run(InteractionSource.button("Test")) {
-            capturedEmoji = AutoLogSource.current?.emoji
+        withMockRuntime {
+            var capturedEmoji: String?
+            AutoLogSource.run(InteractionSource.button("Test")) {
+                capturedEmoji = AutoLogSource.current?.emoji
+            }
+            #expect(capturedEmoji == "👆🏼")
         }
-        #expect(capturedEmoji == "👆🏼")
     }
 
     @Test func run_restoresNilAfterExecution() {
-        let originalLogger = AutoLogSource.logger
-        defer { AutoLogSource.logger = originalLogger }
-        AutoLogSource.logger = MockLogger()
-
-        AutoLogSource.run(InteractionSource.button("Test")) { }
-        #expect(AutoLogSource.current == nil)
+        withMockRuntime {
+            AutoLogSource.run(InteractionSource.button("Test")) { }
+            #expect(AutoLogSource.current == nil)
+        }
     }
 
     @Test func run_async_setsCurrentDuringExecution() async {
-        let originalLogger = AutoLogSource.logger
-        defer { AutoLogSource.logger = originalLogger }
-        AutoLogSource.logger = MockLogger()
-
-        var capturedEmoji: String?
-        await AutoLogSource.run(InteractionSource.api("GET /users")) {
-            capturedEmoji = AutoLogSource.current?.emoji
+        await withMockRuntime {
+            var capturedEmoji: String?
+            await AutoLogSource.run(InteractionSource.api("GET /users")) {
+                capturedEmoji = AutoLogSource.current?.emoji
+            }
+            #expect(capturedEmoji == "🌐")
         }
-        #expect(capturedEmoji == "🌐")
     }
 
     @Test func run_emitsInteractionEvent() {
-        let originalLogger = AutoLogSource.logger
-        defer { AutoLogSource.logger = originalLogger }
-
         let mock = MockLogger()
-        AutoLogSource.logger = mock
-
-        AutoLogSource.run(InteractionSource.button("Deposit")) { }
-
-        #expect(mock.events.count == 1)
-        #expect(mock.events.first?.source?.emoji == "👆🏼")
-        #expect(mock.events.first?.declaration == "button(\"Deposit\")")
+        withMockRuntime(logger: mock) {
+            AutoLogSource.run(InteractionSource.button("Deposit")) { }
+            #expect(mock.events.count == 1)
+            #expect(mock.events.first?.source?.emoji == "👆🏼")
+            #expect(mock.events.first?.declaration == "button(\"Deposit\")")
+        }
     }
 
     @Test func run_returnsOperationResult() {
-        let originalLogger = AutoLogSource.logger
-        defer { AutoLogSource.logger = originalLogger }
-        AutoLogSource.logger = MockLogger()
-
-        let result = AutoLogSource.run(InteractionSource.button("Calc")) { 42 }
-        #expect(result == 42)
+        withMockRuntime {
+            let result = AutoLogSource.run(InteractionSource.button("Calc")) { 42 }
+            #expect(result == 42)
+        }
     }
 
     @Test func source_log_setsCurrentDuringExecution() {
-        let originalLogger = AutoLogSource.logger
-        defer { AutoLogSource.logger = originalLogger }
-        AutoLogSource.logger = MockLogger()
-
-        var capturedEmoji: String?
-        InteractionSource.keyboard("Toggle").log {
-            capturedEmoji = AutoLogSource.current?.emoji
+        withMockRuntime {
+            var capturedEmoji: String?
+            InteractionSource.keyboard("Toggle").log {
+                capturedEmoji = AutoLogSource.current?.emoji
+            }
+            #expect(capturedEmoji == "⌨️")
         }
-        #expect(capturedEmoji == "⌨️")
     }
 
     @Test func source_log_emitsInteractionEvent() {
-        let originalLogger = AutoLogSource.logger
-        defer { AutoLogSource.logger = originalLogger }
-
         let mock = MockLogger()
-        AutoLogSource.logger = mock
-
-        InteractionSource.keyboard("Toggle").log { }
-
-        #expect(mock.events.count == 1)
-        #expect(mock.events.first?.source?.emoji == "⌨️")
-        #expect(mock.events.first?.declaration == "keyboard(\"Toggle\")")
+        withMockRuntime(logger: mock) {
+            InteractionSource.keyboard("Toggle").log { }
+            #expect(mock.events.count == 1)
+            #expect(mock.events.first?.source?.emoji == "⌨️")
+            #expect(mock.events.first?.declaration == "keyboard(\"Toggle\")")
+        }
     }
 
     @Test func interactionNamespace_log_emitsInteractionEvent() {
-        let originalLogger = AutoLogSource.logger
-        defer { AutoLogSource.logger = originalLogger }
-
         let mock = MockLogger()
-        AutoLogSource.logger = mock
-
-        AutoLogInteraction.button("Frame Button").log { }
-
-        #expect(mock.events.count == 1)
-        #expect(mock.events.first?.source?.emoji == "👆🏼")
-        #expect(mock.events.first?.declaration == "button(\"Frame Button\")")
+        withMockRuntime(logger: mock) {
+            AutoLogInteraction.button("Frame Button").log { }
+            #expect(mock.events.count == 1)
+            #expect(mock.events.first?.source?.emoji == "👆🏼")
+            #expect(mock.events.first?.declaration == "button(\"Frame Button\")")
+        }
     }
 
     @Test func run_async_returnsOperationResult() async {
-        let originalLogger = AutoLogSource.logger
-        defer { AutoLogSource.logger = originalLogger }
-        AutoLogSource.logger = MockLogger()
-
-        let result = await AutoLogSource.run(InteractionSource.api("Fetch")) { "data" }
-        #expect(result == "data")
+        await withMockRuntime {
+            let result = await AutoLogSource.run(InteractionSource.api("Fetch")) { "data" }
+            #expect(result == "data")
+        }
     }
 
     @Test func source_log_async_returnsOperationResult() async {
-        let originalLogger = AutoLogSource.logger
-        defer { AutoLogSource.logger = originalLogger }
-        AutoLogSource.logger = MockLogger()
-
-        let result = await InteractionSource.api("Fetch").log { "data" }
-        #expect(result == "data")
+        await withMockRuntime {
+            let result = await InteractionSource.api("Fetch").log { "data" }
+            #expect(result == "data")
+        }
     }
 }
 
@@ -252,6 +251,7 @@ struct AutoLogSourceTests {
 
 @Suite
 struct CompactFormatterSourceTests {
+    private let configuration = AutoLogConfiguration.default
 
     func makeEvent(
         level: (any Levelable)? = nil,
@@ -283,7 +283,7 @@ struct CompactFormatterSourceTests {
             source: InteractionSource.button("Deposit"),
             result: .success(())
         )
-        let output = CompactFormatter().format(event: event)
+        let output = CompactFormatter().format(event: event, configuration: configuration)
         #expect(!output.contains("👆🏼"))  // Source emoji NOT on function line
         #expect(output.contains("🟢"))     // Status emoji IS shown
     }
@@ -294,14 +294,14 @@ struct CompactFormatterSourceTests {
             source: InteractionSource.api("GET /users"),
             result: .failure(E())
         )
-        let output = CompactFormatter().format(event: event)
+        let output = CompactFormatter().format(event: event, configuration: configuration)
         #expect(!output.contains("🌐"))   // Source emoji NOT on function line
         #expect(output.contains("🔴"))    // Failure emoji IS shown
     }
 
     @Test func noSource_fallsBackToStatusEmoji() {
         let event = makeEvent(result: .success(()))
-        let output = CompactFormatter().format(event: event)
+        let output = CompactFormatter().format(event: event, configuration: configuration)
         #expect(output.contains("🟢"))
     }
 
@@ -313,7 +313,7 @@ struct CompactFormatterSourceTests {
             location: "App/ContentView.swift:30:5",
             declaration: "button(\"Deposit\")"
         )
-        let output = CompactFormatter().format(event: event)
+        let output = CompactFormatter().format(event: event, configuration: configuration)
         #expect(output.contains("👆🏼"))
         #expect(output.contains("Deposit"))
         #expect(output.contains("[ContentView:30]"))
@@ -327,7 +327,7 @@ struct CompactFormatterSourceTests {
             location: "App/MyViewModel.swift:15:5",
             declaration: "toggle(\"Dark Mode\")"
         )
-        let output = CompactFormatter(profile: .mvvm).format(event: event)
+        let output = CompactFormatter(profile: .mvvm).format(event: event, configuration: configuration)
         #expect(output.hasPrefix("--> 🔀 Dark Mode [MyViewModel:15]"))
     }
 
@@ -342,7 +342,7 @@ struct CompactFormatterSourceTests {
             parameters: ["amount": 50],
             result: .success(())
         )
-        let output = CompactFormatter().format(event: event)
+        let output = CompactFormatter().format(event: event, configuration: configuration)
         #expect(!output.contains("👆🏼"))  // Source emoji NOT on function line
         #expect(output.contains("🟢"))     // Status emoji shown
         #expect(output.contains("Account.deposit(amount: 50)"))
@@ -360,7 +360,7 @@ struct CompactFormatterSourceTests {
             declaration: "func deposit(_ amount: Decimal)",
             result: .success(())
         )
-        let output = CompactFormatter().format(event: event)
+        let output = CompactFormatter().format(event: event, configuration: configuration)
         let lines = output.split(separator: "\n", omittingEmptySubsequences: false)
         #expect(lines.count == 2)
         #expect(lines[0].contains("🟢"))

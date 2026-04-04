@@ -1,17 +1,17 @@
 # Getting started
 
-Learn how to incorporate the ``Logged(using:)`` and ``Log(using:)`` macros into your project, how they work, and much more.
+Learn how to incorporate the ``AutoLog(using:)`` and ``Log(using:)`` macros into your project, how they work, and much more.
 
 ## Overview
 
 This article showcases how to incorporate and use:
-* ``Logged(using:)``
+* ``AutoLog(using:)``
 
-You will learn how to implicitly annotate each method inside a type or extension, how to provide a custom instance of ``Loggable``, and how this instance is propagated.
+You will learn how to implicitly annotate each method inside a type or extension, how to provide a custom instance of ``AutoLogger``, and how this instance is propagated.
 
 * ``Log(using:)``
 
-Explore how to capture events from specific functions and override the implicit conformance introduced by ``Logged(using:)``.
+Explore how to capture events from specific functions and override the implicit conformance introduced by ``AutoLog(using:)``.
 
 * ``Omit()``
 
@@ -20,9 +20,9 @@ Opt out of logging and exclude methods from emitting events.
 > Code examples used throughout this article are part of the example app [Count Me In](https://github.com/23122K/swift-loggable/tree/main/Examples/CountMeIn)
 > The first line in each code snippet refers to a file within the app.
 
-## Import the Loggable library
+## Import the AutoLog library
 
-After importing Loggable for the first time, you will be prompted to enable macros provided by the library.
+After importing AutoLog for the first time, you will be prompted to enable macros provided by the library.
 ```swift
 // FavoriteFactsModel.swift
 import Observation
@@ -31,13 +31,13 @@ import AutoLog
 // ...
 ```
 
-## Mark a declaration with the @Logged macro
-Mark `FavoriteFactsModel` with ``Logged(using:)`` annotation. Order in which this annotation is attached does not matter.
+## Mark a declaration with the @AutoLog macro
+Mark `FavoriteFactsModel` with ``AutoLog(using:)`` annotation. Order in which this annotation is attached does not matter.
 ```swift
 // FavoriteFactsModel.swift
 
 // ...
-@Logged
+@AutoLog
 @MainActor
 @Observable
 class FavoriteFactsModel: Identifiable {
@@ -76,26 +76,38 @@ extension FavoriteFactsModel {
 }
 ```
 
-This alone is sufficient for debugging. All methods within the `FavoriteFactsModel` scope are now implicitly marked with the ``Log(using:)`` annotation and will emit a `LoggableEvent` when invoked. Note that `deleteAllFavoriteFacts`, which is defined within an extension to `FavoriteFactsModel`, lies outside the scope of ``Logged(using:)`` and thus will not be affected.
+This alone is sufficient for debugging. All methods within the `FavoriteFactsModel` scope are now implicitly marked with the ``Log(using:)`` annotation and will emit an `AutoLogEvent` when invoked. Note that `deleteAllFavoriteFacts`, which is defined within an extension to `FavoriteFactsModel`, lies outside the scope of ``AutoLog(using:)`` and thus will not be affected.
 
-By default, ``Logged(using:)`` uses the ``LoggableLogger`` instance. Refer to <doc:CreatingCustomLoggableInstance> for more information about incorporating custom loggers.
+By default, ``AutoLog(using:)`` uses the ``AutoLogLogger`` instance. Refer to <doc:CreatingCustomLoggableInstance> for more information about incorporating custom loggers.
 
-If you prefer to override the shared default logger for a whole app or a focused test,
-`AutoLogSource.logger` remains available. Its storage is synchronized, so Swift 6.2+
-concurrent call sites can read it without inheriting `nonisolated(unsafe)` warnings
-from macro expansion.
+For app-wide setup, install a process-local runtime snapshot with ``AutoLog/bootstrap(_:)``.
+For focused tests or examples, use ``AutoLog/withRuntime(_:operation:)`` or
+``AutoLog/withConfiguration(_:operation:)`` to scope a temporary override through
+structured concurrency.
+
+```swift
+AutoLog.bootstrap(
+  .init(
+    logger: AutoLogLogger(),
+    configuration: AutoLogConfiguration(
+      emitStartEvents: false,
+      measureTimingDepths: [2, 3]
+    )
+  )
+)
+```
 
 > Initializers are not implicitly marked with the ``Log(using:)`` annotation. Marking them explicitly also has no effect.
 
-## Overriding @Logged behavior
+## Overriding @AutoLog behavior
 
-Methods within the ``Logged(using:)`` scope can also be explicitly marked with the ``Log(using:)`` macro. In such cases, the annotation is overridden and will behave independently of ``Logged(using:)``.
+Methods within the ``AutoLog(using:)`` scope can also be explicitly marked with the ``Log(using:)`` macro. In such cases, the annotation is overridden and will behave independently of ``AutoLog(using:)``.
 
 ```swift
 // FavoriteFactsModel.swift
 
 // ...
-@Logged
+@AutoLog
 @MainActor
 @Observable
 class FavoriteFactsModel: Identifiable {
@@ -114,7 +126,7 @@ class FavoriteFactsModel: Identifiable {
 ```
 If we invoke both `fetchFavoriteFacts` and `deleteFromFavoriteButtonTapped`, the first will use the default logger, whereas the second will send an event to the `.printer` logger. This behavior can also be reversed. Refer to <doc:CreatingCustomLoggableInstance> for more information about incorporating custom loggers.
 
-> Arguments provided to the `@Logged` macro are implicitly propagated to all methods within the declaration scope, unless explicitly opted out.
+> Arguments provided to the `@AutoLog` macro are implicitly propagated to all methods within the declaration scope, unless explicitly opted out.
 
 ## Omit methods from being logged
 
@@ -124,7 +136,7 @@ Simply change the ``Log(using:)`` annotation to ``Omit()``. In this scenario, an
 // FavoriteFactsModel.swift
 
 // ...
-@Logged
+@AutoLog
 @MainActor
 @Observable
 class FavoriteFactsModel: Identifiable {
@@ -142,7 +154,7 @@ class FavoriteFactsModel: Identifiable {
 ```
 
 ## Passing traits to @Log annotation
-The ``Log(using:level:omit:tag:)`` macro supports traits that can be used to tailor its behavior. These traits can also be used used on their own, without ``Logged(using:)`` being attached to a scope.
+The ``Log(using:level:omit:tag:)`` macro supports traits that can be used to tailor its behavior. These traits can also be used used on their own, without ``AutoLog(using:)`` being attached to a scope.
 
 ```swift
 // FavoriteFactsModel.swift
@@ -159,3 +171,68 @@ extension FavoriteFactsModel {
 ```
 
 Upon invocation of `deleteAllFavoriteFacts`, the `"Delete"` tag will be passed along with the event. Learn more about traits in <doc:CustomizingMacroBehavior>.
+
+## Capture early exits
+
+`@Log` and `@AutoLog` also capture structured metadata for early exits inside a function body. This includes exits from `guard`, `if`, `else if`, and `else` branches when they return or throw before the function reaches its normal end.
+
+```swift
+// LayoutEditorService.swift
+
+@Log
+func deleteActiveLayout(from collection: LayoutCollection) -> Bool {
+  guard collection.layouts.count > 1 else {
+    return false
+  }
+
+  collection.layouts.removeAll { $0.id == collection.activeLayout.id }
+  return true
+}
+```
+
+In this example, the emitted event still contains the final result (`.success(false)`), duration, tags, and any other captured metadata. In addition, the event records that the function took an early-exit path from a `guard` branch and stores the branch condition.
+
+### Add explicit intent to an early exit
+
+When the early exit is expected and meaningful to your domain, you can annotate it with intent metadata using ``AutoLog/earlyExit(_:_:)``.
+
+```swift
+// LayoutEditorService.swift
+
+@Log
+func loadProfile(id: Profile.ID) -> Profile? {
+  if let cached = cache[id] {
+    AutoLog.earlyExit(.optimize, "cache hit")
+    return cached
+  }
+
+  guard permissions.allowsProfileAccess else {
+    AutoLog.earlyExit(.expected, "access denied by policy")
+    return nil
+  }
+
+  return repository.profile(id: id)
+}
+```
+
+The following forms are supported:
+
+```swift
+AutoLog.earlyExit(.optimize, "cache hit")
+AutoLog.earlyExit(.optimize)
+AutoLog.earlyExit()
+```
+
+If an explicit `AutoLog.earlyExit(...)` call is present in a branch, the macro uses that metadata and does not inject a second default early-exit record for the same branch.
+
+### What gets captured automatically
+
+For each early exit, AutoLog captures:
+
+* the branch kind (`guard`, `if`, `elseif`, or `else`)
+* the evaluated branch condition, when available
+* the explicit intent and message, when you provide them
+* the final function result or thrown error through the normal `event.result`
+* the function duration, just like any other completion path
+
+This keeps early exits visible without treating them as automatic failures. A branch may exit early and still be a successful, expected outcome such as `.success(false)` or `.success(nil)`.

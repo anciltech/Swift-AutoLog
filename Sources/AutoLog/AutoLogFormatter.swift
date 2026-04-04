@@ -1,6 +1,6 @@
 /// A type that formats a ``AutoLogEvent`` into a printable string.
 public protocol AutoLogFormatter: Sendable {
-  func format(event: AutoLogEvent) -> String
+  func format(event: AutoLogEvent, configuration: AutoLogConfiguration) -> String
 }
 
 /// A compact formatter that renders events in a readable, structured format.
@@ -27,9 +27,9 @@ public protocol AutoLogFormatter: Sendable {
 ///
 /// ### Customising the layout
 ///
-/// Pass a ``LogFormat`` at init time (static override) or configure one globally
-/// via `AutoLogSettingsStorage.setLogFormat(_:)` (runtime override). A static
-/// override always wins over the global setting.
+/// Pass a ``LogFormat`` at init time (static override) or configure one via
+/// ``AutoLogConfiguration/logFormat`` (runtime override). A static override
+/// always wins over the runtime setting.
 ///
 /// ```swift
 /// // Static — this formatter always uses this layout, ignoring global settings.
@@ -40,15 +40,17 @@ public protocol AutoLogFormatter: Sendable {
 /// )
 ///
 /// // Global — all CompactFormatters without a static override pick this up.
-/// AutoLogSettingsStorage.setLogFormat(
-///   LogFormat(mainLine: [.depthArrow, .statusEmoji, .functionName, .parameters])
+/// AutoLog.updateConfiguration(
+///   AutoLogConfiguration(
+///     logFormat: LogFormat(mainLine: [.depthArrow, .statusEmoji, .functionName, .parameters])
+///   )
 /// )
 /// ```
 public struct CompactFormatter: AutoLogFormatter {
   public let profile: DepthProfile
 
-  /// A fixed format override. When `nil`, ``AutoLogSettingsStorage/logFormat()``
-  /// is consulted on every call to ``format(event:)``.
+  /// A fixed format override. When `nil`, ``AutoLogConfiguration/logFormat`` is
+  /// consulted on every call to ``format(event:configuration:)``.
   public let format: LogFormat?
 
   public init(profile: DepthProfile = .mvvm, format: LogFormat? = nil) {
@@ -56,9 +58,12 @@ public struct CompactFormatter: AutoLogFormatter {
     self.format  = format
   }
 
-  public func format(event: AutoLogEvent) -> String {
+  public func format(
+    event: AutoLogEvent,
+    configuration: AutoLogConfiguration
+  ) -> String {
     let typeName = extractTypeName(from: event.location)
-    let fmt      = format ?? AutoLogSettingsStorage.logFormat()
+    let fmt      = format ?? configuration.logFormat
     let depth    = profile.depth(for: typeName) ?? 1
     let arrow    = fmt.arrowStyle.arrow(for: depth)
 
@@ -126,7 +131,11 @@ public struct CompactFormatter: AutoLogFormatter {
         segments.append(Segment(text: "→ \(value)", noLeadingSpace: false))
 
       case .timing:
-        let suffix = timingSuffix(for: event, depth: depth)
+        let suffix = timingSuffix(
+          for: event,
+          depth: depth,
+          configuration: configuration
+        )
           .trimmingCharacters(in: .whitespaces)
         guard !suffix.isEmpty else { continue }
         segments.append(Segment(text: suffix, noLeadingSpace: false))
@@ -210,13 +219,17 @@ public struct CompactFormatter: AutoLogFormatter {
     return style.success
   }
 
-  private func timingSuffix(for event: AutoLogEvent, depth: Int) -> String {
+  private func timingSuffix(
+    for event: AutoLogEvent,
+    depth: Int,
+    configuration: AutoLogConfiguration
+  ) -> String {
     // Start events never show timing (they haven't run yet).
     guard !isStartEvent(event) else { return "" }
     guard let duration = event.duration else { return "" }
 
-    let globalOn = AutoLogSettingsStorage.measureTiming()
-    let depthOk  = AutoLogSettingsStorage.measureTimingDepths.map { $0.contains(depth) } ?? true
+    let globalOn = configuration.measureTimingDefault
+    let depthOk  = configuration.measureTimingDepths.map { $0.contains(depth) } ?? true
     guard (globalOn && depthOk) || event.isMeasuredExplicitly else { return "" }
 
     return " ⏱ \(formatDuration(duration))"
