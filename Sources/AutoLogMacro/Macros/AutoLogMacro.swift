@@ -47,10 +47,6 @@ extension AutoLogMacro {
     guard let function = FunctionSyntax(from: declaration)
     else { return self.body() }
 
-    let tagTraits = function.syntax.attributes.extractTraits(for: .tag)
-    let omitTraits = function.syntax.attributes.extractTraits(for: .omit)
-    let levelTrait = function.syntax.attributes.extractTraits(for: .level).first
-
     // Extract measure: Bool? from @Log(measure: ...).
     // nil → default (generate timing, not explicitly requested)
     // true → generate timing, mark as explicitly requested
@@ -66,6 +62,9 @@ extension AutoLogMacro {
       isMeasuredExplicitly = false
     }
 
+    let tagTraits = function.syntax.attributes.extractTraits(for: .tag)
+    let omitTraits = function.syntax.attributes.extractTraits(for: .omit)
+    let levelTrait = function.syntax.attributes.extractTraits(for: .level).first
     let instrumentedPlain = self.instrumentedPlain(of: function)
 
     return body {
@@ -80,16 +79,12 @@ extension AutoLogMacro {
         omittableTraits: omitTraits
       )
 
-      // When @Log(measure: true), mark this event as explicitly measured.
-      // The formatter uses this to override the global measureTimingDefault.
       if isMeasuredExplicitly {
         self.captureExplicitMeasure()
       }
 
-      // Emit 🔵 start event using the configuration captured at function entry.
       self.emitStart()
 
-      // Capture timing start (compile-time opt-out via measure: false).
       if shouldMeasure {
         self.captureTimingStart()
       }
@@ -102,7 +97,6 @@ extension AutoLogMacro {
           self.emit()
 
         case true where function.isVoid:
-          // Fixed: now emits on success too (paired with the start event).
           CodeBlockItemSyntax(instrumentedPlain)
           CodeBlockItemSyntax.try {
             CodeBlockItemSyntax.call(function)
@@ -215,7 +209,11 @@ extension AutoLogMacro {
     taggableTraits: [any ExprSyntaxProtocol],
     omittableTraits: [any ExprSyntaxProtocol]
   ) -> CodeBlockItemSyntax {
-    CodeBlockItemSyntax(
+    let capturedParameters = declaration.parameters.filter { parameter in
+      !omittableTraits.contains(where: { trait in trait.isOmitParameter(parameter.name) })
+    }
+
+    return CodeBlockItemSyntax(
       VariableDeclSyntax(
         // Always `var` — timing (`event.duration`) and result are assigned post-construction.
         bindingSpecifier: .keyword(.var),
@@ -285,24 +283,19 @@ extension AutoLogMacro {
                       colon: .colonToken(),
                       expression: DictionaryExprSyntax(
                         leftSquare: .leftSquareToken(
-                          trailingTrivia: declaration.parameters.isEmpty ? [] : .newline
+                          trailingTrivia: capturedParameters.isEmpty ? [] : .newline
                         ),
                         rightSquare: .rightSquareToken(
-                          leadingTrivia: declaration.parameters.isEmpty ? [] : .newline
+                          leadingTrivia: capturedParameters.isEmpty ? [] : .newline
                         )
                       ) {
                         DictionaryElementListSyntax {
-                          declaration.parameters.compactMap { parameter in
-                            // TODO: 23122K - Is there a better way to handle it?
-                            if omittableTraits.contains(
-                              where: { trait in trait.isOmitParameter(parameter.name) }
-                            ) { return nil }
-
+                          capturedParameters.map { parameter in
                             return DictionaryElementSyntax(
                               key: StringLiteralExprSyntax(content: parameter.name.text),
                               value: DeclReferenceExprSyntax(baseName: parameter.name.trimmed),
                               trailingComma: .commaToken(
-                                presence: declaration.parameters.last == parameter ? .missing : .present
+                                presence: capturedParameters.last == parameter ? .missing : .present
                               ),
                               trailingTrivia: .newline
                             )

@@ -13,6 +13,10 @@ There is no need to annotate each method individually - simply apply the desired
 
 All macros include the ability to add tags to logged functions, suppress their output or parameters, or exclude the functions entirely from emmiting an event.
 
+The no-argument ``Omit()`` marker is also accepted on computed properties so
+those declarations can opt out explicitly without triggering a compiler error.
+Computed properties are not auto-logged today.
+
 * **Use one live runtime snapshot per invocation**
 
 Macro-generated wrappers capture an ``AutoLogRuntime`` snapshot at function entry, so

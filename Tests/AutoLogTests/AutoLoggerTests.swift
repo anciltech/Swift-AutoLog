@@ -65,6 +65,9 @@ struct AutoLoggerTests {
       _ = testcase.mockGenericFunctionWithOmitSpecificParameterAnnotationReturingPassedArgument(mock: true)
       #expect(Self.mock.events.count == 7)
       #expect(Self.mock.events.last?.parameters.isEmpty == true)
+
+      #expect(testcase.isCreating == false)
+      #expect(Self.mock.events.count == 7)
     }
   }
 }
@@ -117,6 +120,11 @@ extension AutoLoggerTests {
     @Tag("mock-string-tag")
     func mockFunctionWitgTagAndOmitResultAnnotation() -> Bool {
       true
+    }
+
+    @Omit
+    var isCreating: Bool {
+      false
     }
   }
 }

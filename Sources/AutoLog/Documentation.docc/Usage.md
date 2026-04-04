@@ -154,6 +154,11 @@ class FavoriteFactsModel: Identifiable {
 }
 ```
 
+`@Omit` is also accepted on computed properties as a marker, which is useful
+when you want declarations like `@Omit var isCreating: Bool { ... }` to compile
+cleanly inside an `@AutoLog` type. Computed properties are not auto-logged, so
+the marker does not change runtime behavior yet.
+
 ## Passing traits to @Log annotation
 The ``Log(using:level:omit:tag:)`` macro supports traits that can be used to tailor its behavior. These traits can also be used used on their own, without ``AutoLog(using:)`` being attached to a scope.
 

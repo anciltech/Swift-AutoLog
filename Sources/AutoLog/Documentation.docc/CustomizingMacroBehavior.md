@@ -175,6 +175,12 @@ There may be scenarios where logging function arguments or return values could e
 
 If you want to exclude the method from logging altogether—on both success and failure-use `Omit()` without any parameters.
 
+On current Swift toolchains in this project, `Omit()` can also be attached to a
+computed property as a marker so declarations such as `@Omit var isCreating:
+Bool { ... }` compile cleanly. Computed properties are still not auto-logged by
+`@AutoLog`, so the property form is currently a no-op marker rather than a
+property logging feature.
+
 AutoLog includes two predefined cases in the ``Omit`` enum:
 
 * ``result``
@@ -207,6 +213,22 @@ class SwipeableFactModel {
   }
 }
 ```
+
+For computed properties, `@Omit` is also accepted as a marker:
+
+```swift
+// InteractionManager.swift
+
+struct InteractionManager {
+  @Omit
+  var isCreating: Bool {
+    dragState?.mode == .create
+  }
+}
+```
+
+This property does not emit logs today because computed-property body macro
+instrumentation is not yet available in the toolchain used by this package.
 
 To omit the result or all arguments passed to a logged function, use ``Omit(_:)`` and pass the ``result`` and ``parameters`` traits accordingly.
 

@@ -314,4 +314,50 @@ struct LoggedMacroTests {
       """
     }
   }
+
+  @Test
+  func struct_getOnlyComputedProperty_isNotAutoLogged() throws {
+    assertMacro {
+      #"""
+      @Logged
+      struct Foo {
+        var isCreating: Bool {
+          dragState?.mode == .create
+        }
+      }
+      """#
+    } expansion: {
+      """
+      struct Foo {
+        var isCreating: Bool {
+          dragState?.mode == .create
+        }
+      }
+      """
+    }
+  }
+
+  @Test
+  func struct_getOnlyComputedProperty_withOmitAnnotation() throws {
+    assertMacro {
+      #"""
+      @Logged
+      struct Foo {
+        @Omit
+        var isCreating: Bool {
+          dragState?.mode == .create
+        }
+      }
+      """#
+    } expansion: {
+      """
+      struct Foo {
+        @Omit
+        var isCreating: Bool {
+          dragState?.mode == .create
+        }
+      }
+      """
+    }
+  }
 }

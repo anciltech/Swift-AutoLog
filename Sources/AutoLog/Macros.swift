@@ -354,6 +354,10 @@ public macro Level(_ trait: (any Levelable)? = nil) = #externalMacro(
 /// to all methods within attached context. Mark method with ``Omit()``
 /// to skip it.
 ///
+/// ``Omit()`` can also be attached to a computed property as a marker without
+/// producing a compiler error. Computed properties are not auto-logged today,
+/// so this currently acts as a no-op marker rather than generating logging code.
+///
 /// ```swift
 /// @AutoLog
 /// struct Foo {
@@ -367,7 +371,7 @@ public macro Level(_ trait: (any Levelable)? = nil) = #externalMacro(
 ///   }
 /// }
 /// ```
-@attached(body)
+@attached(peer)
 public macro Omit() = #externalMacro(
   module: "AutoLogMacro",
   type: "OmitMacro"
