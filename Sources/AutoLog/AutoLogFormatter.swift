@@ -272,12 +272,107 @@ public struct CompactFormatter: AutoLogFormatter {
     // [String: Any] has no stable order; sort alphabetically for determinism.
     return parameters
       .sorted { $0.key < $1.key }
-      .map { "\($0.key): \($0.value)" }
+      .map { "\($0.key): \(formatParameterValue($0.value))" }
       .joined(separator: ", ")
   }
 
   private func effectSpecifiers(from declaration: String) -> String {
     let isAsync = declaration.range(of: #"\basync\b"#, options: .regularExpression) != nil
     return isAsync ? " async" : ""
+  }
+
+  private func formatParameterValue(_ value: Any) -> String {
+    if isScalarLike(value) {
+      return String(describing: value)
+    }
+
+    if let type = value as? Any.Type {
+      return shortTypeName(from: String(reflecting: type))
+    }
+
+    let description = String(describing: value)
+    if description == String(reflecting: type(of: value)) {
+      return shortIdentifierSummary(for: value) ?? shortTypeName(from: description)
+    }
+
+    return description
+  }
+
+  private func isScalarLike(_ value: Any) -> Bool {
+    switch value {
+    case is String,
+         is Substring,
+         is Character,
+         is Bool,
+         is Int,
+         is Int8,
+         is Int16,
+         is Int32,
+         is Int64,
+         is UInt,
+         is UInt8,
+         is UInt16,
+         is UInt32,
+         is UInt64,
+         is Float,
+         is Double,
+         is Decimal,
+         is UUID:
+      return true
+    default:
+      return false
+    }
+  }
+
+  private func shortIdentifierSummary(for value: Any) -> String? {
+    let mirror = Mirror(reflecting: value)
+
+    guard
+      let idChild = mirror.children.first(where: { child in
+        guard let label = child.label?.lowercased() else { return false }
+        return label == "id"
+      }),
+      let shortID = shortIdentifierString(from: idChild.value)
+    else {
+      return nil
+    }
+
+    let label = idChild.label ?? "id"
+    let typeName = shortTypeName(from: String(reflecting: type(of: value)))
+    return "\(typeName).\(label): \(shortID)"
+  }
+
+  private func shortIdentifierString(from value: Any) -> String? {
+    let mirror = Mirror(reflecting: value)
+    if mirror.displayStyle == .optional {
+      guard let child = mirror.children.first else { return nil }
+      return shortIdentifierString(from: child.value)
+    }
+
+    switch value {
+    case let uuid as UUID:
+      return "...\(uuid.uuidString.suffix(4).lowercased())"
+    case let string as String:
+      return abbreviatedIdentifier(string)
+    case let substring as Substring:
+      return abbreviatedIdentifier(String(substring))
+    case let custom as any CustomStringConvertible:
+      return abbreviatedIdentifier(custom.description)
+    default:
+      return nil
+    }
+  }
+
+  private func abbreviatedIdentifier(_ raw: String) -> String? {
+    let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard !trimmed.isEmpty else { return nil }
+
+    let sanitized = trimmed.replacingOccurrences(of: "-", with: "")
+    guard sanitized.count > 4 else { return trimmed }
+    return "...\(trimmed.suffix(4))"
+  }
+
+  private func shortTypeName(from qualifiedName: String) -> String {
+    qualifiedName.split(separator: ".").last.map(String.init) ?? qualifiedName
   }
 }

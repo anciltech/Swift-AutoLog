@@ -86,6 +86,16 @@ actor SwiftDataClient {
 
 Whenever `save` is invoked, Swift AutoLog emits an event containing metadata such as the source location, declaration, parameters, result, tags, and duration.
 
+Opaque reference-like values are summarized a bit more helpfully in the default compact formatter. If a parameter would otherwise print as a bare module-qualified type, Swift AutoLog prefers a short `Type.id: ...1234` summary when the value exposes an `id` field:
+
+```swift
+// Before
+-> 🟢 InteractionManager.isHovered(frame: LLA.Frame) → false
+
+// After
+-> 🟢 InteractionManager.isHovered(frame: Frame.id: ...2341) → false
+```
+
 ### Per-function logging with `@Log`
 
 Use `@Log` when you only want to instrument a specific function:

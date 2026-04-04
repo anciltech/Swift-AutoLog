@@ -1,4 +1,5 @@
 import AutoLog
+import Foundation
 import Testing
 
 @Suite
@@ -114,6 +115,49 @@ struct CompactFormatterTests {
             parameters: ["id": 1]
         )
         #expect(CompactFormatter().format(event: event).contains("fetchUser(id: 1)"))
+    }
+
+    @Test func identifiableParameter_prefersShortIDSummary() {
+        final class Frame {
+            let id: UUID
+
+            init(id: UUID) {
+                self.id = id
+            }
+        }
+
+        let event = makeEvent(
+            declaration: "func isHovered(frame: Frame) -> Bool",
+            parameters: ["frame": Frame(id: UUID(uuidString: "12345678-1234-1234-1234-123456782341")!)],
+            result: .success(false)
+        )
+
+        #expect(CompactFormatter().format(event: event).contains("isHovered(frame: Frame.id: ...2341)"))
+    }
+
+    @Test func descriptiveValue_keepsItsDefaultDescription() {
+        struct Frame {
+            let id: UUID
+            let name: String
+        }
+
+        let event = makeEvent(
+            declaration: "func inspect(frame: Frame)",
+            parameters: ["frame": Frame(id: UUID(uuidString: "12345678-1234-1234-1234-123456782341")!, name: "Hero")]
+        )
+
+        let output = CompactFormatter().format(event: event)
+        #expect(output.contains("inspect(frame: Frame(id:"))
+        #expect(!output.contains("Frame.id: ...2341"))
+    }
+
+    @Test func metatypeParameter_stripsModuleQualification() {
+        let event = makeEvent(
+            declaration: "func register(type: Any.Type)",
+            parameters: ["type": Date.self]
+        )
+
+        #expect(CompactFormatter().format(event: event).contains("register(type: Date)"))
     }
 
     @Test func emptyParameters_showEmptyParens() {
