@@ -43,7 +43,7 @@ public enum AutoLogSettingsStorage {
 
   // MARK: - Timing
 
-  /// Whether `@Logged` functions should display timing by default.
+  /// Whether `@AutoLog` functions should display timing by default.
   /// Individual functions may override this with `@Log(measure: true/false)`.
   /// Defaults to `true`.
   public static nonisolated(unsafe) var measureTimingDefault: Bool = true

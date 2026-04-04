@@ -118,7 +118,7 @@ extension Loggable where Self == SentryLogger {
 ```
 
 > Warning:
-> When creating an extension, always use `any Loggable` as a type, otherwise `@Logged` macro will not work.
+> When creating an extension, always use `any Loggable` as a type, otherwise the `@AutoLog` macro will not work.
 
 ### Custom logger levels
 
@@ -215,9 +215,8 @@ extension Levelable where Self == SentryLevel {
 
 ### Results 
 
-After that, any error thrown within a type or function marked with either ``Logged(using:)`` or ``Log(using:)`` will be sent to Sentry, including all breadcrumbs leading up to the error.
+After that, any error thrown within a type or function marked with either ``AutoLog(using:)`` or ``Log(using:)`` will be sent to Sentry, including all breadcrumbs leading up to the error.
 
 
 ![Sentry breadcrumbs](sentry-scope)
 ![Sentry breadcrumbs](sentry-breadcrumbs)
-

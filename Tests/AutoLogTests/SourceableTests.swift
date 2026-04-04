@@ -333,7 +333,7 @@ struct CompactFormatterSourceTests {
 
     @Test func downstreamFunction_showsStatusEmoji_noSourceEmoji() {
         // When source is set but declaration doesn't match source.description,
-        // it's a downstream @Logged function. Status emoji is used; source emoji
+        // it's a downstream @AutoLog function. Status emoji is used; source emoji
         // only appears in the ↖ attribution line (for SourceContext sources only).
         let event = makeEvent(
             source: InteractionSource.button("Deposit"),

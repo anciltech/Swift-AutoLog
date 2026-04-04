@@ -8,9 +8,9 @@ struct AutoLoggerTests {
 
   @Test
   func whenLoggerAttachedToType_expectedToCaptureAllEvent() async throws {
-    // Workaround: @Logged(using: MockLogger) triggers a Swift compiler ICE due to
+    // Workaround: @AutoLog(using: MockLogger) triggers a Swift compiler ICE due to
     // existential boxing in macro argument type-checking (ResolveMacroRequest crash).
-    // Use @Logged (no-arg) with a temporary global-logger override instead.
+    // Use @AutoLog (no-arg) with a temporary global-logger override instead.
     let prevLogger = AutoLogSource.logger
     let prevEmitStart = AutoLogSettingsStorage.emitStartEvents
     AutoLogSource.logger = Self.mock
@@ -76,9 +76,9 @@ extension AutoLoggerTests {
     case mock
   }
 
-  // @Logged (no-arg) avoids the Swift compiler ICE caused by passing a non-AutoLogLogger
-  // existential to @Logged(using:). The test overrides AutoLogSource.logger instead.
-  @Logged
+  // @AutoLog (no-arg) avoids the Swift compiler ICE caused by passing a non-AutoLogLogger
+  // existential to @AutoLog(using:). The test overrides AutoLogSource.logger instead.
+  @AutoLog
   struct Testcase {
     func mockThrowingFunction() throws {
       throw Failure.mock

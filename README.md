@@ -66,15 +66,15 @@ Import the package in the files where you want to use it:
 import AutoLog
 ```
 
-### Type-wide logging with `@Logged`
+### Type-wide logging with `@AutoLog`
 
-Use `@Logged` when you want every method in a type to be instrumented automatically:
+Use `@AutoLog` when you want every method in a type to be instrumented automatically:
 
 ```swift
 import AutoLog
 import SwiftData
 
-@Logged
+@AutoLog
 @ModelActor
 actor SwiftDataClient {
   func save<T: PersistentModel>(_ model: T) throws {
@@ -170,7 +170,7 @@ Swift AutoLog also includes lightweight SwiftUI helpers for common UI interactio
 
 ### `Button.log(...)`
 
-Use `Button.log(...)` to emit an interaction event and automatically propagate that source into downstream `@Log` or `@Logged` calls:
+Use `Button.log(...)` to emit an interaction event and automatically propagate that source into downstream `@Log` or `@AutoLog` calls:
 
 ```swift
 Button.log("Save") {
@@ -290,7 +290,7 @@ AutoLog.note("Cache hit")
 
 ### Remove manual entry/exit logging from instrumented functions
 
-If a function is annotated with `@Log` or lives under `@Logged`, you usually do not need separate manual logs for:
+If a function is annotated with `@Log` or lives under `@AutoLog`, you usually do not need separate manual logs for:
 
 * function start
 * function success
@@ -311,7 +311,7 @@ Inline manual logs are still useful for:
 
 As a rule of thumb:
 
-* use `@Log` / `@Logged` for function boundaries
+* use `@Log` / `@AutoLog` for function boundaries
 * use `AutoLog.update(...)` or `AutoLog.note(...)` for meaningful internal milestones
 * remove noisy `print`, duplicate `Logger.info`, and repetitive “entered function” style logs once the macro is in place
 

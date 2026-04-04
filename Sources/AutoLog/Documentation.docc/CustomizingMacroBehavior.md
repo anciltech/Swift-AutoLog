@@ -9,7 +9,7 @@ In this article, you will learn how to utilize trait macros and their associated
 > Code examples used throughout this article are part of the example app [Count Me In](https://github.com/23122K/swift-loggable/tree/main/Examples/CountMeIn)
 > The first line in each code snippet refers to a file within the app.
 
-Trait macros are macros used to pass parameters to a ``LoggableEvent``. They must always be preceded by either the ``Log(using:)`` or ``OSLog(level:omit:tag:)`` macros - either explicitly, or implicitly when a type is annotated with ``Logged(using:)`` or ``OSLogged()``, respectively. Otherwise, an error is emitted.
+Trait macros are macros used to pass parameters to a ``LoggableEvent``. They must always be preceded by either the ``Log(using:)`` or ``OSLog(level:omit:tag:)`` macros - either explicitly, or implicitly when a type is annotated with ``AutoLog(using:)`` or ``OSLogged()``, respectively. Otherwise, an error is emitted.
 
 The trait macros include:
 
@@ -35,12 +35,12 @@ Logging levels can be specified for an event using either overload of ``Log(usin
 
 All of the examples below produce the same output.
 
-Using ``Level(_:)`` within the type annotated with ``Logged(using:)``.
+Using ``Level(_:)`` within the type annotated with ``AutoLog(using:)``.
 ```swift
 // SwipeableFactModel.swift
 
 // ...
-@Logged(using: .sentry)
+@AutoLog(using: .sentry)
 class SwipeableFactModel {
   // ...
   @Level(.sentryDebug)
@@ -51,7 +51,7 @@ class SwipeableFactModel {
 }
 ```
 
-Using ``Level(_:)`` with a string that represents the logging level inside a type annotated with ``Logged(using:)``:
+Using ``Level(_:)`` with a string that represents the logging level inside a type annotated with ``AutoLog(using:)``:
 
 This example uses a predefined logging level. You can learn how to create custom ones in <doc:CreatingCustomLoggableInstance>
 
@@ -59,7 +59,7 @@ This example uses a predefined logging level. You can learn how to create custom
 // SwipeableFactModel.swift
 
 // ...
-@Logged(using: .sentry)
+@AutoLog(using: .sentry)
 class SwipeableFactModel {
   // ...
   @Level("debug")
@@ -198,7 +198,7 @@ To exclude a function from being logged, simply mark it with `Omit()`.
 // SwipeableFactModel.swift
 
 // ...
-@Logged(using: .sentry)
+@AutoLog(using: .sentry)
 class SwipeableFactModel {
   // ...
   @Omit

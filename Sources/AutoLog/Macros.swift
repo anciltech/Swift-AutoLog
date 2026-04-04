@@ -104,14 +104,14 @@ public macro OSLog(
 ///
 /// - Parameter loggable: The type that handles captured events.
 ///
-/// Annotating declaration with ``Logged(using:)`` will intoduce
+/// Annotating declaration with ``AutoLog(using:)`` will intoduce
 /// ``Log(using:)`` macros implicitly to all methods within.
 ///
 /// When  `loggable` parameter is specified, introdcued``Log(using:)``
 /// macros will use it. In order to override implicit parameter, we must explicity
 /// mark method with ``Log(using:)``
 /// ```swift
-/// @Logged
+/// @AutoLog
 /// struct Foo {
 ///   @Log(using: .nsLog)
 ///   func bar() async throws {
@@ -126,7 +126,7 @@ public macro OSLog(
 ///
 /// To omit methods from being anottated, mark method with ``Omit()``
 /// ```swift
-/// @Logged
+/// @AutoLog
 /// enum Foo {
 ///   static func bar() -> Bool {
 ///     // Event will be captured upon execution.
@@ -139,19 +139,19 @@ public macro OSLog(
 /// }
 /// ```
 @attached(memberAttribute)
-public macro Logged() = #externalMacro(
+public macro AutoLog() = #externalMacro(
   module: "AutoLogMacro",
   type: "LoggedMacro"
 )
 
 @attached(memberAttribute)
-public macro Logged(using loggable: any AutoLogger) = #externalMacro(
+public macro AutoLog(using loggable: any AutoLogger) = #externalMacro(
   module: "AutoLogMacro",
   type: "LoggedMacro"
 )
 
 @attached(memberAttribute)
-public macro Logged(architecture loggable: any AutoLogger) = #externalMacro(
+public macro AutoLog(architecture loggable: any AutoLogger) = #externalMacro(
   module: "AutoLogMacro",
   type: "LoggedMacro"
 )
@@ -159,13 +159,13 @@ public macro Logged(architecture loggable: any AutoLogger) = #externalMacro(
 /// Overload for concrete `AutoLogLogger` to avoid existential boxing in
 /// macro argument type-checking on Swift 6.2.x.
 @attached(memberAttribute)
-public macro Logged(using loggable: AutoLogLogger) = #externalMacro(
+public macro AutoLog(using loggable: AutoLogLogger) = #externalMacro(
   module: "AutoLogMacro",
   type: "LoggedMacro"
 )
 
 @attached(memberAttribute)
-public macro Logged(architecture loggable: AutoLogLogger) = #externalMacro(
+public macro AutoLog(architecture loggable: AutoLogLogger) = #externalMacro(
   module: "AutoLogMacro",
   type: "LoggedMacro"
 )
@@ -349,13 +349,13 @@ public macro Level(_ trait: (any Levelable)? = nil) = #externalMacro(
 
 /// Skips function from being annotated with `Log` or `OSLog` macro.
 ///
-/// ``Logged(using:)`` and ``OSLogged()`` implicitly introduces
+/// ``AutoLog(using:)`` and ``OSLogged()`` implicitly introduces
 /// respectively ``Log(using:)`` and ``OSLog(level:omit:tag:)
 /// to all methods within attached context. Mark method with ``Omit()``
 /// to skip it.
 ///
 /// ```swift
-/// @Logged
+/// @AutoLog
 /// struct Foo {
 ///   func bar() -> {
 ///     // ...

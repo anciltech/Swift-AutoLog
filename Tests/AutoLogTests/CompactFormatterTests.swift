@@ -199,7 +199,7 @@ struct CompactFormatterIntegrationTests {
 
     @Test func loggedMacro_emitsCompactFormat() {
         // Use a class box to capture the last formatted output in a @Sendable closure.
-        // Workaround: @Logged(using: AutoLogLogger(formatter:)) inside a function body
+        // Workaround: @AutoLog(using: AutoLogLogger(formatter:)) inside a function body
         // triggers a Swift compiler ICE (ExpandBodyMacroRequest crash). Instead we override
         // AutoLogSource.logger temporarily and use @Log (no-arg) on the inner struct.
         final class Box: @unchecked Sendable { var value = "" }
