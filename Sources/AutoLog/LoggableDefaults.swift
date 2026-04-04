@@ -1,67 +1,129 @@
 import Foundation
+import Synchronization
+
+private struct UserDefaultsBox: @unchecked Sendable {
+  var value: UserDefaults
+}
+
+private struct AutoLogSettingsState {
+  var userDefaultsBox: UserDefaultsBox = UserDefaultsBox(value: .standard)
+  var omitParametersKey: String = "log.omitParameters"
+  var omitResultKey: String = "log.omitResult"
+  var omitParametersDefault: Bool = false
+  var omitResultDefault: Bool = false
+  var emitStartEvents: Bool = true
+  var measureTimingDefault: Bool = true
+  var measureTimingKey: String = "log.measureTiming"
+  var measureTimingDepths: Set<Int>? = nil
+  var formatKey: String = "log.format"
+
+  var userDefaults: UserDefaults {
+    get { userDefaultsBox.value }
+    set { userDefaultsBox = UserDefaultsBox(value: newValue) }
+  }
+}
 
 /// Shared defaults used by app-level settings UIs.
 ///
 /// Consumers can override these values during app startup to customize
 /// persistence keys, backing storage, and fallback values.
 public enum AutoLogSettingsStorage {
-  public static nonisolated(unsafe) var userDefaults: UserDefaults = .standard
+  private static let state = Mutex(AutoLogSettingsState())
+
+  private static func snapshot() -> AutoLogSettingsState {
+    state.withLock { $0 }
+  }
+
+  public static var userDefaults: UserDefaults {
+    get { snapshot().userDefaults }
+    set { state.withLock { $0.userDefaults = newValue } }
+  }
 
   // MARK: - Omit parameters
 
-  public static nonisolated(unsafe) var omitParametersKey: String = "log.omitParameters"
-  public static nonisolated(unsafe) var omitResultKey: String = "log.omitResult"
+  public static var omitParametersKey: String {
+    get { snapshot().omitParametersKey }
+    set { state.withLock { $0.omitParametersKey = newValue } }
+  }
+  public static var omitResultKey: String {
+    get { snapshot().omitResultKey }
+    set { state.withLock { $0.omitResultKey = newValue } }
+  }
 
-  public static nonisolated(unsafe) var omitParametersDefault: Bool = false
-  public static nonisolated(unsafe) var omitResultDefault: Bool = false
+  public static var omitParametersDefault: Bool {
+    get { snapshot().omitParametersDefault }
+    set { state.withLock { $0.omitParametersDefault = newValue } }
+  }
+  public static var omitResultDefault: Bool {
+    get { snapshot().omitResultDefault }
+    set { state.withLock { $0.omitResultDefault = newValue } }
+  }
 
   public static func omitParameters() -> Bool {
-    guard userDefaults.object(forKey: omitParametersKey) != nil
-    else { return omitParametersDefault }
-    return userDefaults.bool(forKey: omitParametersKey)
+    let snapshot = snapshot()
+    guard snapshot.userDefaults.object(forKey: snapshot.omitParametersKey) != nil
+    else { return snapshot.omitParametersDefault }
+    return snapshot.userDefaults.bool(forKey: snapshot.omitParametersKey)
   }
 
   public static func setOmitParameters(_ value: Bool) {
-    userDefaults.set(value, forKey: omitParametersKey)
+    let snapshot = snapshot()
+    snapshot.userDefaults.set(value, forKey: snapshot.omitParametersKey)
   }
 
   public static func omitResult() -> Bool {
-    guard userDefaults.object(forKey: omitResultKey) != nil
-    else { return omitResultDefault }
-    return userDefaults.bool(forKey: omitResultKey)
+    let snapshot = snapshot()
+    guard snapshot.userDefaults.object(forKey: snapshot.omitResultKey) != nil
+    else { return snapshot.omitResultDefault }
+    return snapshot.userDefaults.bool(forKey: snapshot.omitResultKey)
   }
 
   public static func setOmitResult(_ value: Bool) {
-    userDefaults.set(value, forKey: omitResultKey)
+    let snapshot = snapshot()
+    snapshot.userDefaults.set(value, forKey: snapshot.omitResultKey)
   }
 
   // MARK: - Start events
 
   /// Whether the macro should emit a 🔵 start event before a function executes.
   /// Defaults to `true`. Set to `false` during app init to suppress start events globally.
-  public static nonisolated(unsafe) var emitStartEvents: Bool = true
+  public static var emitStartEvents: Bool {
+    get { snapshot().emitStartEvents }
+    set { state.withLock { $0.emitStartEvents = newValue } }
+  }
 
   // MARK: - Timing
 
   /// Whether `@AutoLog` functions should display timing by default.
   /// Individual functions may override this with `@Log(measure: true/false)`.
   /// Defaults to `true`.
-  public static nonisolated(unsafe) var measureTimingDefault: Bool = true
+  public static var measureTimingDefault: Bool {
+    get { snapshot().measureTimingDefault }
+    set { state.withLock { $0.measureTimingDefault = newValue } }
+  }
 
-  public static nonisolated(unsafe) var measureTimingKey: String = "log.measureTiming"
+  public static var measureTimingKey: String {
+    get { snapshot().measureTimingKey }
+    set { state.withLock { $0.measureTimingKey = newValue } }
+  }
 
   /// Restrict timing display to specific depth levels (e.g. `[2]` for ViewModel only).
   /// `nil` means show timing for all depths when enabled.
-  public static nonisolated(unsafe) var measureTimingDepths: Set<Int>? = nil
+  public static var measureTimingDepths: Set<Int>? {
+    get { snapshot().measureTimingDepths }
+    set { state.withLock { $0.measureTimingDepths = newValue } }
+  }
 
   public static func measureTiming() -> Bool {
-    guard userDefaults.object(forKey: measureTimingKey) != nil
-    else { return measureTimingDefault }
-    return userDefaults.bool(forKey: measureTimingKey)
+    let snapshot = snapshot()
+    guard snapshot.userDefaults.object(forKey: snapshot.measureTimingKey) != nil
+    else { return snapshot.measureTimingDefault }
+    return snapshot.userDefaults.bool(forKey: snapshot.measureTimingKey)
   }
 
   public static func setMeasureTiming(_ value: Bool) {
-    userDefaults.set(value, forKey: measureTimingKey)
+    let snapshot = snapshot()
+    snapshot.userDefaults.set(value, forKey: snapshot.measureTimingKey)
   }
 
   // MARK: - Log Format
@@ -69,12 +131,16 @@ public enum AutoLogSettingsStorage {
   /// The UserDefaults key used to persist the active ``LogFormat``.
   ///
   /// Override before app launch if you need a custom key.
-  public static nonisolated(unsafe) var formatKey: String = "log.format"
+  public static var formatKey: String {
+    get { snapshot().formatKey }
+    set { state.withLock { $0.formatKey = newValue } }
+  }
 
   /// Returns the currently stored ``LogFormat``, or ``LogFormat/default`` if none is set.
   public static func logFormat() -> LogFormat {
+    let snapshot = snapshot()
     guard
-      let data = userDefaults.data(forKey: formatKey),
+      let data = snapshot.userDefaults.data(forKey: snapshot.formatKey),
       let format = try? JSONDecoder().decode(LogFormat.self, from: data)
     else { return .default }
     return format
@@ -92,14 +158,16 @@ public enum AutoLogSettingsStorage {
   /// )
   /// ```
   public static func setLogFormat(_ format: LogFormat) {
+    let snapshot = snapshot()
     guard let data = try? JSONEncoder().encode(format) else { return }
-    userDefaults.set(data, forKey: formatKey)
+    snapshot.userDefaults.set(data, forKey: snapshot.formatKey)
   }
 
   /// Removes any stored format, causing ``CompactFormatter`` to revert to
   /// ``LogFormat/default``.
   public static func resetLogFormat() {
-    userDefaults.removeObject(forKey: formatKey)
+    let snapshot = snapshot()
+    snapshot.userDefaults.removeObject(forKey: snapshot.formatKey)
   }
 }
 

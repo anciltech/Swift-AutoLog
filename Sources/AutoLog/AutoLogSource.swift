@@ -1,3 +1,5 @@
+import Synchronization
+
 /// A `Sourceable` wrapper that pairs an interaction source with the call-site
 /// location where it was activated. Stored in `AutoLogSource.current` so that
 /// downstream `@Logged` function events can include the attribution line
@@ -25,6 +27,8 @@ public struct SourceContext: Sourceable, Sendable {
 /// Manages the current interaction source via TaskLocal and emits
 /// standalone interaction events when sources are activated.
 public enum AutoLog {
+  private static let loggerStorage = Mutex<any AutoLogger>(AutoLogLogger())
+
   /// The current interaction source context, automatically propagated
   /// through structured concurrency (async/await, TaskGroup).
   ///
@@ -37,10 +41,14 @@ public enum AutoLog {
   /// Defaults to `AutoLogLogger()`. Set this to customize
   /// where interaction events are logged.
   ///
-  /// - Important: Set this property during app initialization only,
-  ///   before any concurrent calls to ``run(_:fileID:line:column:operation:)``.
-  ///   Mutating it concurrently with `run()` calls is a data race.
-  public static nonisolated(unsafe) var logger: any AutoLogger = AutoLogLogger()
+  /// Reads and writes are synchronized so `@Log` macro expansions can fetch it
+  /// from concurrently-executing code without inheriting `nonisolated(unsafe)`
+  /// warnings. Replacing the logger mid-flight only affects future call sites
+  /// that read the value after the swap.
+  public static var logger: any AutoLogger {
+    get { loggerStorage.withLock { $0 } }
+    set { loggerStorage.withLock { $0 = newValue } }
+  }
 
   // MARK: - Interaction source activation
 

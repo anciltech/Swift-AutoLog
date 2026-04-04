@@ -174,6 +174,23 @@ AutoLogInteraction.button("Save").log {
 }
 ```
 
+## Concurrency-safe runtime configuration
+
+Swift AutoLog keeps its shared runtime configuration behind synchronized storage, so
+macro-generated `@Log` code can read the default logger from concurrently-executing
+functions without tripping Swift 6.2's `nonisolated(unsafe)` warnings.
+
+That means you can continue to customize global behavior with the existing APIs:
+
+```swift
+AutoLogSource.logger = AutoLogLogger(formatter: CompactFormatter(profile: .cleanArchitecture))
+AutoLogSettingsStorage.emitStartEvents = false
+AutoLogSettingsStorage.measureTimingDepths = [2, 3]
+```
+
+Swapping these values while work is already in flight is safe; future log calls pick
+up the most recent value they read at function entry.
+
 ## SwiftUI auto-logging
 
 Swift AutoLog also includes lightweight SwiftUI helpers for common UI interaction logging.

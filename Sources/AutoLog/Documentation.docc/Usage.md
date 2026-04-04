@@ -80,6 +80,11 @@ This alone is sufficient for debugging. All methods within the `FavoriteFactsMod
 
 By default, ``Logged(using:)`` uses the ``LoggableLogger`` instance. Refer to <doc:CreatingCustomLoggableInstance> for more information about incorporating custom loggers.
 
+If you prefer to override the shared default logger for a whole app or a focused test,
+`AutoLogSource.logger` remains available. Its storage is synchronized, so Swift 6.2+
+concurrent call sites can read it without inheriting `nonisolated(unsafe)` warnings
+from macro expansion.
+
 > Initializers are not implicitly marked with the ``Log(using:)`` annotation. Marking them explicitly also has no effect.
 
 ## Overriding @Logged behavior
