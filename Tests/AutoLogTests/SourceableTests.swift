@@ -176,12 +176,47 @@ struct AutoLogSourceTests {
         #expect(result == 42)
     }
 
+    @Test func source_log_setsCurrentDuringExecution() {
+        let originalLogger = AutoLogSource.logger
+        defer { AutoLogSource.logger = originalLogger }
+        AutoLogSource.logger = MockLogger()
+
+        var capturedEmoji: String?
+        InteractionSource.keyboard("Toggle").log {
+            capturedEmoji = AutoLogSource.current?.emoji
+        }
+        #expect(capturedEmoji == "⌨️")
+    }
+
+    @Test func source_log_emitsInteractionEvent() {
+        let originalLogger = AutoLogSource.logger
+        defer { AutoLogSource.logger = originalLogger }
+
+        let mock = MockLogger()
+        AutoLogSource.logger = mock
+
+        InteractionSource.keyboard("Toggle").log { }
+
+        #expect(mock.events.count == 1)
+        #expect(mock.events.first?.source?.emoji == "⌨️")
+        #expect(mock.events.first?.declaration == "keyboard(\"Toggle\")")
+    }
+
     @Test func run_async_returnsOperationResult() async {
         let originalLogger = AutoLogSource.logger
         defer { AutoLogSource.logger = originalLogger }
         AutoLogSource.logger = MockLogger()
 
         let result = await AutoLogSource.run(InteractionSource.api("Fetch")) { "data" }
+        #expect(result == "data")
+    }
+
+    @Test func source_log_async_returnsOperationResult() async {
+        let originalLogger = AutoLogSource.logger
+        defer { AutoLogSource.logger = originalLogger }
+        AutoLogSource.logger = MockLogger()
+
+        let result = await InteractionSource.api("Fetch").log { "data" }
         #expect(result == "data")
     }
 }

@@ -15,8 +15,7 @@ extension Button where Label == Text {
         action: @escaping @MainActor () -> Void
     ) -> some View {
         Button(title, role: role) {
-            AutoLogSource.run(
-                InteractionSource.button(title),
+            InteractionSource.button(title).log(
                 fileID: fileID,
                 line: line,
                 column: column
@@ -37,8 +36,7 @@ extension Button where Label == Text {
     ) -> some View {
         Button(title, role: role) {
             Task {
-                await AutoLogSource.run(
-                    InteractionSource.button(title),
+                await InteractionSource.button(title).log(
                     fileID: fileID,
                     line: line,
                     column: column
@@ -81,8 +79,7 @@ extension Binding {
         return Binding(
             get: { current.wrappedValue },
             set: { newValue in
-                AutoLogSource.run(
-                    source,
+                source.log(
                     fileID: fileID,
                     line: line,
                     column: column

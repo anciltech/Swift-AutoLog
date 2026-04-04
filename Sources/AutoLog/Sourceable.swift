@@ -10,6 +10,43 @@ public protocol Sourceable: Sendable, CustomStringConvertible {
     var label: String? { get }
 }
 
+public extension Sourceable {
+    /// Emits an interaction event for this source and runs the operation with
+    /// the source propagated through ``AutoLog/current``.
+    @discardableResult
+    func log<T>(
+        fileID: String = #fileID,
+        line: Int = #line,
+        column: Int = #column,
+        operation: () throws -> T
+    ) rethrows -> T {
+        try AutoLog.run(
+            self,
+            fileID: fileID,
+            line: line,
+            column: column,
+            operation: operation
+        )
+    }
+
+    /// Async variant of ``log(fileID:line:column:operation:)``.
+    @discardableResult
+    func log<T>(
+        fileID: String = #fileID,
+        line: Int = #line,
+        column: Int = #column,
+        operation: () async throws -> T
+    ) async rethrows -> T {
+        try await AutoLog.run(
+            self,
+            fileID: fileID,
+            line: line,
+            column: column,
+            operation: operation
+        )
+    }
+}
+
 /// Built-in interaction source types with source-specific emojis.
 public enum InteractionSource: Sourceable {
     case button(String?)
