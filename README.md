@@ -156,6 +156,14 @@ AutoLog.run(.button("Save")) {
 }
 ```
 
+If you prefer a more explicit namespace, `AutoLogInteraction` builds the same sources:
+
+```swift
+AutoLogInteraction.button("Save").log {
+  viewModel.saveTapped()
+}
+```
+
 ## SwiftUI auto-logging
 
 Swift AutoLog also includes lightweight SwiftUI helpers for common UI interaction logging.
@@ -203,6 +211,8 @@ Swift AutoLog includes `InteractionSource` cases for common triggers:
 * `.unknown`
 
 You can also create your own custom source by conforming a type to `Sourceable`.
+
+If you prefer namespaced source builders over enum cases, `AutoLogInteraction.button("Save")` and the other static helpers return the matching `InteractionSource` values.
 
 ## Early exits
 

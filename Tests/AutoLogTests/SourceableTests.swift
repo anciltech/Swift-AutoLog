@@ -70,6 +70,19 @@ struct SourceableTests {
         #expect(InteractionSource.unknown.description == "unknown")
     }
 
+    // MARK: - AutoLogInteraction aliases
+
+    @Test func interactionNamespace_buildsButtonSource() {
+        let source = AutoLogInteraction.button("Deposit")
+        #expect(source.emoji == "👆🏼")
+        #expect(source.label == "Deposit")
+        #expect(source.description == "button(\"Deposit\")")
+    }
+
+    @Test func interactionNamespace_unknownMatchesBuiltInUnknown() {
+        #expect(AutoLogInteraction.unknown.description == InteractionSource.unknown.description)
+    }
+
     // MARK: - Custom Sourceable conformance
 
     @Test func customSourceable_works() {
@@ -200,6 +213,20 @@ struct AutoLogSourceTests {
         #expect(mock.events.count == 1)
         #expect(mock.events.first?.source?.emoji == "⌨️")
         #expect(mock.events.first?.declaration == "keyboard(\"Toggle\")")
+    }
+
+    @Test func interactionNamespace_log_emitsInteractionEvent() {
+        let originalLogger = AutoLogSource.logger
+        defer { AutoLogSource.logger = originalLogger }
+
+        let mock = MockLogger()
+        AutoLogSource.logger = mock
+
+        AutoLogInteraction.button("Frame Button").log { }
+
+        #expect(mock.events.count == 1)
+        #expect(mock.events.first?.source?.emoji == "👆🏼")
+        #expect(mock.events.first?.declaration == "button(\"Frame Button\")")
     }
 
     @Test func run_async_returnsOperationResult() async {

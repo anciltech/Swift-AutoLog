@@ -48,7 +48,7 @@ public extension Sourceable {
 }
 
 /// Built-in interaction source types with source-specific emojis.
-public enum InteractionSource: Sourceable {
+public enum AutoLogInteraction: Sourceable {
     case button(String?)
     case textField(String?)
     case keyboard(String?)
@@ -108,3 +108,7 @@ public enum InteractionSource: Sourceable {
         return caseName
     }
 }
+
+/// Backward-compatible alias for older code that still references
+/// `InteractionSource.button(...)`.
+public typealias InteractionSource = AutoLogInteraction
