@@ -152,6 +152,10 @@ public struct CompactFormatter: AutoLogFormatter {
     // ── Second line: error detail OR tags ────────────────────────────────────
     var annotations: [String] = []
 
+    if let earlyExit = event.earlyExit {
+      annotations.append("         ↳ early exit: \(earlyExit)")
+    }
+
     if case .failure(let error) = event.result {
       let errorType = String(describing: type(of: error))
       let desc      = String(describing: error)
@@ -291,11 +295,17 @@ public struct CompactFormatter: AutoLogFormatter {
     }
 
     let description = String(describing: value)
-    if description == String(reflecting: type(of: value)) {
+    if isTypeOnlyDescription(description, for: value) {
       return shortIdentifierSummary(for: value) ?? shortTypeName(from: description)
     }
 
     return description
+  }
+
+  private func isTypeOnlyDescription(_ description: String, for value: Any) -> Bool {
+    let reflectedType = String(reflecting: type(of: value))
+    let shortType = shortTypeName(from: reflectedType)
+    return description == reflectedType || description == shortType
   }
 
   private func isScalarLike(_ value: Any) -> Bool {

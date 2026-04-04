@@ -152,6 +152,26 @@ struct CompactFormatterTests {
         #expect(CompactFormatter().format(event: event).contains("attach(session: Session.identifier: ...ef12)"))
     }
 
+    @Test func shortTypeDescriptionStillPrefersShortIDSummary() {
+        final class Frame: CustomStringConvertible {
+            let id: UUID
+
+            init(id: UUID) {
+                self.id = id
+            }
+
+            var description: String { "Frame" }
+        }
+
+        let event = makeEvent(
+            declaration: "func isSelected(frame: Frame) -> Bool",
+            parameters: ["frame": Frame(id: UUID(uuidString: "12345678-1234-1234-1234-123456782341")!)],
+            result: .success(false)
+        )
+
+        #expect(CompactFormatter().format(event: event).contains("isSelected(frame: Frame.id: ...2341)"))
+    }
+
     @Test func descriptiveValue_keepsItsDefaultDescription() {
         struct Frame {
             let id: UUID

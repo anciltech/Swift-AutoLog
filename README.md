@@ -86,7 +86,7 @@ actor SwiftDataClient {
 
 Whenever `save` is invoked, Swift AutoLog emits an event containing metadata such as the source location, declaration, parameters, result, tags, and duration.
 
-Opaque reference-like values are summarized a bit more helpfully in the default compact formatter. If a parameter would otherwise print as a bare module-qualified type, Swift AutoLog prefers a short `Type.id: ...1234` summary when the value exposes an `id` field:
+Opaque reference-like values are summarized a bit more helpfully in the default compact formatter. If a parameter would otherwise print as only its type name, whether that is `LLA.Frame` or just `Frame`, Swift AutoLog prefers a short `Type.id: ...1234` summary when the value exposes an `id` field:
 
 ```swift
 // Before
