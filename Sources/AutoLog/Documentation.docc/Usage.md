@@ -81,13 +81,13 @@ This alone is sufficient for debugging. All methods within the `FavoriteFactsMod
 By default, ``AutoLog(using:)`` uses the ``AutoLogLogger`` instance. Refer to <doc:CreatingCustomLoggableInstance> for more information about incorporating custom loggers.
 
 For app-wide setup, install a process-local runtime snapshot with
-``AutoLog/bootstrap(logger:configuration:configurationStore:refreshInterval:)``.
+``AutoLog/start(logger:configuration:configurationStore:refreshInterval:)``.
 For focused tests or examples, use ``AutoLog/withRuntime(_:operation:)`` or
 ``AutoLog/withConfiguration(_:operation:)`` to scope a temporary override through
 structured concurrency.
 
 ```swift
-AutoLog.bootstrap(
+AutoLog.start(
   configuration: AutoLogConfiguration(
     emitStartEvents: false,
     measureTimingDepths: [2, 3]
@@ -95,7 +95,7 @@ AutoLog.bootstrap(
 )
 ```
 
-Use `AutoLog.bootstrap()` when the default logger and configuration are enough.
+Use `AutoLog.start()` when the default logger and configuration are enough.
 Advanced setups can still pass a custom logger, store, or refresh interval.
 
 > Initializers are not implicitly marked with the ``Log(using:)`` annotation. Marking them explicitly also has no effect.

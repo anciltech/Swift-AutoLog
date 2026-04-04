@@ -180,15 +180,15 @@ Swift AutoLog keeps a process-local runtime snapshot behind synchronized storage
 macro-generated `@Log` code can capture one logger/configuration pair at function
 entry without tripping Swift 6.2's `nonisolated(unsafe)` warnings.
 
-Use `AutoLog.bootstrap()` for the default setup, or pass only the parts you want
+Use `AutoLog.start()` for the default setup, or pass only the parts you want
 to customize:
 
 ```swift
-AutoLog.bootstrap()
+AutoLog.start()
 ```
 
 ```swift
-AutoLog.bootstrap(
+AutoLog.start(
   configuration: AutoLogConfiguration(
     emitStartEvents: false,
     measureTimingDepths: [2, 3]
@@ -199,7 +199,7 @@ AutoLog.bootstrap(
 You can still provide a custom logger and advanced store settings when needed:
 
 ```swift
-AutoLog.bootstrap(
+AutoLog.start(
   logger: AutoLogLogger(formatter: CompactFormatter(profile: .cleanArchitecture)),
   configuration: AutoLogConfiguration(
     emitStartEvents: false,

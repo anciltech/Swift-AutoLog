@@ -40,17 +40,17 @@ public enum AutoLog {
 
   // MARK: - Runtime bootstrap and configuration
 
-  /// Installs the process-local logger and live configuration store.
+  /// Starts the process-local logger and live configuration store.
   ///
   /// If persisted configuration already exists in the store, it wins over
   /// `configuration` so companion-app changes survive relaunches.
-  public static func bootstrap(
+  public static func start(
     logger: any AutoLogger = AutoLogLogger(),
     configuration: AutoLogConfiguration = .default,
     configurationStore: AutoLogConfigurationStore = .shared,
     refreshInterval: Duration = .seconds(2)
   ) {
-    bootstrap(
+    start(
       AutoLogBootstrap(
         logger: logger,
         configuration: configuration,
@@ -60,13 +60,33 @@ public enum AutoLog {
     )
   }
 
-  /// Installs the process-local logger and live configuration store using an
+  /// Starts the process-local logger and live configuration store using an
   /// explicit bootstrap payload.
   ///
   /// If persisted configuration already exists in the store, it wins over
   /// `options.configuration` so companion-app changes survive relaunches.
-  public static func bootstrap(_ options: AutoLogBootstrap) {
+  public static func start(_ options: AutoLogBootstrap) {
     runtimeState.withLock { $0.bootstrap(options) }
+  }
+
+  /// Compatibility alias for callers still using the older runtime setup name.
+  public static func bootstrap(
+    logger: any AutoLogger = AutoLogLogger(),
+    configuration: AutoLogConfiguration = .default,
+    configurationStore: AutoLogConfigurationStore = .shared,
+    refreshInterval: Duration = .seconds(2)
+  ) {
+    start(
+      logger: logger,
+      configuration: configuration,
+      configurationStore: configurationStore,
+      refreshInterval: refreshInterval
+    )
+  }
+
+  /// Compatibility alias for callers still using the older runtime setup name.
+  public static func bootstrap(_ options: AutoLogBootstrap) {
+    start(options)
   }
 
   /// Returns the current process-local runtime snapshot.

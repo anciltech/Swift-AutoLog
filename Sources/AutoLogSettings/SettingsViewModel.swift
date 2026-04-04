@@ -113,7 +113,7 @@ final class SettingsViewModel {
       .map { "            .\($0.rawValue)" }
       .joined(separator: ",\n")
     return """
-    AutoLog.bootstrap(
+    AutoLog.start(
       configuration: AutoLogConfiguration(
         emitStartEvents: \(configuration.emitStartEvents),
         measureTimingDefault: \(configuration.measureTimingDefault),

@@ -45,15 +45,15 @@ struct AutoLogRuntimeTests {
   }
 
   @Test
-  func bootstrap_withConfigurationInstallsCustomConfiguration() {
+  func start_withConfigurationInstallsCustomConfiguration() {
     let configuration = AutoLogConfiguration(
       emitStartEvents: false,
       measureTimingDefault: false,
       measureTimingDepths: [2, 3]
     )
-    defer { AutoLog.bootstrap() }
+    defer { AutoLog.start() }
 
-    AutoLog.bootstrap(configuration: configuration)
+    AutoLog.start(configuration: configuration)
 
     #expect(AutoLog.runtimeSnapshot().configuration == configuration)
   }
@@ -65,7 +65,7 @@ struct AutoLogRuntimeTests {
     defaults.removePersistentDomain(forName: suiteName)
     defer {
       defaults.removePersistentDomain(forName: suiteName)
-      AutoLog.bootstrap()
+      AutoLog.start()
     }
 
     let store = AutoLogConfigurationStore(userDefaults: defaults)
@@ -81,7 +81,7 @@ struct AutoLogRuntimeTests {
       logFormat: LogFormat(mainLine: [.statusEmoji, .functionName])
     )
 
-    AutoLog.bootstrap(
+    AutoLog.start(
       logger: MockLogger(),
       configuration: initial,
       configurationStore: store,
@@ -103,7 +103,7 @@ struct AutoLogRuntimeTests {
     defaults.removePersistentDomain(forName: suiteName)
     defer {
       defaults.removePersistentDomain(forName: suiteName)
-      AutoLog.bootstrap()
+      AutoLog.start()
     }
 
     let logger = MockLogger()
@@ -119,7 +119,7 @@ struct AutoLogRuntimeTests {
       logFormat: LogFormat(mainLine: [.statusEmoji, .functionName])
     )
 
-    AutoLog.bootstrap(
+    AutoLog.start(
       logger: logger,
       configuration: initial,
       configurationStore: store,
