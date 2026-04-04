@@ -352,24 +352,25 @@ public struct CompactFormatter: AutoLogFormatter {
 
     guard
       let idChild = mirror.children.first(where: { child in
-        guard let label = child.label?.lowercased() else { return false }
-        return label == "id" || label == "identifier" || label == "uuid"
+        isIdentifierLabel(child.label)
       }),
       let shortID = shortIdentifierString(from: idChild.value)
     else {
       return nil
     }
 
-    let label = idChild.label ?? "id"
+    let label = normalizedIdentifierLabel(idChild.label)
     let typeName = shortTypeName(from: String(reflecting: type(of: value)))
     return "\(typeName).\(label): \(shortID)"
   }
 
-  private func shortIdentifierString(from value: Any) -> String? {
+  private func shortIdentifierString(from value: Any, depth: Int = 0) -> String? {
+    guard depth < 5 else { return nil }
+
     let mirror = Mirror(reflecting: value)
     if mirror.displayStyle == .optional {
       guard let child = mirror.children.first else { return nil }
-      return shortIdentifierString(from: child.value)
+      return shortIdentifierString(from: child.value, depth: depth + 1)
     }
 
     switch value {
@@ -382,8 +383,21 @@ public struct CompactFormatter: AutoLogFormatter {
     case let custom as any CustomStringConvertible:
       return abbreviatedIdentifier(custom.description)
     default:
-      return nil
+      break
     }
+
+    if let nestedIdentifier = mirror.children.first(where: { child in
+      isIdentifierLabel(child.label)
+    }) {
+      return shortIdentifierString(from: nestedIdentifier.value, depth: depth + 1)
+    }
+
+    // Wrapper types often expose the real value as a single unlabeled child.
+    if mirror.children.count == 1, let onlyChild = mirror.children.first {
+      return shortIdentifierString(from: onlyChild.value, depth: depth + 1)
+    }
+
+    return nil
   }
 
   private func abbreviatedIdentifier(_ raw: String) -> String? {
@@ -397,5 +411,15 @@ public struct CompactFormatter: AutoLogFormatter {
 
   private func shortTypeName(from qualifiedName: String) -> String {
     qualifiedName.split(separator: ".").last.map(String.init) ?? qualifiedName
+  }
+
+  private func isIdentifierLabel(_ label: String?) -> Bool {
+    let normalized = normalizedIdentifierLabel(label)
+    return normalized == "id" || normalized == "identifier" || normalized == "uuid"
+  }
+
+  private func normalizedIdentifierLabel(_ label: String?) -> String {
+    guard let label else { return "id" }
+    return label.trimmingCharacters(in: CharacterSet(charactersIn: "_")).lowercased()
   }
 }

@@ -173,6 +173,30 @@ struct CompactFormatterTests {
         #expect(CompactFormatter().format(event: event, configuration: configuration).contains("isSelected(frame: Frame.id: ...2341)"))
     }
 
+    @Test func wrappedUnderscoredIdentifierPrefersShortIDSummary() {
+        struct IDBox {
+            let rawValue: UUID
+        }
+
+        final class Frame: CustomStringConvertible {
+            let _id: IDBox
+
+            init(id: UUID) {
+                self._id = IDBox(rawValue: id)
+            }
+
+            var description: String { "Frame" }
+        }
+
+        let event = makeEvent(
+            declaration: "func isDragging(frame: Frame) -> Bool",
+            parameters: ["frame": Frame(id: UUID(uuidString: "89CA345B-CE1D-43F5-B5BE-3F4D2C370BD8")!)],
+            result: .success(false)
+        )
+
+        #expect(CompactFormatter().format(event: event, configuration: configuration).contains("isDragging(frame: Frame.id: ...0bd8)"))
+    }
+
     @Test func descriptiveValue_keepsItsDefaultDescription() {
         struct Frame {
             let id: UUID
