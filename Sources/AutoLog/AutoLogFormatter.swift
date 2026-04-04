@@ -330,7 +330,7 @@ public struct CompactFormatter: AutoLogFormatter {
     guard
       let idChild = mirror.children.first(where: { child in
         guard let label = child.label?.lowercased() else { return false }
-        return label == "id"
+        return label == "id" || label == "identifier" || label == "uuid"
       }),
       let shortID = shortIdentifierString(from: idChild.value)
     else {

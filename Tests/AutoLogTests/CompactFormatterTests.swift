@@ -135,6 +135,23 @@ struct CompactFormatterTests {
         #expect(CompactFormatter().format(event: event).contains("isHovered(frame: Frame.id: ...2341)"))
     }
 
+    @Test func identifierParameter_prefersShortIDSummary() {
+        final class Session {
+            let identifier: String
+
+            init(identifier: String) {
+                self.identifier = identifier
+            }
+        }
+
+        let event = makeEvent(
+            declaration: "func attach(session: Session)",
+            parameters: ["session": Session(identifier: "session-abcdef12")]
+        )
+
+        #expect(CompactFormatter().format(event: event).contains("attach(session: Session.identifier: ...ef12)"))
+    }
+
     @Test func descriptiveValue_keepsItsDefaultDescription() {
         struct Frame {
             let id: UUID
