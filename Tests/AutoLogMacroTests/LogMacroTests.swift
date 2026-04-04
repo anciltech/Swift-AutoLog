@@ -140,6 +140,94 @@ struct LogMacroTests {
   }
 
   @Test
+  func boolFunction_logsGuardEarlyReturn() throws {
+    assertMacro {
+      #"""
+      @Log
+      func deleteActiveLayout(collection: LayoutCollection) -> Bool {
+        guard collection.layouts.count > 1 else {
+          return false
+        }
+
+        return true
+      }
+      """#
+    } expansion: {
+      """
+      func deleteActiveLayout(collection: LayoutCollection) -> Bool {
+        let autoLogger: any AutoLogger = AutoLogSource.logger
+        var event = AutoLogEvent(
+          source: AutoLogSource.current,
+
+          location: "TestModule/Test.swift:1:1",
+          declaration: "func deleteActiveLayout(collection: LayoutCollection) -> Bool",
+          parameters: [
+            "collection": collection
+          ],
+          tags: []
+        )
+        autoLogger.emitStart(event: event)
+        let __logStart = ContinuousClock.now
+        func _deleteActiveLayout(collection: LayoutCollection) -> Bool {
+          guard collection.layouts.count > 1 else {
+            AutoLogSource.emit(.warning, "[guard-failed] collection.layouts.count > 1")
+            return false
+          }
+
+          return true
+        }
+        let result = _deleteActiveLayout(collection: collection)
+        event.result = .success(result)
+        event.duration = ContinuousClock.now - __logStart
+        autoLogger.emit(event: event)
+        return result
+      }
+      """
+    }
+  }
+
+  @Test
+  func voidFunction_logsGuardBareReturn() throws {
+    assertMacro {
+      #"""
+      @Log
+      func refresh(sessionToken: String?) {
+        guard let sessionToken else {
+          return
+        }
+
+        print(sessionToken)
+      }
+      """#
+    } expansion: {
+      """
+      func refresh(sessionToken: String?) {
+        let autoLogger: any AutoLogger = AutoLogSource.logger
+        var event = AutoLogEvent(
+          source: AutoLogSource.current,
+
+          location: "TestModule/Test.swift:1:1",
+          declaration: "func refresh(sessionToken: String?)",
+          parameters: [
+            "sessionToken": sessionToken
+          ],
+          tags: []
+        )
+        autoLogger.emitStart(event: event)
+        let __logStart = ContinuousClock.now
+        guard let sessionToken else {
+          AutoLogSource.emit(.warning, "[guard-failed] let sessionToken")
+          return
+          }
+        print(sessionToken)
+        event.duration = ContinuousClock.now - __logStart
+        autoLogger.emit(event: event)
+      }
+      """
+    }
+  }
+
+  @Test
   func stringFunctionWithArguments_autoLoggerAndLevelableAsStaticParameters_noAdditionalAnnotations() throws {
     assertMacro {
       #"""
