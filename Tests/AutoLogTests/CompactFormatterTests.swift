@@ -365,6 +365,149 @@ struct CompactFormatterTests {
     }
 }
 
+// MARK: - LogFormat element toggling
+
+@Suite
+struct LogFormatElementToggleTests {
+    let configuration = AutoLogConfiguration.default
+
+    func makeEvent(
+        location: String = "App/MyViewModel.swift:10:5",
+        declaration: String = "func fetchData(id: Int) async throws -> String",
+        parameters: [String: Any] = ["id": 42],
+        result: Result<Any, any Error> = .success("hello")
+    ) -> AutoLogEvent {
+        AutoLogEvent(
+            location: location,
+            declaration: declaration,
+            parameters: parameters,
+            result: result
+        )
+    }
+
+    @Test func returnValue_suppressedWhenElementRemoved() {
+        var format = LogFormat.default
+        format.mainLine.removeAll { $0 == .returnValue }
+        let formatter = CompactFormatter(profile: .mvvm, format: format)
+        let event = makeEvent()
+        let output = formatter.format(event: event, configuration: configuration)
+        #expect(!output.contains("→"))
+        #expect(output.contains("fetchData(id: 42)"))
+    }
+
+    @Test func returnValue_visibleByDefault() {
+        let formatter = CompactFormatter(profile: .mvvm)
+        let event = makeEvent()
+        let output = formatter.format(event: event, configuration: configuration)
+        #expect(output.contains("→ hello"))
+    }
+
+    // MARK: - Trace path (SourceContext events — Button.log / Toggle.log)
+
+    func makeTraceEvent(
+        location: String = "App/MyViewModel.swift:10:5",
+        declaration: String = "func fetchData(id: Int) async -> String",
+        parameters: [String: Any] = ["id": 42],
+        result: Result<Any, any Error> = .success("traced-result")
+    ) -> AutoLogEvent {
+        let source = SourceContext(
+            source: InteractionSource.button("Run"),
+            location: "App/MyView.swift:10:5"
+        )
+        return AutoLogEvent(
+            source: source,
+            location: location,
+            declaration: declaration,
+            parameters: parameters,
+            result: result
+        )
+    }
+
+    @Test func traceEvent_returnValue_suppressedWhenElementRemoved() {
+        var format = LogFormat.default
+        format.mainLine.removeAll { $0 == .returnValue }
+        let formatter = CompactFormatter(profile: .mvvm, format: format)
+        let event = makeTraceEvent()
+        let output = formatter.format(event: event, configuration: configuration)
+        #expect(!output.contains("→ traced-result"))
+        #expect(output.contains("fetchData(id: 42)"))
+    }
+
+    @Test func traceEvent_returnValue_visibleByDefault() {
+        let formatter = CompactFormatter(profile: .mvvm)
+        let event = makeTraceEvent()
+        let output = formatter.format(event: event, configuration: configuration)
+        #expect(output.contains("→ traced-result"))
+    }
+
+    @Test func traceEvent_returnValue_suppressedViaConfigurationLogFormat() {
+        var format = LogFormat.default
+        format.mainLine.removeAll { $0 == .returnValue }
+        let configWithoutReturn = AutoLogConfiguration(logFormat: format)
+        // No init-time format override — the formatter reads configuration.logFormat
+        let formatter = CompactFormatter(profile: .mvvm)
+        let event = makeTraceEvent()
+        let output = formatter.format(event: event, configuration: configWithoutReturn)
+        #expect(!output.contains("→ traced-result"))
+    }
+
+    @Test func traceEvent_effectSpecifiers_suppressedWhenElementRemoved() {
+        var format = LogFormat.default
+        format.mainLine.removeAll { $0 == .effectSpecifiers }
+        let formatter = CompactFormatter(profile: .mvvm, format: format)
+        let event = makeTraceEvent()
+        let output = formatter.format(event: event, configuration: configuration)
+        #expect(!output.contains(" async"))
+    }
+
+    @Test func typeName_suppressedWhenElementRemoved() {
+        var format = LogFormat.default
+        format.mainLine.removeAll { $0 == .typeName || $0 == .dotSeparator }
+        let formatter = CompactFormatter(profile: .mvvm, format: format)
+        let event = makeEvent()
+        let output = formatter.format(event: event, configuration: configuration)
+        #expect(!output.contains("MyViewModel"))
+        #expect(output.contains("fetchData(id: 42)"))
+    }
+
+    @Test func effectSpecifiers_suppressedWhenElementRemoved() {
+        var format = LogFormat.default
+        format.mainLine.removeAll { $0 == .effectSpecifiers }
+        let formatter = CompactFormatter(profile: .mvvm, format: format)
+        let event = makeEvent()
+        let output = formatter.format(event: event, configuration: configuration)
+        #expect(!output.contains(" async"))
+    }
+
+    @Test func lineNumber_appearsWhenElementAdded() {
+        var format = LogFormat.default
+        // Insert lineNumber after the typeName
+        if let idx = format.mainLine.firstIndex(of: .dotSeparator) {
+            format.mainLine.insert(.lineNumber, at: idx)
+        }
+        let formatter = CompactFormatter(profile: .mvvm, format: format)
+        let event = makeEvent(location: "App/MyViewModel.swift:42:5")
+        let output = formatter.format(event: event, configuration: configuration)
+        #expect(output.contains(":42"))
+    }
+
+    @Test func defaultFormat_roundTripsViaConfiguration() throws {
+        let config = AutoLogConfiguration(logFormat: .default)
+        let data = try JSONEncoder().encode(config)
+        let decoded = try JSONDecoder().decode(AutoLogConfiguration.self, from: data)
+        #expect(decoded.logFormat == .default)
+    }
+
+    @Test func customFormat_persistsThroughConfiguration() throws {
+        var format = LogFormat.default
+        format.mainLine.removeAll { $0 == .returnValue }
+        let config = AutoLogConfiguration(logFormat: format)
+        let data = try JSONEncoder().encode(config)
+        let decoded = try JSONDecoder().decode(AutoLogConfiguration.self, from: data)
+        #expect(!decoded.logFormat.mainLine.contains(.returnValue))
+    }
+}
+
 // MARK: - Integration
 
 @Suite(.serialized)

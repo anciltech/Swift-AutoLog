@@ -81,6 +81,7 @@ public struct CompactFormatter: AutoLogFormatter {
         event: event,
         typeName: typeName,
         depth: depth,
+        fmt: fmt,
         configuration: configuration
       )
     }
@@ -237,9 +238,10 @@ public struct CompactFormatter: AutoLogFormatter {
     event: AutoLogEvent,
     typeName: String,
     depth: Int,
+    fmt: LogFormat,
     configuration: AutoLogConfiguration
   ) -> String {
-    let em         = emoji(for: event, style: configuration.logFormat.statusStyle)
+    let em         = emoji(for: event, style: fmt.statusStyle)
     let funcName   = extractFuncName(from: event.declaration)
     let params     = formatParameters(event.parameters)
     let specifiers = effectSpecifiers(from: event.declaration)
@@ -248,11 +250,13 @@ public struct CompactFormatter: AutoLogFormatter {
     var line = "\(prefix)\(em) \(typeName).\(funcName)(\(params))"
 
     let trimmedSpecifiers = specifiers.trimmingCharacters(in: .whitespaces)
-    if !trimmedSpecifiers.isEmpty {
+    if !trimmedSpecifiers.isEmpty && fmt.mainLine.contains(.effectSpecifiers) {
       line += " \(trimmedSpecifiers)"
     }
 
-    if case .success(let value) = event.result, type(of: value) != Void.self {
+    if fmt.mainLine.contains(.returnValue),
+       case .success(let value) = event.result,
+       type(of: value) != Void.self {
       line += " → \(value)"
     }
 
