@@ -66,4 +66,9 @@ struct DepthProfileTests {
         let profile = DepthProfile.cleanArchitecture
         #expect(profile.depth(for: "UserRepository") == 4)
     }
+
+    @Test func cleanArchitecture_api_returnsDepth5() {
+        let profile = DepthProfile.cleanArchitecture
+        #expect(profile.depth(for: "PaymentAPI") == 5)
+    }
 }

@@ -279,9 +279,9 @@ struct CompactFormatterSourceTests {
         )
     }
 
-    // In the new formatter, source emoji no longer replaces the status emoji on function events.
-    // Status emoji (🟢/🔴/🔵) is always used; source attribution appears on a second ↖ line
-    // only when the source is a SourceContext (set by AutoLogSource.run via @TaskLocal).
+    // Source-propagated function events render as trace-tree branches.
+    // Status emoji (🟢/🔴/🔵) stays on the branch tip while the interaction
+    // itself is emitted as a standalone root line.
 
     @Test func functionEvent_withSource_showsStatusEmoji_notSourceEmoji() {
         // Non-SourceContext sources don't produce an attribution line.
@@ -312,35 +312,26 @@ struct CompactFormatterSourceTests {
     }
 
     @Test func interactionEvent_usesLabelAndLocation() {
-        // Interaction events (declaration == source.description) are formatted as:
-        // "-> 👆🏼 <label> [<TypeName>:<line>]"
         let event = makeEvent(
             source: InteractionSource.button("Deposit"),
             location: "App/ContentView.swift:30:5",
             declaration: "button(\"Deposit\")"
         )
         let output = CompactFormatter().format(event: event, configuration: configuration)
-        #expect(output.contains("👆🏼"))
-        #expect(output.contains("Deposit"))
-        #expect(output.contains("[ContentView:30]"))
-        #expect(!output.contains("→"))
+        #expect(output == "👆🏼 Deposit")
     }
 
     @Test func interactionEvent_usesDepthArrow() {
-        // Depth arrow length is derived from the type name suffix via DepthProfile.
         let event = makeEvent(
             source: InteractionSource.toggle("Dark Mode"),
             location: "App/MyViewModel.swift:15:5",
             declaration: "toggle(\"Dark Mode\")"
         )
         let output = CompactFormatter(profile: .mvvm).format(event: event, configuration: configuration)
-        #expect(output.hasPrefix("--> 🔀 Dark Mode [MyViewModel:15]"))
+        #expect(output == "🔀 Dark Mode")
     }
 
     @Test func downstreamFunction_showsStatusEmoji_noSourceEmoji() {
-        // When source is set but declaration doesn't match source.description,
-        // it's a downstream @AutoLog function. Status emoji is used; source emoji
-        // only appears in the ↖ attribution line (for SourceContext sources only).
         let event = makeEvent(
             source: InteractionSource.button("Deposit"),
             location: "App/Account.swift:20:5",
@@ -354,9 +345,7 @@ struct CompactFormatterSourceTests {
         #expect(output.contains("Account.deposit(amount: 50)"))
     }
 
-    @Test func functionEvent_withSourceContext_showsAttributionLine() {
-        // When source is a SourceContext (from AutoLogSource.run), a second ↖ line
-        // is appended showing the interaction source emoji, label, and call-site location.
+    @Test func functionEvent_withSourceContext_showsTraceBranch() {
         let ctx = SourceContext(
             source: InteractionSource.button("Deposit"),
             location: "App/ContentView.swift:30:5"
@@ -367,14 +356,9 @@ struct CompactFormatterSourceTests {
             result: .success(())
         )
         let output = CompactFormatter().format(event: event, configuration: configuration)
-        let lines = output.split(separator: "\n", omittingEmptySubsequences: false)
-        #expect(lines.count == 2)
-        #expect(lines[0].contains("🟢"))
-        #expect(lines[1].contains("↖"))
-        #expect(lines[1].contains("👆🏼"))
-        #expect(lines[1].contains("Deposit"))
-        #expect(lines[1].contains("[ContentView:30]"))
-        #expect(lines[1].contains(ctx.traceBadge))
+        #expect(output.contains("├──🟢"))
+        #expect(output.contains("MyViewModel.deposit()"))
+        #expect(!output.contains("↖"))
     }
 
     @Test func interactionEvent_withSourceContext_showsTraceBadgeInline() {
@@ -390,7 +374,29 @@ struct CompactFormatterSourceTests {
             declaration: "button(\"Deposit\")"
         )
         let output = CompactFormatter().format(event: event, configuration: configuration)
-        #expect(output.contains("Deposit"))
-        #expect(output.contains("🧵A1B2C3"))
+        #expect(output == "👆🏼 Deposit 🧵A1B2C3")
+    }
+
+    @Test func failureTrace_usesLongerBranchAndNestedErrorLine() {
+        struct PaymentError: Error {}
+        let ctx = SourceContext(
+            source: InteractionSource.button("Save"),
+            location: "App/ContentView.swift:30:5",
+            interactionID: "A1B2C3",
+            flowMarker: "🧵"
+        )
+        let event = makeEvent(
+            source: ctx,
+            location: "App/PaymentAPI.swift:30:5",
+            declaration: "func submit() async throws",
+            result: .failure(PaymentError())
+        )
+
+        let output = CompactFormatter(profile: .cleanArchitecture).format(event: event, configuration: configuration)
+        let lines = output.split(separator: "\n", omittingEmptySubsequences: false)
+        #expect(lines[0].contains("└─────🔴"))
+        #expect(lines[0].contains("PaymentAPI.submit() async"))
+        #expect(lines[1].contains("└──"))
+        #expect(lines[1].contains("PaymentError"))
     }
 }

@@ -24,6 +24,7 @@ public struct DepthProfile: Sendable {
         ("Repository", 4),
         ("DataSource", 5),
         ("Network", 5),
+        ("API", 5),
     ])
 
     public func depth(for typeName: String) -> Int? {

@@ -138,13 +138,15 @@ Button.log("Save") {
 ```
 
 Every interaction origin gets a short flow badge such as `🧵A1B2C3`. The
-origin event and the downstream attribution line share the same badge, which
-makes overlapping flows easier to distinguish in the console:
+origin event becomes a trace root, and downstream calls use longer branch
+lengths to hint at architectural depth:
 
 ```text
--> 👆🏼 Save 🧵A1B2C3 [ContentView:42]
---> 🟢 PaymentsViewModel.saveTapped()
-         ↖ 👆🏼 Save 🧵A1B2C3 [ContentView:42]
+👆🏼 Save 🧵A1B2C3
+├──🟢 PaymentsViewModel.saveTapped()
+├───🟢 PaymentService.validate()                  ⏱ 12ms
+└────🔴 PaymentAPI.submit()                       ⏱ 221ms
+     └── declined [PaymentError]
 ```
 
 For chatty boolean probes where only the positive case matters, add

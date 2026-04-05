@@ -7,25 +7,23 @@ public protocol AutoLogFormatter: Sendable {
 ///
 /// ### Interaction events (button taps, etc.)
 /// ```
-/// ->  👆🏼 Run [AsyncExamplesView:42]
+/// 👆🏼 Run 🧵A1B2C3
 /// ```
 ///
 /// ### Function start events (🔵, before body executes)
 /// ```
-/// --> 🔵 AsyncExamplesViewModel.fetchPreferences(userId: 42) async
+/// ├──🔵 AsyncExamplesViewModel.fetchPreferences(userId: 42) async
 /// ```
 ///
 /// ### Function result events (🟢 success, 🔴 failure)
 /// ```
-/// --> 🟢 AsyncExamplesViewModel.fetchPreferences(userId: 42) async → Prefs(dark, en) ⏱ 38ms
-///          ↖ 👆🏼 Run [AsyncExamplesView:42]
+/// ├───🟢 AsyncExamplesViewModel.fetchPreferences(userId: 42) async → Prefs(dark, en) ⏱ 38ms
 ///
-/// --> 🔴 AsyncExamplesViewModel.fetchUser(id: 99) async
-///          ↳ recent context:
-///             • -> 👆🏼 Run [AsyncExamplesView:42]
-///             • --> 🔵 AsyncExamplesViewModel.fetchUser(id: 99) async
-///          ↳ notFound [NetworkError]
-///          ↖ 👆🏼 Run [AsyncExamplesView:42]
+/// └────🔴 AsyncExamplesViewModel.fetchUser(id: 99) async
+///      ├── recent context:
+///      │   • 👆🏼 Run 🧵A1B2C3
+///      │   • ├──🔵 AsyncExamplesViewModel.fetchUser(id: 99) async
+///      └── notFound [NetworkError]
 /// ```
 ///
 /// ### Customising the layout
@@ -75,8 +73,16 @@ public struct CompactFormatter: AutoLogFormatter {
     if let source = event.source, event.declaration == source.description {
       let label = source.label ?? source.description
       let trace = (source as? SourceContext).map { " \($0.traceBadge)" } ?? ""
-      let line  = extractLine(from: event.location)
-      return "\(arrow) \(source.emoji) \(label)\(trace) [\(typeName):\(line)]"
+      return "\(source.emoji) \(label)\(trace)"
+    }
+
+    if event.source is SourceContext {
+      return formatTraceEvent(
+        event: event,
+        typeName: typeName,
+        depth: depth,
+        configuration: configuration
+      )
     }
 
     let em         = emoji(for: event, style: fmt.statusStyle)
@@ -188,12 +194,6 @@ public struct CompactFormatter: AutoLogFormatter {
       annotations.append("         ↳ [\(tagList)]")
     }
 
-    // ── Source attribution line ───────────────────────────────────────────────
-    // Not shown on start events (they have no source attribution line to keep them lean).
-    if !isStartEvent(event), let attribution = sourceAttributionLine(for: event) {
-      annotations.append(attribution)
-    }
-
     if !annotations.isEmpty {
       line += "\n" + annotations.joined(separator: "\n")
     }
@@ -233,6 +233,71 @@ public struct CompactFormatter: AutoLogFormatter {
     return style.success
   }
 
+  private func formatTraceEvent(
+    event: AutoLogEvent,
+    typeName: String,
+    depth: Int,
+    configuration: AutoLogConfiguration
+  ) -> String {
+    let em         = emoji(for: event, style: configuration.logFormat.statusStyle)
+    let funcName   = extractFuncName(from: event.declaration)
+    let params     = formatParameters(event.parameters)
+    let specifiers = effectSpecifiers(from: event.declaration)
+    let prefix     = tracePrefix(for: event, depth: depth)
+
+    var line = "\(prefix)\(em) \(typeName).\(funcName)(\(params))"
+
+    let trimmedSpecifiers = specifiers.trimmingCharacters(in: .whitespaces)
+    if !trimmedSpecifiers.isEmpty {
+      line += " \(trimmedSpecifiers)"
+    }
+
+    if case .success(let value) = event.result, type(of: value) != Void.self {
+      line += " → \(value)"
+    }
+
+    let timing = timingSuffix(for: event, depth: depth, configuration: configuration)
+      .trimmingCharacters(in: .whitespaces)
+    if !timing.isEmpty {
+      line = appendAlignedSuffix(timing, to: line)
+    }
+
+    var annotations: [String] = []
+    let detailIndent = String(repeating: " ", count: max(depth + 1, 3))
+    let branchLead   = detailIndent + "└── "
+    let contextLead  = detailIndent + "├── "
+    let contextItem  = detailIndent + "│   • "
+
+    if let earlyExit = event.earlyExit {
+      annotations.append(branchLead + "early exit: \(earlyExit)")
+    } else if !event.branchDecisions.isEmpty {
+      let branches = event.branchDecisions
+        .map(\.description)
+        .joined(separator: " -> ")
+      annotations.append(branchLead + "branch path: \(branches)")
+    }
+
+    if case .failure = event.result, !event.errorContext.isEmpty {
+      annotations.append(contextLead + "recent context:")
+      annotations.append(contentsOf: event.errorContext.map { contextItem + $0.summary })
+    }
+
+    if case .failure(let error) = event.result {
+      let errorType = String(describing: type(of: error))
+      let desc      = String(describing: error)
+      annotations.append(branchLead + "\(desc) [\(errorType)]")
+    } else if !event.visibleTags.isEmpty {
+      let tagList = event.visibleTags.map { "\($0)" }.joined(separator: ", ")
+      annotations.append(branchLead + "[\(tagList)]")
+    }
+
+    if !annotations.isEmpty {
+      line += "\n" + annotations.joined(separator: "\n")
+    }
+
+    return line
+  }
+
   private func timingSuffix(
     for event: AutoLogEvent,
     depth: Int,
@@ -249,6 +314,22 @@ public struct CompactFormatter: AutoLogFormatter {
     return " ⏱ \(formatDuration(duration))"
   }
 
+  private func appendAlignedSuffix(_ suffix: String, to line: String) -> String {
+    let targetColumn = 56
+    let padding = max(2, targetColumn - line.count)
+    return line + String(repeating: " ", count: padding) + suffix
+  }
+
+  private func tracePrefix(for event: AutoLogEvent, depth: Int) -> String {
+    let corner = isTerminalTraceEvent(event) ? "└" : "├"
+    return corner + String(repeating: "─", count: max(depth, 2))
+  }
+
+  private func isTerminalTraceEvent(_ event: AutoLogEvent) -> Bool {
+    if case .failure = event.result { return true }
+    return false
+  }
+
   private func formatDuration(_ d: Duration) -> String {
     let totalNs = d.components.seconds * 1_000_000_000
                 + d.components.attoseconds / 1_000_000_000
@@ -257,14 +338,6 @@ public struct CompactFormatter: AutoLogFormatter {
     case ..<1_000_000: return "\(totalNs / 1_000)ms"
     default:           return String(format: "%.1fs", Double(totalNs) / 1_000_000_000)
     }
-  }
-
-  private func sourceAttributionLine(for event: AutoLogEvent) -> String? {
-    guard let ctx = event.source as? SourceContext else { return nil }
-    let typeName = extractTypeName(from: ctx.location)
-    let line     = extractLine(from: ctx.location)
-    let label    = ctx.label ?? ctx.description
-    return "         ↖ \(ctx.emoji) \(label) \(ctx.traceBadge) [\(typeName):\(line)]"
   }
 
   private func formatErrorContext(

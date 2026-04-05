@@ -310,12 +310,14 @@ Button.log("Save") {
 }
 ```
 
-The interaction event and every downstream attribution line share the same generated flow badge, so one tap remains easy to follow even when multiple UI actions overlap:
+The interaction event becomes the root of a small trace tree, and downstream work uses longer branch lengths to hint at architectural depth:
 
 ```text
--> 👆🏼 Save 🧵A1B2C3 [ContentView:42]
---> 🟢 PaymentsViewModel.saveTapped()
-         ↖ 👆🏼 Save 🧵A1B2C3 [ContentView:42]
+👆🏼 Save 🧵A1B2C3
+├──🟢 PaymentsViewModel.saveTapped()
+├───🟢 PaymentService.validate()                  ⏱ 12ms
+└────🔴 PaymentAPI.submit()                       ⏱ 221ms
+     └── declined [PaymentError]
 ```
 
 There is also an async variant:
