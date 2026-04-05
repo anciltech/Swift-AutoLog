@@ -6,7 +6,7 @@ Learn how to leverage ``OSLogger(access:subsystem:category:)``, ``OSLogged()`` a
 
 This article explains how to leverage the [`Logger`](https://developer.apple.com/documentation/os/logger) from the OSLog framework to send all events through it.
 
-> Code examples used throughout this article are part of the example app [Count Me In](https://github.com/23122K/swift-loggable/tree/main/Examples/CountMeIn)
+> Code examples used throughout this article are adapted from the former Count Me In example app.
 > The first line in each code snippet refers to a file within the app.
 
 ### Import the loggable library

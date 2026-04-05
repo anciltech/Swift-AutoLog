@@ -6,7 +6,7 @@ Customize macro behavior using ``Omit(_:)``, ``Deduplicate(_:)``, ``When(_:)``, 
 
 In this article, you will learn how to utilize trait macros and their associated traits to customize macro behavior.
 
-> Code examples used throughout this article are part of the example app [Count Me In](https://github.com/23122K/swift-loggable/tree/main/Examples/CountMeIn)
+> Code examples used throughout this article are adapted from the former Count Me In example app.
 > The first line in each code snippet refers to a file within the app.
 
 Trait macros are macros used to pass parameters to an ``AutoLogEvent``. They must always be preceded by either the ``Log(using:)`` or ``OSLog(level:omit:tag:)`` macros - either explicitly, or implicitly when a type is annotated with ``AutoLog(using:)`` or ``OSLogged()``, respectively. Otherwise, an error is emitted.

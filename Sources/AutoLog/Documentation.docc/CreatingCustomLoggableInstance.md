@@ -5,9 +5,9 @@ Define a custom ``AutoLogger`` instance and use it with macros.
 ## Overview
 
 This article focuses on creating a custom `AutoLogger` instance.
-Below example depends on [SentrySDK](https://github.com/getsentry/sentry-cocoa) Additionaly, you can create a free account on [sentry.io](http://sentry.io/) to provide your own DNS.
+The example below depends on [SentrySDK](https://github.com/getsentry/sentry-cocoa). You can also create a free account on [sentry.io](https://sentry.io/) if you want to send events to your own project.
 
-> Code examples used throughout this article are part of the example app [Count Me In](https://github.com/23122K/swift-loggable/tree/main/Examples/CountMeIn)
+> Code examples used throughout this article are adapted from the former Count Me In example app.
 > The first line in each code snippet refers to a file within the app.
 
 ### Import Sentry and AutoLog
@@ -99,7 +99,7 @@ struct SentryLogger: AutoLogger {
 }
 ```
 
-We can check weather function was that logger was attached to emited an event on success or failure by checking `event.resut`.
+You can determine whether the attached function emitted a success or failure event by checking `event.result`.
 
 On failure, we use `SentrySDK.capture(error:)`, passing in the error that triggered the event. Before sending the error to Sentry, we attach relevant metadata to the scope, providing additional context. Upon success, we simply add a breadcrumb that will be sent along with an error.
 
