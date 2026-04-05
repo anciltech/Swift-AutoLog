@@ -136,7 +136,7 @@ actor SwiftDataClient {
 }
 ```
 
-`@OSLogger` introduces a static logger instance, while `@OSLogged` makes methods in that scope loggable automatically.
+`@OSLogger` introduces a static logger instance, while `@OSLogged` makes methods in that scope loggable automatically. Like `@AutoLog`, `@OSLogged` also emits an empty companion extension for editor macro expansion so the attached type has a visible expansion result even when it has no methods.
 
 ## Manual logs you can use
 

@@ -36,7 +36,7 @@ struct StorageClient: Sendable {
 
 ### Capturing Events into Logger
 
-Now that we conform to the ``OSLogger`` protocol, we can simply mark either the type itself with ``@OSLogged()`` or, for example, an extension containing its methods. This way, all functions within that extension are automatically logged. You can learn more about customizing their behavior in <doc:CustomizingMacroBehavior>.
+Now that we conform to the ``OSLogger`` protocol, we can simply mark either the type itself with ``@OSLogged()`` or, for example, an extension containing its methods. This way, all functions within that extension are automatically logged. For editor macro expansion, ``OSLogged()`` also emits an empty companion extension so the annotated type still has a concrete type-level expansion even when no additional members are synthesized. You can learn more about customizing their behavior in <doc:CustomizingMacroBehavior>.
 
 ```swift
 // StorageClient.swift

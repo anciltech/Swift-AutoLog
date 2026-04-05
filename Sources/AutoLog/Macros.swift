@@ -75,6 +75,7 @@ public macro OSLogger(
 ///   // ...
 /// }
 /// ```
+@attached(extension, names: arbitrary)
 @attached(memberAttribute)
 public macro OSLogged() = #externalMacro(
   module: "AutoLogMacro",
