@@ -11,7 +11,7 @@ There is no need to annotate each method individually - simply apply the desired
 
 * **Customize how logs are handled**
 
-All macros include the ability to add tags to logged functions, suppress their output or parameters, or exclude the functions entirely from emmiting an event.
+All macros include the ability to add tags to logged functions, suppress their output or parameters, deduplicate noisy repeated events, or exclude the functions entirely from emmiting an event.
 
 The no-argument ``Omit()`` marker is also accepted on computed properties so
 those declarations can opt out explicitly without triggering a compiler error.
@@ -59,6 +59,7 @@ Swift AutoLog provides macros that leverage Apple's OSLog framework, eliminating
 
 - ``Omit()``
 - ``Omit(_:)``
+- ``Deduplicate(_:)``
 - ``Tag(_:)``
 - ``Level(_:)``
 

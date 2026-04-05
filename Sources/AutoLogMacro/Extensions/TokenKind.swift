@@ -19,6 +19,8 @@ extension TokenKind {
     case subsystem
     case category
     case measure
+    case deduplicate
+    case Deduplicate
 
     var identifier: TokenKind {
       switch self {
@@ -72,6 +74,12 @@ extension TokenKind {
 
       case .measure:
         return TokenKind.identifier("measure")
+
+      case .deduplicate:
+        return TokenKind.identifier("deduplicate")
+
+      case .Deduplicate:
+        return TokenKind.identifier("Deduplicate")
       }
     }
   }

@@ -117,6 +117,7 @@ final class SettingsViewModel {
       configuration: AutoLogConfiguration(
         emitStartEvents: \(configuration.emitStartEvents),
         measureTimingDefault: \(configuration.measureTimingDefault),
+        deduplicateWithin: \(renderDeduplication(configuration.deduplicateWithin)),
         measureTimingDepths: \(renderDepths(configuration.measureTimingDepths)),
         logFormat: LogFormat(mainLine: [
     """ + "\n" + list + "\n" + """
@@ -153,6 +154,12 @@ final class SettingsViewModel {
   private func renderDepths(_ depths: Set<Int>?) -> String {
     guard let depths else { return "nil" }
     return "[" + depths.sorted().map(\.description).joined(separator: ", ") + "]"
+  }
+
+  private func renderDeduplication(_ deduplication: AutoLogDeduplication?) -> String {
+    guard let deduplication else { return "nil" }
+    let seconds = Double(deduplication.milliseconds) / 1_000
+    return ".seconds(\(seconds.formatted(.number.precision(.fractionLength(0...3)))))"
   }
 
   private func renderArrowStyle(_ style: LogFormat.ArrowStyle) -> String {

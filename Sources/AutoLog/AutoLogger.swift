@@ -110,6 +110,11 @@ public struct AutoLogEvent: CustomStringConvertible, CustomDebugStringConvertibl
   /// allowing the formatter to show timing even when the global default is off.
   public var isMeasuredExplicitly: Bool
 
+  /// A per-event override for duplicate suppression.
+  ///
+  /// When `nil`, the runtime falls back to ``AutoLogConfiguration/deduplicateWithin``.
+  public let deduplicateWithin: AutoLogDeduplication?
+
   /// Describes an early-exit path taken within the function body, when known.
   ///
   /// This metadata is orthogonal to `result`. For example, a function may exit early from a
@@ -125,6 +130,7 @@ public struct AutoLogEvent: CustomStringConvertible, CustomDebugStringConvertibl
     result: \(result)
     earlyExit: \(String(describing: earlyExit))
     tags: \(tags)
+    deduplicateWithin: \(String(describing: deduplicateWithin))
     """
   }
 
@@ -139,6 +145,7 @@ public struct AutoLogEvent: CustomStringConvertible, CustomDebugStringConvertibl
     earlyExit: \(String(describing: earlyExit))
     tags: \(tags)
     duration: \(duration.map { String(describing: $0) } ?? "nil")
+    deduplicateWithin: \(String(describing: deduplicateWithin))
     """
   }
 
@@ -152,6 +159,7 @@ public struct AutoLogEvent: CustomStringConvertible, CustomDebugStringConvertibl
   ///   - parameters: The set of parameters and their corresponding argument values.
   ///   - result: The result returned by the function.
   ///   - tags: A collection of tags to associate with the event.
+  ///   - deduplicateWithin: A per-event duplicate suppression window override.
   ///   - isMeasuredExplicitly: Whether timing was explicitly requested via `@Log(measure: true)`.
   public init(
     level: (any Levelable)? = nil,
@@ -161,6 +169,7 @@ public struct AutoLogEvent: CustomStringConvertible, CustomDebugStringConvertibl
     parameters: [String: Any] = [:],
     result: Result<Any, any Error> = .success(()),
     tags: [any Taggable] = [],
+    deduplicateWithin: AutoLogDeduplication? = nil,
     isMeasuredExplicitly: Bool = false
   ) {
     self.level = level
@@ -170,6 +179,7 @@ public struct AutoLogEvent: CustomStringConvertible, CustomDebugStringConvertibl
     self.parameters = parameters
     self.result = result
     self.tags = tags
+    self.deduplicateWithin = deduplicateWithin
     self.duration = nil
     self.isMeasuredExplicitly = isMeasuredExplicitly
     self.earlyExit = nil
@@ -185,7 +195,8 @@ public struct AutoLogEvent: CustomStringConvertible, CustomDebugStringConvertibl
       declaration: declaration,
       parameters: parameters,
       result: .success(()),
-      tags: tags
+      tags: tags,
+      deduplicateWithin: deduplicateWithin
     )
   }
 
@@ -250,6 +261,16 @@ public struct AutoLogLogger: AutoLogger {
 }
 
 extension AutoLogger {
+  /// Emits an event only when it is not suppressed by deduplication settings.
+  public func emitIfEnabled(
+    event: AutoLogEvent,
+    configuration: AutoLogConfiguration,
+    deduplicator: AutoLogDeduplicator
+  ) {
+    guard deduplicator.shouldEmit(event: event, configuration: configuration) else { return }
+    emit(event: event, configuration: configuration)
+  }
+
   /// Emits a start event (🔵) for the given event when enabled by configuration.
   ///
   /// Called automatically by macro-generated code at function entry.
@@ -259,6 +280,20 @@ extension AutoLogger {
   ) {
     guard configuration.emitStartEvents else { return }
     emit(event: event.asStartEvent, configuration: configuration)
+  }
+
+  /// Emits a start event while honoring the runtime's deduplication settings.
+  public func emitStart(
+    event: AutoLogEvent,
+    configuration: AutoLogConfiguration,
+    deduplicator: AutoLogDeduplicator
+  ) {
+    guard configuration.emitStartEvents else { return }
+    emitIfEnabled(
+      event: event.asStartEvent,
+      configuration: configuration,
+      deduplicator: deduplicator
+    )
   }
 }
 

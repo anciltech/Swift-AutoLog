@@ -75,8 +75,8 @@ public macro OSLogger(
 ///   // ...
 /// }
 /// ```
-@attached(extension, names: arbitrary)
 @attached(memberAttribute)
+@attached(extension, names: arbitrary)
 public macro OSLogged() = #externalMacro(
   module: "AutoLogMacro",
   type: "OSLoggedMacro"
@@ -193,6 +193,28 @@ public macro Log(
 ) = #externalMacro(
   module: "AutoLogMacro",
   type: "LogMacro"
+)
+
+/// Suppresses repeated identical events within the supplied time window.
+///
+/// Apply this before `@Log` or within an `@AutoLog` type to quiet chatty call
+/// sites such as hover probes or selection polling.
+///
+/// ```swift
+/// @AutoLog
+/// struct InteractionManager {
+///   @Deduplicate(.seconds(1))
+///   func hover(frame: Frame) {
+///     // ...
+///   }
+/// }
+/// ```
+@attached(body)
+public macro Deduplicate(
+  _ window: AutoLogDeduplication
+) = #externalMacro(
+  module: "AutoLogMacro",
+  type: "DeduplicateMacro"
 )
 
 /// Overload that allows controlling performance timing at the function level.

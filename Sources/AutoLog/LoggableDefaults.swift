@@ -13,6 +13,10 @@ public struct AutoLogConfiguration: Sendable, Codable, Equatable {
   /// Whether `@AutoLog` functions should display timing by default.
   public var measureTimingDefault: Bool
 
+  /// Suppresses repeated identical log entries within the supplied time window.
+  /// `nil` disables global duplicate suppression.
+  public var deduplicateWithin: AutoLogDeduplication?
+
   /// Restrict timing display to specific depth levels (e.g. `[2]` for ViewModel only).
   /// `nil` means show timing for all depths when enabled.
   public var measureTimingDepths: Set<Int>?
@@ -23,11 +27,13 @@ public struct AutoLogConfiguration: Sendable, Codable, Equatable {
   public init(
     emitStartEvents: Bool = true,
     measureTimingDefault: Bool = true,
+    deduplicateWithin: AutoLogDeduplication? = nil,
     measureTimingDepths: Set<Int>? = nil,
     logFormat: LogFormat = .default
   ) {
     self.emitStartEvents = emitStartEvents
     self.measureTimingDefault = measureTimingDefault
+    self.deduplicateWithin = deduplicateWithin
     self.measureTimingDepths = measureTimingDepths
     self.logFormat = logFormat
   }
@@ -39,13 +45,16 @@ public struct AutoLogConfiguration: Sendable, Codable, Equatable {
 public struct AutoLogRuntime: Sendable {
   public let logger: any AutoLogger
   public let configuration: AutoLogConfiguration
+  public let deduplicator: AutoLogDeduplicator
 
   public init(
     logger: any AutoLogger,
-    configuration: AutoLogConfiguration
+    configuration: AutoLogConfiguration,
+    deduplicator: AutoLogDeduplicator = AutoLogDeduplicator()
   ) {
     self.logger = logger
     self.configuration = configuration
+    self.deduplicator = deduplicator
   }
 }
 
@@ -161,7 +170,8 @@ struct AutoLogRuntimeState {
 
     runtime = AutoLogRuntime(
       logger: runtime.logger,
-      configuration: configuration
+      configuration: configuration,
+      deduplicator: runtime.deduplicator
     )
   }
 
@@ -171,7 +181,8 @@ struct AutoLogRuntimeState {
   ) {
     runtime = AutoLogRuntime(
       logger: runtime.logger,
-      configuration: configuration
+      configuration: configuration,
+      deduplicator: runtime.deduplicator
     )
 
     if persist {

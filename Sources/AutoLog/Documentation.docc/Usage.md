@@ -92,6 +92,7 @@ structured concurrency.
 AutoLog.start(
   configuration: AutoLogConfiguration(
     emitStartEvents: false,
+    deduplicateWithin: .seconds(1),
     measureTimingDepths: [2, 3]
   )
 )
@@ -99,6 +100,24 @@ AutoLog.start(
 
 Use `AutoLog.start()` when the default logger and configuration are enough.
 Advanced setups can still pass a custom logger, store, or refresh interval.
+
+If a single hot path is too noisy, add ``Deduplicate(_:)`` to that function
+while leaving the rest of the type untouched:
+
+```swift
+// InteractionManager.swift
+
+@AutoLog
+struct InteractionManager {
+  @Deduplicate(.seconds(1))
+  func hover(frame: Frame) -> Bool {
+    frame.isHovered
+  }
+}
+```
+
+AutoLog compares the emitted event metadata and suppresses repeated identical
+entries inside the configured time window.
 
 > Initializers are not implicitly marked with the ``Log(using:)`` annotation. Marking them explicitly also has no effect.
 

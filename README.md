@@ -14,7 +14,7 @@ There is no need to annotate each method individually - simply apply the desired
 
 * **Customize how logs are handled**
 
-All macros include the ability to add tags to logged functions, suppress their output or parameters, or even exclude the functions entirely from emitting an event.
+All macros include the ability to add tags to logged functions, suppress their output or parameters, deduplicate noisy repeated events, or even exclude the functions entirely from emitting an event.
 
 * **Leverage OSLog support**
 
@@ -117,6 +117,21 @@ struct LayoutEditorService {
 }
 ```
 
+For hot paths such as hover polling or selection probes, add `@Deduplicate` to
+collapse repeated identical events:
+
+```swift
+import AutoLog
+
+@AutoLog
+struct InteractionManager {
+  @Deduplicate(.seconds(1))
+  func hover(frame: Frame) -> Bool {
+    frame.isHovered
+  }
+}
+```
+
 ### OSLog integration
 
 If you want Swift AutoLog to emit through Apple’s [`Logger`](https://developer.apple.com/documentation/os/logger), use `@OSLogger` and `@OSLogged`:
@@ -193,6 +208,7 @@ AutoLog.start()
 AutoLog.start(
   configuration: AutoLogConfiguration(
     emitStartEvents: false,
+    deduplicateWithin: .seconds(1),
     measureTimingDepths: [2, 3]
   )
 )
@@ -205,6 +221,7 @@ AutoLog.start(
   logger: AutoLogLogger(formatter: CompactFormatter(profile: .cleanArchitecture)),
   configuration: AutoLogConfiguration(
     emitStartEvents: false,
+    deduplicateWithin: .seconds(1),
     measureTimingDepths: [2, 3]
   )
 )
@@ -218,6 +235,7 @@ AutoLog.updateConfiguration(
   AutoLogConfiguration(
     emitStartEvents: false,
     measureTimingDefault: true,
+    deduplicateWithin: .seconds(1),
     measureTimingDepths: [2, 3],
     logFormat: .default
   )

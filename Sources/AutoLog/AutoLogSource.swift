@@ -154,7 +154,8 @@ public enum AutoLog {
     return try withRuntime(
       AutoLogRuntime(
         logger: baseRuntime.logger,
-        configuration: configuration
+        configuration: configuration,
+        deduplicator: baseRuntime.deduplicator
       ),
       operation: operation
     )
@@ -170,7 +171,8 @@ public enum AutoLog {
     return try await withRuntime(
       AutoLogRuntime(
         logger: baseRuntime.logger,
-        configuration: configuration
+        configuration: configuration,
+        deduplicator: baseRuntime.deduplicator
       ),
       operation: operation
     )
@@ -193,13 +195,14 @@ public enum AutoLog {
   ) rethrows -> T {
     let runtime = runtimeSnapshot()
     let locationString = "\(fileID):\(line):\(column)"
-    runtime.logger.emit(
+    runtime.logger.emitIfEnabled(
       event: AutoLogEvent(
         source: source,
         location: locationString,
         declaration: source.description
       ),
-      configuration: runtime.configuration
+      configuration: runtime.configuration,
+      deduplicator: runtime.deduplicator
     )
     return try $current.withValue(SourceContext(source: source, location: locationString)) {
       try operation()
@@ -217,13 +220,14 @@ public enum AutoLog {
   ) async rethrows -> T {
     let runtime = runtimeSnapshot()
     let locationString = "\(fileID):\(line):\(column)"
-    runtime.logger.emit(
+    runtime.logger.emitIfEnabled(
       event: AutoLogEvent(
         source: source,
         location: locationString,
         declaration: source.description
       ),
-      configuration: runtime.configuration
+      configuration: runtime.configuration,
+      deduplicator: runtime.deduplicator
     )
     return try await $current.withValue(SourceContext(source: source, location: locationString)) {
       try await operation()
@@ -248,7 +252,7 @@ public enum AutoLog {
     line: Int = #line
   ) {
     let runtime = runtimeSnapshot()
-    runtime.logger.emit(
+    runtime.logger.emitIfEnabled(
       event: AutoLogEvent(
         level: level,
         source: current?.source,
@@ -256,7 +260,8 @@ public enum AutoLog {
         declaration: message,
         parameters: [:]
       ),
-      configuration: runtime.configuration
+      configuration: runtime.configuration,
+      deduplicator: runtime.deduplicator
     )
   }
 

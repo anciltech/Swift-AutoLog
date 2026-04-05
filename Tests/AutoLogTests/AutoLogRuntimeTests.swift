@@ -15,6 +15,7 @@ struct AutoLogRuntimeTests {
     let configuration = AutoLogConfiguration(
       emitStartEvents: false,
       measureTimingDefault: false,
+      deduplicateWithin: .seconds(1),
       measureTimingDepths: [2, 3],
       logFormat: LogFormat(mainLine: [.depthArrow, .statusEmoji, .functionName])
     )
@@ -138,6 +139,50 @@ struct AutoLogRuntimeTests {
     _ = await fixture.flipConfigurationMidCallAsync()
     #expect(logger.configurations.suffix(2).allSatisfy { $0 == updated })
   }
+
+  @Test
+  func globalDeduplicationSuppressesRepeatedManualEvents() {
+    let logger = MockLogger()
+    let runtime = AutoLogRuntime(
+      logger: logger,
+      configuration: AutoLogConfiguration(
+        emitStartEvents: false,
+        deduplicateWithin: .seconds(1)
+      )
+    )
+
+    AutoLog.withRuntime(runtime) {
+      let fixture = DeduplicationFixture()
+      fixture.emitRepeatedWarning()
+      fixture.emitRepeatedWarning()
+    }
+
+    #expect(logger.events.count == 1)
+    #expect(logger.events.first?.declaration == "No matching SCWindow found")
+  }
+
+  @Test
+  func functionLevelDeduplicationSuppressesOnlyMatchingEvents() {
+    let logger = MockLogger()
+    let runtime = AutoLogRuntime(
+      logger: logger,
+      configuration: AutoLogConfiguration(emitStartEvents: false)
+    )
+
+    AutoLog.withRuntime(runtime) {
+      let fixture = DeduplicationFixture()
+      _ = fixture.sampleSelection(frameID: 7)
+      _ = fixture.sampleSelection(frameID: 7)
+      _ = fixture.sampleSelection(frameID: 8)
+    }
+
+    #expect(logger.events.count == 2)
+    #expect(logger.events.map(\.declaration) == [
+      "func sampleSelection(frameID: Int) -> Bool",
+      "func sampleSelection(frameID: Int) -> Bool",
+    ])
+    #expect((logger.events.first?.deduplicateWithin) == .seconds(1))
+  }
 }
 
 private struct SnapshotFixture {
@@ -152,5 +197,17 @@ private struct SnapshotFixture {
   func flipConfigurationMidCallAsync() async -> Bool {
     AutoLog.updateConfiguration(updatedConfiguration, persist: true)
     return true
+  }
+}
+
+private struct DeduplicationFixture {
+  func emitRepeatedWarning() {
+    AutoLog.warning("No matching SCWindow found")
+  }
+
+  @Deduplicate(.seconds(1))
+  @Log
+  func sampleSelection(frameID: Int) -> Bool {
+    frameID.isMultiple(of: 2)
   }
 }

@@ -65,6 +65,7 @@ extension AutoLogMacro {
     let tagTraits = function.syntax.attributes.extractTraits(for: .tag)
     let omitTraits = function.syntax.attributes.extractTraits(for: .omit)
     let levelTrait = function.syntax.attributes.extractTraits(for: .level).first
+    let deduplicationTrait = function.syntax.attributes.extractTraits(for: .deduplicate).first
     let instrumentedPlain = self.instrumentedPlain(of: function)
 
     return body {
@@ -76,7 +77,8 @@ extension AutoLogMacro {
         of: function,
         levelTrait: levelTrait,
         taggableTraits: tagTraits,
-        omittableTraits: omitTraits
+        omittableTraits: omitTraits,
+        deduplicationTrait: deduplicationTrait
       )
 
       if isMeasuredExplicitly {
@@ -207,7 +209,8 @@ extension AutoLogMacro {
     of declaration: FunctionSyntax,
     levelTrait: (any ExprSyntaxProtocol)?,
     taggableTraits: [any ExprSyntaxProtocol],
-    omittableTraits: [any ExprSyntaxProtocol]
+    omittableTraits: [any ExprSyntaxProtocol],
+    deduplicationTrait: (any ExprSyntaxProtocol)?
   ) -> CodeBlockItemSyntax {
     let capturedParameters = declaration.parameters.filter { parameter in
       !omittableTraits.contains(where: { trait in trait.isOmitParameter(parameter.name) })
@@ -318,8 +321,18 @@ extension AutoLogMacro {
                         }
                       }
                     ),
-                    trailingTrivia: .newline
+                    trailingComma: deduplicationTrait == nil ? nil : .commaToken(),
+                    trailingTrivia: deduplicationTrait == nil ? .newline : []
                   )
+
+                  if let deduplicationTrait {
+                    LabeledExprSyntax(
+                      label: .identifier("deduplicateWithin"),
+                      colon: .colonToken(),
+                      expression: deduplicationTrait,
+                      trailingTrivia: .newline
+                    )
+                  }
                 },
                 rightParen: .rightParenToken()
               )
@@ -354,7 +367,8 @@ extension AutoLogMacro {
     )
   }
 
-  /// Generates: `autoLogger.emit(event: event, configuration: runtime.configuration)`
+  /// Generates:
+  /// `autoLogger.emitIfEnabled(event: event, configuration: runtime.configuration, deduplicator: runtime.deduplicator)`
   static func emit() -> CodeBlockItemSyntax {
     CodeBlockItemSyntax(
       FunctionCallExprSyntax(
@@ -363,7 +377,7 @@ extension AutoLogMacro {
             baseName: .predefined(.autoLogger)
           ),
           period: .periodToken(),
-          name: .predefined(.emit)
+          name: .identifier("emitIfEnabled")
         ),
         leftParen: .leftParenToken(),
         arguments: LabeledExprListSyntax(
@@ -381,6 +395,16 @@ extension AutoLogMacro {
                 base: DeclReferenceExprSyntax(baseName: .identifier("runtime")),
                 period: .periodToken(),
                 name: .identifier("configuration")
+              ),
+              trailingComma: .commaToken()
+            ),
+            LabeledExprSyntax(
+              label: .identifier("deduplicator"),
+              colon: .colonToken(),
+              expression: MemberAccessExprSyntax(
+                base: DeclReferenceExprSyntax(baseName: .identifier("runtime")),
+                period: .periodToken(),
+                name: .identifier("deduplicator")
               )
             )
         ),
@@ -389,7 +413,8 @@ extension AutoLogMacro {
     )
   }
 
-  /// Generates: `autoLogger.emitStart(event: event, configuration: runtime.configuration)`
+  /// Generates:
+  /// `autoLogger.emitStart(event: event, configuration: runtime.configuration, deduplicator: runtime.deduplicator)`
   ///
   /// The `emitStart` default implementation on `AutoLogger` checks the
   /// configuration captured at function entry before emitting.
@@ -417,6 +442,16 @@ extension AutoLogMacro {
                 base: DeclReferenceExprSyntax(baseName: .identifier("runtime")),
                 period: .periodToken(),
                 name: .identifier("configuration")
+              ),
+              trailingComma: .commaToken()
+            ),
+            LabeledExprSyntax(
+              label: .identifier("deduplicator"),
+              colon: .colonToken(),
+              expression: MemberAccessExprSyntax(
+                base: DeclReferenceExprSyntax(baseName: .identifier("runtime")),
+                period: .periodToken(),
+                name: .identifier("deduplicator")
               )
             )
         ),

@@ -1,6 +1,6 @@
 # Customizing macro behavior 
 
-Customize macro behavior using ``Omit(_:)``, ``Tag(_:)`` and ``Level(_:)`` 
+Customize macro behavior using ``Omit(_:)``, ``Deduplicate(_:)``, ``Tag(_:)`` and ``Level(_:)`` 
 
 ## Overview
 
@@ -28,6 +28,10 @@ Attaches tags to an event, allowing you to tailor logging behavior to fit your s
 * ``Level(_:)``
 
 Sets a logging level for the event, providing a clearer description of its severity or importance. By default, the level is set to ``.error`` if the function throws, and ``.info`` on success.
+
+* ``Deduplicate(_:)``
+
+Suppresses repeated identical events for a single function within a time window.
 
 ### Logging levels
 
@@ -125,6 +129,27 @@ extension FavoriteFactsModel {
   }
 }
 ```
+
+### Deduplicating noisy functions
+
+For fast-changing UI probes or repeated cache checks, it can be more useful to
+see the first matching event in a short window than every identical call.
+
+```swift
+// InteractionManager.swift
+
+@AutoLog
+struct InteractionManager {
+  @Deduplicate(.seconds(1))
+  func hover(frame: Frame) -> Bool {
+    frame.isHovered
+  }
+}
+```
+
+You can also set a global default with
+``AutoLogConfiguration/deduplicateWithin`` and then override only the extra
+chatty functions with ``Deduplicate(_:)`` when needed.
 
 For commonly used tags, you can leverage the ``Taggable`` protocol to define reusable and consistent tag definitions across your codebase.
 
