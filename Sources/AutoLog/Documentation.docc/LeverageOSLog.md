@@ -9,7 +9,7 @@ This article explains how to leverage the [`Logger`](https://developer.apple.com
 > Code examples used throughout this article are adapted from the former Count Me In example app.
 > The first line in each code snippet refers to a file within the app.
 
-### Import the loggable library
+### Import the AutoLog library
 
 To import AutoLog library, add the following to the Swift source file.
 ```swift
