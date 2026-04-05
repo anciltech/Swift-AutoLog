@@ -425,6 +425,47 @@ func toggleFramePicker(isVisible: Bool) {
 
 That emitted event keeps the normal success result and timing, and adds branch-path metadata such as `if branch condition=isVisible` or `else branch condition=isVisible`.
 
+## Sink routing
+
+By default, every event stays on the built-in console sink. Once you tag a function with one or more route names, only those sinks receive the event.
+
+Add `@Tag` with route names to declare where each call should go:
+
+```swift
+@AutoLog(using: logger)
+struct AuditTrailService {
+  @Tag(.console, .splunk)
+  func uploadAuditSnapshot() async throws {
+    // Console + Splunk
+  }
+
+  @Tag(.splunk)
+  func uploadBackgroundHeartbeat() {
+    // Splunk only, console is skipped
+  }
+}
+```
+
+Attach custom sinks when you start AutoLog:
+
+```swift
+struct SplunkSink: AutoLogEventSink {
+  let route: AutoLogRoute = .splunk
+  func emit(event: AutoLogEvent, configuration: AutoLogConfiguration) {
+    // forward to Splunk
+  }
+}
+
+AutoLog.start(
+  logger: AutoLogLogger(
+    formatter: CompactFormatter(),
+    sinks: [SplunkSink()]
+  )
+)
+```
+
+See <doc:CreatingCustomAutoLoggerInstance> for a complete walkthrough including custom `AutoLogger` conformance and level integration.
+
 ## Replacing existing logs
 
 Swift AutoLog works best when it becomes the default path for function tracing and ad-hoc diagnostics.
