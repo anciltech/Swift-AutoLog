@@ -21,6 +21,9 @@ public protocol AutoLogFormatter: Sendable {
 ///          ↖ 👆🏼 Run [AsyncExamplesView:42]
 ///
 /// --> 🔴 AsyncExamplesViewModel.fetchUser(id: 99) async
+///          ↳ recent context:
+///             • -> 👆🏼 Run [AsyncExamplesView:42]
+///             • --> 🔵 AsyncExamplesViewModel.fetchUser(id: 99) async
 ///          ↳ notFound [NetworkError]
 ///          ↖ 👆🏼 Run [AsyncExamplesView:42]
 /// ```
@@ -170,6 +173,11 @@ public struct CompactFormatter: AutoLogFormatter {
       annotations.append("         ↳ branch path: \(branches)")
     }
 
+    if case .failure = event.result, !event.errorContext.isEmpty {
+      annotations.append("         ↳ recent context:")
+      annotations.append(contentsOf: formatErrorContext(event.errorContext))
+    }
+
     if case .failure(let error) = event.result {
       let errorType = String(describing: type(of: error))
       let desc      = String(describing: error)
@@ -256,6 +264,12 @@ public struct CompactFormatter: AutoLogFormatter {
     let line     = extractLine(from: ctx.location)
     let label    = ctx.label ?? ctx.description
     return "         ↖ \(ctx.emoji) \(label) [\(typeName):\(line)]"
+  }
+
+  private func formatErrorContext(
+    _ entries: [AutoLogErrorContextEntry]
+  ) -> [String] {
+    entries.map { "           • \($0.summary)" }
   }
 
   private func extractTypeName(from location: String) -> String {

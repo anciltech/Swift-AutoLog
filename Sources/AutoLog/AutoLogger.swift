@@ -2,6 +2,8 @@
 @_exported public import OSLog
 #endif
 
+import Synchronization
+
 /// A protocol that provides instances of conforming types with the ability to
 /// handle emitted events.
 public protocol AutoLogger: Sendable {
@@ -102,6 +104,20 @@ public struct AutoLogBranchDecision: Sendable, Hashable, CustomStringConvertible
   }
 }
 
+/// A previously emitted log line retained as context for a later failure.
+public struct AutoLogErrorContextEntry: Sendable, Hashable, CustomStringConvertible {
+  /// A single-line summary of the earlier log entry.
+  public let summary: String
+
+  public init(summary: String) {
+    self.summary = summary
+  }
+
+  public var description: String {
+    summary
+  }
+}
+
 // TODO: 23122K - Make this type conform to Sendable and use CustomDebugStringConvertible
 /// A type representing captured metadata from an invoked function.
 public struct AutoLogEvent: CustomStringConvertible, CustomDebugStringConvertible {
@@ -168,6 +184,12 @@ public struct AutoLogEvent: CustomStringConvertible, CustomDebugStringConvertibl
   /// immediately `return` or `throw`.
   public var branchDecisions: [AutoLogBranchDecision]
 
+  /// The most recent emitted log summaries that led up to a failure.
+  ///
+  /// `AutoLogLogger` fills this with a rolling trail of previous log lines immediately before
+  /// formatting or forwarding an error event.
+  public var errorContext: [AutoLogErrorContextEntry]
+
   public var description: String {
     """
     source: \(source.map { String(describing: $0) } ?? "nil")
@@ -177,6 +199,7 @@ public struct AutoLogEvent: CustomStringConvertible, CustomDebugStringConvertibl
     result: \(result)
     earlyExit: \(String(describing: earlyExit))
     branchDecisions: \(branchDecisions)
+    errorContext: \(errorContext)
     tags: \(tags)
     routes: \(Array(routes).sorted { $0.rawValue < $1.rawValue })
     deduplicateWithin: \(String(describing: deduplicateWithin))
@@ -194,6 +217,7 @@ public struct AutoLogEvent: CustomStringConvertible, CustomDebugStringConvertibl
     result: \(result)
     earlyExit: \(String(describing: earlyExit))
     branchDecisions: \(branchDecisions)
+    errorContext: \(errorContext)
     tags: \(tags)
     routes: \(Array(routes).sorted { $0.rawValue < $1.rawValue })
     duration: \(duration.map { String(describing: $0) } ?? "nil")
@@ -240,6 +264,7 @@ public struct AutoLogEvent: CustomStringConvertible, CustomDebugStringConvertibl
     self.isMeasuredExplicitly = isMeasuredExplicitly
     self.earlyExit = nil
     self.branchDecisions = []
+    self.errorContext = []
   }
 
   /// A copy of this event representing the function's start, with `.start` level
@@ -283,6 +308,12 @@ public struct AutoLogEvent: CustomStringConvertible, CustomDebugStringConvertibl
       )
     )
   }
+
+  public func withoutErrorContext() -> Self {
+    var copy = self
+    copy.errorContext = []
+    return copy
+  }
 }
 
 // TODO: 23122K - Consider using swift-log as a fallback when not running on Apple platforms
@@ -297,10 +328,20 @@ public protocol AutoLogEventSink: Sendable {
 /// A default `AutoLogger` implementation that
 /// uses a ``Logger`` instance to log to the default subsystem.
 public struct AutoLogLogger: AutoLogger {
+  private struct State: Sendable {
+    var recentEntries: [AutoLogErrorContextEntry] = []
+  }
+
+  private final class Storage: @unchecked Sendable {
+    let state = Mutex(State())
+  }
+
   /// The logger instance used for logging.
   let logger: Logger
   let formatter: any AutoLogFormatter
   let sinks: [any AutoLogEventSink]
+  let errorContextLimit: Int
+  private let storage: Storage
 
   /// Logs captured event metadata to the default subsystem.
   ///
@@ -309,19 +350,23 @@ public struct AutoLogLogger: AutoLogger {
   /// - ``OSLogType.error`` for functions that throw errors.
   public func emit(event: AutoLogEvent, configuration: AutoLogConfiguration) {
     let routes = event.routes
+    let snapshot = makeContextEntry(for: event, configuration: configuration)
+    let enrichedEvent = enrichFailureContextIfNeeded(for: event)
 
     if routes.isEmpty || routes.contains(.console) {
-      let message = formatter.format(event: event, configuration: configuration)
-      if let level = event.level as? OSLogType {
+      let message = formatter.format(event: enrichedEvent, configuration: configuration)
+      if let level = enrichedEvent.level as? OSLogType {
         self.logger.log(level: level, "\(message)")
       } else {
-        self.logger.log(level: event.result.isSuccess ? .info : .error, "\(message)")
+        self.logger.log(level: enrichedEvent.result.isSuccess ? .info : .error, "\(message)")
       }
     }
 
     for sink in sinks where routes.contains(sink.route) {
-      sink.emit(event: event, configuration: configuration)
+      sink.emit(event: enrichedEvent, configuration: configuration)
     }
+
+    record(snapshot)
   }
 
   // NOTE: @_spi(Experimental) intentionally removed — using it with @AutoLog(using:) in
@@ -341,11 +386,49 @@ public struct AutoLogLogger: AutoLogger {
   public init(
     logger: Logger = Logger(),
     formatter: any AutoLogFormatter = CompactFormatter(),
-    sinks: [any AutoLogEventSink] = []
+    sinks: [any AutoLogEventSink] = [],
+    errorContextLimit: Int = 5
   ) {
     self.logger = logger
     self.formatter = formatter
     self.sinks = sinks
+    self.errorContextLimit = max(0, errorContextLimit)
+    self.storage = Storage()
+  }
+
+  private func enrichFailureContextIfNeeded(for event: AutoLogEvent) -> AutoLogEvent {
+    guard case .failure = event.result, errorContextLimit > 0 else { return event }
+
+    var enriched = event
+    enriched.errorContext = storage.state.withLock { state in
+      Array(state.recentEntries.suffix(errorContextLimit))
+    }
+    return enriched
+  }
+
+  private func makeContextEntry(
+    for event: AutoLogEvent,
+    configuration: AutoLogConfiguration
+  ) -> AutoLogErrorContextEntry {
+    let message = formatter.format(
+      event: event.withoutErrorContext(),
+      configuration: configuration
+    )
+    let summary = message
+      .replacingOccurrences(of: "\n", with: " | ")
+      .trimmingCharacters(in: .whitespacesAndNewlines)
+    return AutoLogErrorContextEntry(summary: summary)
+  }
+
+  private func record(_ entry: AutoLogErrorContextEntry) {
+    guard errorContextLimit > 0 else { return }
+
+    storage.state.withLock { state in
+      state.recentEntries.append(entry)
+      if state.recentEntries.count > errorContextLimit {
+        state.recentEntries.removeFirst(state.recentEntries.count - errorContextLimit)
+      }
+    }
   }
 }
 

@@ -279,6 +279,24 @@ struct CompactFormatterTests {
         #expect(lines[1].contains("NetworkError"))
     }
 
+    @Test func failure_showsRecentContextAboveError() {
+        enum NetworkError: Error { case notFound }
+        var event = makeEvent(result: .failure(NetworkError.notFound))
+        event.errorContext = [
+            AutoLogErrorContextEntry(summary: "-> 👆🏼 Run [AsyncExamplesView:42]"),
+            AutoLogErrorContextEntry(summary: "--> 🔵 AsyncExamplesViewModel.processPayment() async"),
+        ]
+
+        let output = CompactFormatter().format(event: event, configuration: configuration)
+        let lines = output.split(separator: "\n", omittingEmptySubsequences: false)
+
+        #expect(lines.count == 5)
+        #expect(lines[1].contains("recent context"))
+        #expect(lines[2].contains("Run [AsyncExamplesView:42]"))
+        #expect(lines[3].contains("processPayment() async"))
+        #expect(lines[4].contains("notFound"))
+    }
+
     @Test func tags_shownOnSecondLine() {
         let event = makeEvent(
             result: .success(()),

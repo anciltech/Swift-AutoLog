@@ -27,6 +27,8 @@ public import Sentry
 * Implement `emit(event: AutoLogEvent, configuration: AutoLogConfiguration)` method
 
 This method is called each time a function either completes successfully or throws an error.
+When the default ``AutoLogLogger`` handles a failure, it also populates
+`event.errorContext` with a rolling trail of recent emitted log summaries.
 
 ```swift
 // SentryLogger.swift
@@ -140,6 +142,8 @@ struct AuditTrailService {
 You can determine whether the attached function emitted a success or failure event by checking `event.result`.
 
 On failure, we use `SentrySDK.capture(error:)`, passing in the error that triggered the event. Before sending the error to Sentry, we attach relevant metadata to the scope, providing additional context. Upon success, we simply add a breadcrumb that will be sent along with an error.
+If your backend supports its own breadcrumb or trail concept, `event.errorContext`
+gives you the recent console-ready summaries that immediately preceded the failure.
 
 ### AutoLogger extension
 

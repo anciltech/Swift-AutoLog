@@ -18,6 +18,10 @@ Swift AutoLog is designed to make work visible across layers such as `View -> Vi
 
 Events preserve function start and completion context, along with outcomes such as success, throw, early exit, and branch path decisions, so logs describe how work actually executed instead of only emitting isolated print lines.
 
+* **Attach recent context to failures**
+
+The default `AutoLogLogger` keeps a rolling trail of recent formatted log lines and injects the last few entries into thrown-error events, so failures arrive with the lead-up already attached.
+
 * **Make time visible**
 
 Timing, duration, ordering, and concurrent interleaving stay visible in the emitted output, which makes it easier to reason about slow work, overlap, and async behavior.

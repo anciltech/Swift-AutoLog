@@ -135,6 +135,46 @@ struct AutoLoggerTests {
 
     #expect(sink.events.isEmpty)
   }
+
+  @Test
+  func failureEvents_receiveRecentContextFromPreviousLogs() {
+    let sink = MockEventSink(route: .splunk)
+    let logger = AutoLogLogger(formatter: CompactFormatter(), sinks: [sink], errorContextLimit: 2)
+    let configuration = AutoLogConfiguration.default
+
+    logger.emit(
+      event: AutoLogEvent(
+        location: "App/AsyncExamplesView.swift:10:1",
+        declaration: "Run"
+      ),
+      configuration: configuration
+    )
+
+    logger.emit(
+      event: AutoLogEvent(
+        level: LogLevel.start,
+        location: "App/AsyncExamplesViewModel.swift:11:1",
+        declaration: "func processPayment() async",
+        tags: [AutoLogRoute.splunk]
+      ),
+      configuration: configuration
+    )
+
+    logger.emit(
+      event: AutoLogEvent(
+        location: "App/AsyncExamplesViewModel.swift:12:1",
+        declaration: "func performPayment() async throws",
+        result: .failure(Failure.mock),
+        tags: [AutoLogRoute.splunk]
+      ),
+      configuration: configuration
+    )
+
+    let failure = sink.events.last
+    #expect(failure?.errorContext.count == 2)
+    #expect(failure?.errorContext[0].summary.contains("Run()") == true)
+    #expect(failure?.errorContext[1].summary.contains("processPayment() async") == true)
+  }
 }
 
 extension AutoLoggerTests {
