@@ -86,6 +86,8 @@ actor SwiftDataClient {
 
 Whenever `save` is invoked, Swift AutoLog emits an event containing metadata such as the source location, declaration, parameters, result, tags, and duration.
 
+`@AutoLog` stays a type-scoped macro: it still instruments methods by injecting `@Log` onto functions. For editor macro expansion, it now also emits an empty companion extension, so expanding `@AutoLog` on a `final class` or another type with no methods still shows a concrete result.
+
 Opaque reference-like values are summarized a bit more helpfully in the default compact formatter. If a parameter would otherwise print as only its type name, whether that is `LLA.Frame` or just `Frame`, Swift AutoLog prefers a short `Type.id: ...1234` summary when the value exposes an identifier field, including framework-managed backing fields like `_id`:
 
 ```swift

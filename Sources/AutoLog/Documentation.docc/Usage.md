@@ -78,6 +78,8 @@ extension FavoriteFactsModel {
 
 This alone is sufficient for debugging. All methods within the `FavoriteFactsModel` scope are now implicitly marked with the ``Log(using:)`` annotation and will emit an `AutoLogEvent` when invoked. Note that `deleteAllFavoriteFacts`, which is defined within an extension to `FavoriteFactsModel`, lies outside the scope of ``AutoLog(using:)`` and thus will not be affected.
 
+When you use editor macro expansion, ``AutoLog(using:)`` also emits an empty companion extension for the attached type. That gives Xcode a concrete type-level expansion to show even when the declaration does not gain visible members of its own, while the real logging behavior still comes from the injected ``Log(using:)`` annotations on functions.
+
 By default, ``AutoLog(using:)`` uses the ``AutoLogLogger`` instance. Refer to <doc:CreatingCustomLoggableInstance> for more information about incorporating custom loggers.
 
 For app-wide setup, install a process-local runtime snapshot with

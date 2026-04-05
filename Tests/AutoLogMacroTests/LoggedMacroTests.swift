@@ -53,6 +53,9 @@ struct LoggedMacroTests {
           }
         }
       }
+
+      extension Foo {
+      }
       """
     }
   }
@@ -99,6 +102,9 @@ struct LoggedMacroTests {
             print(data)
           }
         }
+      }
+
+      extension Foo {
       }
       """
     }
@@ -147,6 +153,9 @@ struct LoggedMacroTests {
           }
         }
       }
+
+      extension Foo {
+      }
       """
     }
   }
@@ -193,6 +202,26 @@ struct LoggedMacroTests {
             print(data)
           }
         }
+      }
+
+      extension Foo {
+      }
+      """
+    }
+  }
+
+  @Test
+  func finalClass_withoutMembers_expandsToEmptyExtension() throws {
+    assertMacro {
+      """
+      @Logged
+      final class Foo {}
+      """
+    } expansion: {
+      """
+      final class Foo {}
+
+      extension Foo {
       }
       """
     }
@@ -246,6 +275,9 @@ struct LoggedMacroTests {
           }
         }
       }
+
+      extension Foo {
+      }
       """
     }
   }
@@ -276,6 +308,9 @@ struct LoggedMacroTests {
         static func _bar() -> Foo { 
           Foo.bar(.example)
         }
+      }
+
+      extension Foo {
       }
       """
     }
@@ -311,6 +346,9 @@ struct LoggedMacroTests {
           Self(bar: nil, quuaz: quaaz)
         }
       }
+
+      extension Foo {
+      }
       """
     }
   }
@@ -332,6 +370,9 @@ struct LoggedMacroTests {
         var isCreating: Bool {
           dragState?.mode == .create
         }
+      }
+
+      extension Foo {
       }
       """
     }
@@ -356,6 +397,9 @@ struct LoggedMacroTests {
         var isCreating: Bool {
           dragState?.mode == .create
         }
+      }
+
+      extension Foo {
       }
       """
     }

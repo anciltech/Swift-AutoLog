@@ -139,18 +139,21 @@ public macro OSLog(
 /// }
 /// ```
 @attached(memberAttribute)
+@attached(extension, names: arbitrary)
 public macro AutoLog() = #externalMacro(
   module: "AutoLogMacro",
   type: "LoggedMacro"
 )
 
 @attached(memberAttribute)
+@attached(extension, names: arbitrary)
 public macro AutoLog(using loggable: any AutoLogger) = #externalMacro(
   module: "AutoLogMacro",
   type: "LoggedMacro"
 )
 
 @attached(memberAttribute)
+@attached(extension, names: arbitrary)
 public macro AutoLog(architecture loggable: any AutoLogger) = #externalMacro(
   module: "AutoLogMacro",
   type: "LoggedMacro"
@@ -159,12 +162,14 @@ public macro AutoLog(architecture loggable: any AutoLogger) = #externalMacro(
 /// Overload for concrete `AutoLogLogger` to avoid existential boxing in
 /// macro argument type-checking on Swift 6.2.x.
 @attached(memberAttribute)
+@attached(extension, names: arbitrary)
 public macro AutoLog(using loggable: AutoLogLogger) = #externalMacro(
   module: "AutoLogMacro",
   type: "LoggedMacro"
 )
 
 @attached(memberAttribute)
+@attached(extension, names: arbitrary)
 public macro AutoLog(architecture loggable: AutoLogLogger) = #externalMacro(
   module: "AutoLogMacro",
   type: "LoggedMacro"

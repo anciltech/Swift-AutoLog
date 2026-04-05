@@ -1,4 +1,5 @@
 import SwiftSyntax
+import SwiftSyntaxMacros
 
 public struct LoggedMacro {}
 
@@ -28,5 +29,23 @@ extension LoggedMacro: AutoLogAttributeMacro {
       )
     )
     return syntax
+  }
+}
+
+extension LoggedMacro: ExtensionMacro {
+  public static func expansion(
+    of node: AttributeSyntax,
+    attachedTo declaration: some DeclGroupSyntax,
+    providingExtensionsOf type: some TypeSyntaxProtocol,
+    conformingTo protocols: [TypeSyntax],
+    in context: some MacroExpansionContext
+  ) throws -> [ExtensionDeclSyntax] {
+    self.conformance {
+      // Emit an empty extension so editor macro expansion has a concrete type-level
+      // result even when @AutoLog only injects member attributes.
+      ExtensionDeclSyntax(
+        extendedType: type
+      ) {}
+    }
   }
 }
