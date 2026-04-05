@@ -335,6 +335,30 @@ struct CompactFormatterTests {
         #expect(lines[1].contains("else branch condition=isVisible"))
     }
 
+    @Test func earlyExit_showsOnSecondLine() {
+        var event = makeEvent(result: .success(()))
+        event.setEarlyExit(kind: .guard, intent: .expected, condition: "count > 0", message: "empty list")
+
+        let output = CompactFormatter().format(event: event, configuration: configuration)
+        let lines = output.split(separator: "\n", omittingEmptySubsequences: false)
+        #expect(lines.count == 2)
+        #expect(lines[1].contains("early exit"))
+        #expect(lines[1].contains("guard"))
+        #expect(lines[1].contains("expected"))
+    }
+
+    @Test func earlyExit_takesPriorityOverBranchDecisions() {
+        var event = makeEvent(result: .success(()))
+        event.setEarlyExit(kind: .if, intent: .optimize, condition: "isCached", message: nil)
+        event.recordBranchDecision(kind: .if, condition: "isCached")
+
+        let output = CompactFormatter().format(event: event, configuration: configuration)
+        let lines = output.split(separator: "\n", omittingEmptySubsequences: false)
+        #expect(lines.count == 2)
+        #expect(lines[1].contains("early exit"))
+        #expect(!lines[1].contains("branch path"))
+    }
+
     @Test func noTagsNoError_noSecondLine() {
         let event = makeEvent(result: .success(()))
         #expect(!CompactFormatter().format(event: event, configuration: configuration).contains("\n"))
