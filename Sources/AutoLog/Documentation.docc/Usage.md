@@ -100,6 +100,9 @@ AutoLog.start(
 
 Use `AutoLog.start()` when the default logger and configuration are enough.
 Advanced setups can still pass a custom logger, store, or refresh interval.
+If you ship a companion settings screen, matching presets such as "all depths",
+"depths 1-2", "depths 2-3", and "depths 3+" keep `measureTimingDepths`
+understandable while still mapping directly to the runtime configuration.
 
 If a single hot path is too noisy, add ``Deduplicate(_:)`` to that function
 while leaving the rest of the type untouched:
