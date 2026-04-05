@@ -399,4 +399,44 @@ struct CompactFormatterSourceTests {
         #expect(lines[1].contains("└──"))
         #expect(lines[1].contains("PaymentError"))
     }
+
+    @Test func traceEvent_earlyExit_showsOnSecondLine() {
+        let ctx = SourceContext(
+            source: InteractionSource.button("Load"),
+            location: "App/ContentView.swift:10:5"
+        )
+        var event = makeEvent(
+            source: ctx,
+            location: "App/MyViewModel.swift:20:5",
+            declaration: "func loadProfile(id:)",
+            result: .success(())
+        )
+        event.setEarlyExit(kind: .if, intent: .optimize, condition: "isCached", message: "cache hit")
+
+        let output = CompactFormatter().format(event: event, configuration: configuration)
+        let lines = output.split(separator: "\n", omittingEmptySubsequences: false)
+        #expect(lines.count == 2)
+        #expect(lines[1].contains("early exit"))
+        #expect(lines[1].contains("optimize"))
+    }
+
+    @Test func traceEvent_branchDecision_showsOnSecondLine() {
+        let ctx = SourceContext(
+            source: InteractionSource.toggle("Dark Mode"),
+            location: "App/ContentView.swift:10:5"
+        )
+        var event = makeEvent(
+            source: ctx,
+            location: "App/MyViewModel.swift:20:5",
+            declaration: "func toggleDarkMode(isOn:)",
+            result: .success(())
+        )
+        event.recordBranchDecision(kind: .if, condition: "isOn")
+
+        let output = CompactFormatter().format(event: event, configuration: configuration)
+        let lines = output.split(separator: "\n", omittingEmptySubsequences: false)
+        #expect(lines.count == 2)
+        #expect(lines[1].contains("branch path"))
+        #expect(lines[1].contains("if branch condition=isOn"))
+    }
 }
