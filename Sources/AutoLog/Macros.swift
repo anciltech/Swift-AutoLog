@@ -217,6 +217,28 @@ public macro Deduplicate(
   type: "DeduplicateMacro"
 )
 
+/// Emits a success event only when the function returns the supplied value.
+///
+/// Thrown errors still emit as usual, so this is best used for chatty boolean
+/// probes where only the `true` case matters.
+///
+/// ```swift
+/// @AutoLog
+/// struct InteractionManager {
+///   @When(true)
+///   func isSelected(frame: Frame) -> Bool {
+///     selectedFrameIDs.contains(frame.id)
+///   }
+/// }
+/// ```
+@attached(body)
+public macro When<T: Equatable>(
+  _ expectedResult: T
+) = #externalMacro(
+  module: "AutoLogMacro",
+  type: "WhenMacro"
+)
+
 /// Overload that allows controlling performance timing at the function level.
 ///
 /// - Parameter measure: `true` forces timing display even when the global setting is off;

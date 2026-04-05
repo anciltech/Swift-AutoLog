@@ -21,6 +21,8 @@ extension TokenKind {
     case measure
     case deduplicate
     case Deduplicate
+    case when
+    case When
 
     var identifier: TokenKind {
       switch self {
@@ -80,6 +82,12 @@ extension TokenKind {
 
       case .Deduplicate:
         return TokenKind.identifier("Deduplicate")
+
+      case .when:
+        return TokenKind.identifier("when")
+
+      case .When:
+        return TokenKind.identifier("When")
       }
     }
   }

@@ -86,6 +86,9 @@ extension AttributeListSyntax {
 
           case .predefined(.Deduplicate) where label == .deduplicate:
             return attributes.map(\.expression)
+
+          case .predefined(.When) where label == .when:
+            return attributes.map(\.expression)
             
           case .predefined(.Log), .predefined(.OSLog):
             return attributes

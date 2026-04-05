@@ -1,6 +1,6 @@
 # Customizing macro behavior 
 
-Customize macro behavior using ``Omit(_:)``, ``Deduplicate(_:)``, ``Tag(_:)`` and ``Level(_:)`` 
+Customize macro behavior using ``Omit(_:)``, ``Deduplicate(_:)``, ``When(_:)``, ``Tag(_:)`` and ``Level(_:)`` 
 
 ## Overview
 
@@ -32,6 +32,10 @@ Sets a logging level for the event, providing a clearer description of its sever
 * ``Deduplicate(_:)``
 
 Suppresses repeated identical events for a single function within a time window.
+
+* ``When(_:)``
+
+Emits a success event only when the function returns the supplied value.
 
 ### Logging levels
 
@@ -150,6 +154,26 @@ struct InteractionManager {
 You can also set a global default with
 ``AutoLogConfiguration/deduplicateWithin`` and then override only the extra
 chatty functions with ``Deduplicate(_:)`` when needed.
+
+### Logging only an interesting return value
+
+Some helper methods are useful only when they flip to a particular result, such
+as `true` for a selection or availability check.
+
+```swift
+// InteractionManager.swift
+
+@AutoLog
+struct InteractionManager {
+  @When(true)
+  func isSelected(frame: Frame) -> Bool {
+    selectedFrameIDs.contains(frame.id)
+  }
+}
+```
+
+When the function returns `false`, the call still completes normally but no
+success log is emitted. If the function throws, the error path still logs.
 
 For commonly used tags, you can leverage the ``Taggable`` protocol to define reusable and consistent tag definitions across your codebase.
 

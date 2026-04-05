@@ -11,6 +11,7 @@ struct AutoLogPlugin: CompilerPlugin {
     OSLoggedMacro.self,
     LevelMacro.self,
     DeduplicateMacro.self,
+    WhenMacro.self,
     OmitMacro.self,
     TagMacro.self
   ]
