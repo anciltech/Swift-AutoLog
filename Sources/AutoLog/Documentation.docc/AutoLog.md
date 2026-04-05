@@ -28,6 +28,10 @@ that function is already running.
 
 AutoLog can record when a function exits early from `guard`, `if`, `else if`, or `else` branches, and it can also preserve non-returning `if` / `else if` / `else` branch choices that later fall through to the normal function completion path. Final result, error, and timing information remain intact, and you can still add explicit intent such as optimization or expected control flow.
 
+* **Trace interaction flow across the system**
+
+Interaction sources such as button taps, toggles, timers, and API callbacks propagate through `AutoLog.current`, and each origin receives a short emoji-tagged flow badge so the resulting chain stays easy to follow even when multiple interactions overlap.
+
 * **Leverage OSLog support**
 
 Swift AutoLog provides macros that leverage Apple's OSLog framework, eliminating the need to manually create a [`Logger`](https://developer.apple.com/documentation/os/logger) instance, configure subsystems and categories, or log each function individually.
@@ -39,6 +43,7 @@ Swift AutoLog provides macros that leverage Apple's OSLog framework, eliminating
 ### Essentials
 
 - <doc:Usage>
+- <doc:MeasuringPerformance>
 - <doc:LeverageOSLog>
 - <doc:CustomizingMacroBehavior>
 - <doc:CreatingCustomLoggableInstance>

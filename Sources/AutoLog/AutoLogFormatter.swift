@@ -74,8 +74,9 @@ public struct CompactFormatter: AutoLogFormatter {
     // Detected when declaration matches the source's description (set by AutoLogSource.run).
     if let source = event.source, event.declaration == source.description {
       let label = source.label ?? source.description
+      let trace = (source as? SourceContext).map { " \($0.traceBadge)" } ?? ""
       let line  = extractLine(from: event.location)
-      return "\(arrow) \(source.emoji) \(label) [\(typeName):\(line)]"
+      return "\(arrow) \(source.emoji) \(label)\(trace) [\(typeName):\(line)]"
     }
 
     let em         = emoji(for: event, style: fmt.statusStyle)
@@ -263,7 +264,7 @@ public struct CompactFormatter: AutoLogFormatter {
     let typeName = extractTypeName(from: ctx.location)
     let line     = extractLine(from: ctx.location)
     let label    = ctx.label ?? ctx.description
-    return "         ↖ \(ctx.emoji) \(label) [\(typeName):\(line)]"
+    return "         ↖ \(ctx.emoji) \(label) \(ctx.traceBadge) [\(typeName):\(line)]"
   }
 
   private func formatErrorContext(

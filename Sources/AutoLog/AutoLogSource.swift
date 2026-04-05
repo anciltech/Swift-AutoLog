@@ -1,3 +1,4 @@
+import Foundation
 import Synchronization
 
 /// A `Sourceable` wrapper that pairs an interaction source with the call-site
@@ -9,19 +10,66 @@ import Synchronization
 /// requirements to the wrapped source, so existing code reading
 /// `AutoLogSource.current?.emoji` / `.label` continues to work unchanged.
 public struct SourceContext: Sourceable, Sendable {
+  private static let flowMarkers = [
+    "🧵",
+    "🧶",
+    "🎯",
+    "🚀",
+    "🌈",
+    "🔥",
+    "⚡️",
+    "🫧",
+    "🛰️",
+    "🎲"
+  ]
+
   /// The underlying interaction source (e.g., `InteractionSource.button("Run")`).
   public let source: any Sourceable
   /// The call-site location in `fileID:line:column` format.
   public let location: String
+  /// A short flow identifier shared by the interaction event and downstream work.
+  public let interactionID: String
+  /// A visual marker paired with the interaction ID to help separate overlapping flows.
+  public let flowMarker: String
 
-  public init(source: any Sourceable, location: String) {
+  public init(
+    source: any Sourceable,
+    location: String,
+    interactionID: String,
+    flowMarker: String? = nil
+  ) {
     self.source = source
     self.location = location
+    self.interactionID = interactionID
+    self.flowMarker = flowMarker ?? SourceContext.pickFlowMarker(for: interactionID)
+  }
+
+  public init(source: any Sourceable, location: String) {
+    self.init(
+      source: source,
+      location: location,
+      interactionID: SourceContext.makeInteractionID()
+    )
   }
 
   public var emoji: String       { source.emoji }
   public var label: String?      { source.label }
   public var description: String { source.description }
+  public var traceBadge: String  { "\(flowMarker)\(interactionID)" }
+
+  private static func makeInteractionID() -> String {
+    UUID().uuidString
+      .replacingOccurrences(of: "-", with: "")
+      .prefix(6)
+      .uppercased()
+  }
+
+  private static func pickFlowMarker(for interactionID: String) -> String {
+    let scalarSum = interactionID.unicodeScalars.reduce(0) { partialResult, scalar in
+      partialResult + Int(scalar.value)
+    }
+    return flowMarkers[scalarSum % flowMarkers.count]
+  }
 }
 
 /// Manages the current interaction source via TaskLocal and emits
@@ -195,16 +243,17 @@ public enum AutoLog {
   ) rethrows -> T {
     let runtime = runtimeSnapshot()
     let locationString = "\(fileID):\(line):\(column)"
+    let context = SourceContext(source: source, location: locationString)
     runtime.logger.emitIfEnabled(
       event: AutoLogEvent(
-        source: source,
+        source: context,
         location: locationString,
         declaration: source.description
       ),
       configuration: runtime.configuration,
       deduplicator: runtime.deduplicator
     )
-    return try $current.withValue(SourceContext(source: source, location: locationString)) {
+    return try $current.withValue(context) {
       try operation()
     }
   }
@@ -220,16 +269,17 @@ public enum AutoLog {
   ) async rethrows -> T {
     let runtime = runtimeSnapshot()
     let locationString = "\(fileID):\(line):\(column)"
+    let context = SourceContext(source: source, location: locationString)
     runtime.logger.emitIfEnabled(
       event: AutoLogEvent(
-        source: source,
+        source: context,
         location: locationString,
         declaration: source.description
       ),
       configuration: runtime.configuration,
       deduplicator: runtime.deduplicator
     )
-    return try await $current.withValue(SourceContext(source: source, location: locationString)) {
+    return try await $current.withValue(context) {
       try await operation()
     }
   }
@@ -255,7 +305,7 @@ public enum AutoLog {
     runtime.logger.emitIfEnabled(
       event: AutoLogEvent(
         level: level,
-        source: current?.source,
+        source: current,
         location: "\(fileID):\(line)",
         declaration: message,
         parameters: [:]

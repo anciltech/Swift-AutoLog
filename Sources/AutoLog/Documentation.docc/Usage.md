@@ -119,6 +119,34 @@ struct InteractionManager {
 AutoLog compares the emitted event metadata and suppresses repeated identical
 entries inside the configured time window.
 
+If you want to quantify the overhead of those emitted events, including how
+different tag mixes change the hot path, run the dedicated
+<doc:MeasuringPerformance> benchmark suite. It compares a plain function against
+logged variants that use no tags, visible tags, routing tags, and mixed tag
+profiles under the same workload.
+
+## Trace a UI interaction through downstream work
+
+`AutoLog` can attach interaction context to downstream logged calls, whether the
+origin is a button tap, toggle change, timer, API callback, or your own custom
+``Sourceable`` type.
+
+```swift
+Button.log("Save") {
+  viewModel.saveTapped()
+}
+```
+
+Every interaction origin gets a short flow badge such as `🧵A1B2C3`. The
+origin event and the downstream attribution line share the same badge, which
+makes overlapping flows easier to distinguish in the console:
+
+```text
+-> 👆🏼 Save 🧵A1B2C3 [ContentView:42]
+--> 🟢 PaymentsViewModel.saveTapped()
+         ↖ 👆🏼 Save 🧵A1B2C3 [ContentView:42]
+```
+
 For chatty boolean probes where only the positive case matters, add
 ``When(_:)``:
 

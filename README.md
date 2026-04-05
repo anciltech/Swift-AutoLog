@@ -29,6 +29,7 @@ Timing, duration, ordering, and concurrent interleaving stay visible in the emit
 * **Preserve causality**
 
 Interaction and system sources such as buttons, toggles, text fields, timers, and API triggers can propagate downstream, so a log line still carries the intent that started the chain.
+Each interaction origin also gets a short flow badge such as `🧵A1B2C3`, making it easier to visually group one button tap or timer tick from another while concurrent work is interleaving.
 
 * **Annotate all methods within type or extension**
 
@@ -309,6 +310,14 @@ Button.log("Save") {
 }
 ```
 
+The interaction event and every downstream attribution line share the same generated flow badge, so one tap remains easy to follow even when multiple UI actions overlap:
+
+```text
+-> 👆🏼 Save 🧵A1B2C3 [ContentView:42]
+--> 🟢 PaymentsViewModel.saveTapped()
+         ↖ 👆🏼 Save 🧵A1B2C3 [ContentView:42]
+```
+
 There is also an async variant:
 
 ```swift
@@ -460,6 +469,46 @@ As a rule of thumb:
 * use `@Log` / `@AutoLog` for function boundaries
 * use `AutoLog.update(...)` or `AutoLog.note(...)` for meaningful internal milestones
 * remove noisy `print`, duplicate `Logger.info`, and repetitive “entered function” style logs once the macro is in place
+
+## Measuring performance
+
+The package now includes `AutoLogPerformanceTests`, a focused benchmark suite
+that compares the same function body across:
+
+* a plain baseline with no logging
+* `@Log` without tags
+* `@Log` with visible string tags
+* `@Log` with routing tags such as `.splunk` and `.firebase`
+* `@Log` with mixed visible and routing tags
+
+The benchmark uses a logger that exercises the same formatting and route checks
+as production `AutoLogLogger` code while discarding final output. That keeps the
+results comparable across tag profiles without letting console I/O dominate the
+numbers.
+
+Run it from the package root or parent workspace:
+
+```bash
+swift test --package-path AutoLogSourceCode/swift-autolog --filter AutoLogPerformanceTests
+```
+
+For deeper analysis, start with Xcode Instruments' **Time Profiler** template.
+It gives the clearest picture of where the overhead sits inside the logged
+function path, especially `AutoLogEvent` creation, `CompactFormatter`, and route
+filtering. A matching CLI capture looks like this:
+
+```bash
+xcrun xctrace record \
+  --template 'Time Profiler' \
+  --output /tmp/AutoLogPerformance.trace \
+  --launch -- \
+  swift test \
+    --package-path AutoLogSourceCode/swift-autolog \
+    --filter AutoLogPerformanceTests/testLoggedFunctionWithMixedTags
+```
+
+Use the **Logging** Instruments template as a second pass if you specifically
+want to inspect OSLog delivery volume after you understand the in-process cost.
 
 ## Learn More
 Swift AutoLog offers a wide range of additional features. You can create custom loggers, add tags to captured events for later processing, exclude specific methods from logging, ignore certain parameters (or all of them) from being captured, override the log level for individual events, capture structured early exits, and much more. For usage examples and detailed information, see the [documentation](https://swiftpackageindex.com/anciltech/Swift-AutoLog/main/documentation/autolog).

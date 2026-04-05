@@ -161,10 +161,13 @@ struct AutoLogSourceTests {
     @Test func run_setsCurrentDuringExecution() {
         withMockRuntime {
             var capturedEmoji: String?
+            var capturedInteractionID: String?
             AutoLogSource.run(InteractionSource.button("Test")) {
                 capturedEmoji = AutoLogSource.current?.emoji
+                capturedInteractionID = AutoLogSource.current?.interactionID
             }
             #expect(capturedEmoji == "👆🏼")
+            #expect(capturedInteractionID?.count == 6)
         }
     }
 
@@ -192,6 +195,9 @@ struct AutoLogSourceTests {
             #expect(mock.events.count == 1)
             #expect(mock.events.first?.source?.emoji == "👆🏼")
             #expect(mock.events.first?.declaration == "button(\"Deposit\")")
+            let context = mock.events.first?.source as? SourceContext
+            #expect(context != nil)
+            #expect(context?.interactionID.count == 6)
         }
     }
 
@@ -368,5 +374,23 @@ struct CompactFormatterSourceTests {
         #expect(lines[1].contains("👆🏼"))
         #expect(lines[1].contains("Deposit"))
         #expect(lines[1].contains("[ContentView:30]"))
+        #expect(lines[1].contains(ctx.traceBadge))
+    }
+
+    @Test func interactionEvent_withSourceContext_showsTraceBadgeInline() {
+        let ctx = SourceContext(
+            source: InteractionSource.button("Deposit"),
+            location: "App/ContentView.swift:30:5",
+            interactionID: "A1B2C3",
+            flowMarker: "🧵"
+        )
+        let event = makeEvent(
+            source: ctx,
+            location: "App/ContentView.swift:30:5",
+            declaration: "button(\"Deposit\")"
+        )
+        let output = CompactFormatter().format(event: event, configuration: configuration)
+        #expect(output.contains("Deposit"))
+        #expect(output.contains("🧵A1B2C3"))
     }
 }
