@@ -80,7 +80,7 @@ This alone is sufficient for debugging. All methods within the `FavoriteFactsMod
 
 When you use editor macro expansion, ``AutoLog(using:)`` also emits an empty companion extension for the attached type. That gives Xcode a concrete type-level expansion to show even when the declaration does not gain visible members of its own, while the real logging behavior still comes from the injected ``Log(using:)`` annotations on functions.
 
-By default, ``AutoLog(using:)`` uses the ``AutoLogLogger`` instance. Refer to <doc:CreatingCustomLoggableInstance> for more information about incorporating custom loggers.
+By default, ``AutoLog(using:)`` uses the ``AutoLogLogger`` instance. Refer to <doc:CreatingCustomAutoLoggerInstance> for more information about incorporating custom loggers.
 
 For app-wide setup, install a process-local runtime snapshot with
 ``AutoLog/start(logger:configuration:configurationStore:refreshInterval:)``.
@@ -197,7 +197,7 @@ class FavoriteFactsModel: Identifiable {
 }
 
 ```
-If we invoke both `fetchFavoriteFacts` and `deleteFromFavoriteButtonTapped`, the first will use the default logger, whereas the second will send an event to the `.printer` logger. This behavior can also be reversed. Refer to <doc:CreatingCustomLoggableInstance> for more information about incorporating custom loggers.
+If we invoke both `fetchFavoriteFacts` and `deleteFromFavoriteButtonTapped`, the first will use the default logger, whereas the second will send an event to the `.printer` logger. This behavior can also be reversed. Refer to <doc:CreatingCustomAutoLoggerInstance> for more information about incorporating custom loggers.
 
 > Arguments provided to the `@AutoLog` macro are implicitly propagated to all methods within the declaration scope, unless explicitly opted out.
 

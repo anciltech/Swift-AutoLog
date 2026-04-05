@@ -61,7 +61,7 @@ class SwipeableFactModel {
 
 Using ``Level(_:)`` with a string that represents the logging level inside a type annotated with ``AutoLog(using:)``:
 
-This example uses a predefined logging level. You can learn how to create custom ones in <doc:CreatingCustomLoggableInstance>
+This example uses a predefined logging level. You can learn how to create custom ones in <doc:CreatingCustomAutoLoggerInstance>
 
 ```swift
 // SwipeableFactModel.swift
