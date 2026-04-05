@@ -19,7 +19,7 @@ Excludes the function from logging entirely - no event will be sent, whether fun
 
 * ``Omit(_:)``
 
-Omits specific ``Ommitable`` traits from being captured, such as individual parameters, all parameters, or the function's result metadata. In the last case, thrown errors are still captured.
+Omits specific ``Ommitable`` traits from being captured, such as individual parameters, all parameters, or the function's result metadata. `Omit` also supports conditional suppression rules such as `@Omit(.result, containing: "false")` and `@Omit(.error, containing: ["iamError", "nextAuthStep"], upToCount: 1)`.
 
 * ``Tag(_:)``
 
@@ -165,7 +165,7 @@ as `true` for a selection or availability check.
 
 @AutoLog
 struct InteractionManager {
-  @When(true)
+  @Omit(.result, containing: "false")
   func isSelected(frame: Frame) -> Bool {
     selectedFrameIDs.contains(frame.id)
   }
@@ -173,7 +173,29 @@ struct InteractionManager {
 ```
 
 When the function returns `false`, the call still completes normally but no
-success log is emitted. If the function throws, the error path still logs.
+success log is emitted. If you pass multiple `containing:` tokens, all of them
+must match after normalization.
+
+### Omitting expected errors for the first few occurrences
+
+Some failures are expected during startup or transitional flows and only become
+interesting after they repeat.
+
+```swift
+// AuthService.swift
+
+@AutoLog
+struct AuthService {
+  @Omit(.error, containing: ["iamError", "nextAuthStep", "userName"], upToCount: 1)
+  func refreshSession() async throws {
+    // ...
+  }
+}
+```
+
+`containing:` uses AND semantics, so every token must be present in the
+normalized error summary. `upToCount: 1` suppresses the first matching error
+and emits subsequent matching errors normally.
 
 For commonly used tags, you can leverage the ``Taggable`` protocol to define reusable and consistent tag definitions across your codebase.
 
@@ -230,13 +252,17 @@ Bool { ... }` compile cleanly. Computed properties are still not auto-logged by
 `@AutoLog`, so the property form is currently a no-op marker rather than a
 property logging feature.
 
-AutoLog includes two predefined cases in the ``Omit`` enum:
+AutoLog includes three predefined cases in the ``Omit`` enum:
 
 * ``result``
   Strips the result metadata from the log. On success, the function is treated as returning `Void`.
 
 * ``parameters``
   Omits all parameters passed to the logged function, preventing any argument data from being captured.
+
+* ``error``
+  Suppresses thrown errors when used in a conditional omission rule such as
+  `@Omit(.error, upToCount: 1)` or `@Omit(.error, containing: [...])`.
 
 
 You can omit a specific parameter by passing a string that represents the **parameter name**.

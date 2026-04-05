@@ -237,6 +237,158 @@ struct LogMacroTests {
   }
 
   @Test
+  func function_withBareOmit_skipsExplicitLogInstrumentation() throws {
+    assertMacro {
+      """
+      @Omit
+      @Log
+      func hidden() {
+        print("hidden")
+      }
+      """
+    } expansion: {
+      """
+      @Omit
+      func hidden() {
+        print("hidden")
+      }
+      """
+    }
+  }
+
+  @Test
+  func boolFunction_withConditionalOmitResult_buildsOmissionRule() throws {
+    assertMacro {
+      #"""
+      @Omit(.result, containing: "false")
+      @Log
+      func isSelected(flag: Bool) -> Bool {
+        return flag
+      }
+      """#
+    } expansion: {
+      """
+      @Omit(.result, containing: "false")
+      func isSelected(flag: Bool) -> Bool {
+        let runtime = AutoLog.runtimeSnapshot()
+        let autoLogger: any AutoLogger = runtime.logger
+        var event = AutoLogEvent(
+          source: AutoLogSource.current,
+
+          location: "TestModule/Test.swift:1:1",
+          declaration: "func isSelected(flag: Bool) -> Bool",
+          parameters: [
+            "flag": flag
+          ],
+          tags: [], omissionRules: [AutoLogOmissionRule(scope: AutoLogOmissionRule.Scope.result, tokens: ["false"])]
+        )
+        autoLogger.emitStart(event: event, configuration: runtime.configuration, deduplicator: runtime.deduplicator)
+        let __logStart = ContinuousClock.now
+        func _isSelected(flag: Bool) -> Bool {
+          return flag
+        }
+        let result = _isSelected(flag: flag)
+        event.result = .success(result)
+        event.duration = ContinuousClock.now - __logStart
+        autoLogger.emitIfEnabled(event: event, configuration: runtime.configuration, deduplicator: runtime.deduplicator)
+        return result
+      }
+      """
+    }
+  }
+
+  @Test
+  func throwingFunction_withConditionalErrorOmitAndCount_buildsOmissionRule() throws {
+    assertMacro {
+      #"""
+      @Omit(.error, upToCount: 1)
+      @Log
+      func refreshSession() throws {
+        throw AuthError.expired
+      }
+      """#
+    } expansion: {
+      """
+      @Omit(.error, upToCount: 1)
+      func refreshSession() throws {
+        let runtime = AutoLog.runtimeSnapshot()
+        let autoLogger: any AutoLogger = runtime.logger
+        var event = AutoLogEvent(
+          source: AutoLogSource.current,
+
+          location: "TestModule/Test.swift:1:1",
+          declaration: "func refreshSession() throws",
+          parameters: [:],
+          tags: [], omissionRules: [AutoLogOmissionRule(scope: AutoLogOmissionRule.Scope.error, tokens: [], upToCount: 1)]
+        )
+        autoLogger.emitStart(event: event, configuration: runtime.configuration, deduplicator: runtime.deduplicator)
+        let __logStart = ContinuousClock.now
+        func _refreshSession() throws {
+          throw AuthError.expired
+        }
+        do {
+          let _ = try _refreshSession()
+          event.duration = ContinuousClock.now - __logStart
+          autoLogger.emitIfEnabled(event: event, configuration: runtime.configuration, deduplicator: runtime.deduplicator)
+        } catch {
+          event.result = .failure(error)
+          event.duration = ContinuousClock.now - __logStart
+          autoLogger.emitIfEnabled(event: event, configuration: runtime.configuration, deduplicator: runtime.deduplicator)
+          throw error
+        }
+      }
+      """
+    }
+  }
+
+  @Test
+  func throwingFunction_withConditionalErrorTokensAndOmitResult_stacksRules() throws {
+    assertMacro {
+      #"""
+      @Omit(.result)
+      @Omit(.error, containing: ["iamError", "nextAuthStep", "UserName"], upToCount: 1)
+      @Log
+      func refreshSession() throws -> Bool {
+        throw AuthError.expired
+      }
+      """#
+    } expansion: {
+      """
+      @Omit(.result)
+      @Omit(.error, containing: ["iamError", "nextAuthStep", "UserName"], upToCount: 1)
+      func refreshSession() throws -> Bool {
+        let runtime = AutoLog.runtimeSnapshot()
+        let autoLogger: any AutoLogger = runtime.logger
+        var event = AutoLogEvent(
+          source: AutoLogSource.current,
+
+          location: "TestModule/Test.swift:1:1",
+          declaration: "func refreshSession() throws -> Bool",
+          parameters: [:],
+          tags: [], omissionRules: [AutoLogOmissionRule(scope: AutoLogOmissionRule.Scope.error, tokens: ["iamError", "nextAuthStep", "UserName"], upToCount: 1)]
+        )
+        autoLogger.emitStart(event: event, configuration: runtime.configuration, deduplicator: runtime.deduplicator)
+        let __logStart = ContinuousClock.now
+        func _refreshSession() throws -> Bool {
+          throw AuthError.expired
+        }
+        do {
+          let result = try _refreshSession()
+          event.duration = ContinuousClock.now - __logStart
+          autoLogger.emitIfEnabled(event: event, configuration: runtime.configuration, deduplicator: runtime.deduplicator)
+          return result
+        } catch {
+          event.result = .failure(error)
+          event.duration = ContinuousClock.now - __logStart
+          autoLogger.emitIfEnabled(event: event, configuration: runtime.configuration, deduplicator: runtime.deduplicator)
+          throw error
+        }
+      }
+      """
+    }
+  }
+
+  @Test
   func boolFunction_logsGuardEarlyReturn() throws {
     assertMacro {
       #"""

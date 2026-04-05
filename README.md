@@ -32,7 +32,7 @@ There is no need to annotate each method individually - simply apply the desired
 
 * **Customize how logs are handled**
 
-All macros include the ability to add tags to logged functions, suppress their output or parameters, deduplicate noisy repeated events, log only interesting return values, or even exclude the functions entirely from emitting an event.
+All macros include the ability to add tags to logged functions, suppress their output or parameters, deduplicate noisy repeated events, conditionally omit noisy results or expected errors, or even exclude the functions entirely from emitting an event.
 
 * **Leverage OSLog support**
 
@@ -150,19 +150,33 @@ struct InteractionManager {
 }
 ```
 
-For boolean probes where only one outcome matters, add `@When(true)`:
+For noisy results or expected errors, `@Omit` now supports conditional omission rules:
 
 ```swift
 import AutoLog
 
 @AutoLog
 struct InteractionManager {
-  @When(true)
+  @Omit(.result, containing: "false")
   func isSelected(frame: Frame) -> Bool {
     selectedFrameIDs.contains(frame.id)
   }
 }
 ```
+
+```swift
+import AutoLog
+
+@AutoLog
+struct AuthService {
+  @Omit(.error, containing: ["iamError", "nextAuthStep", "userName"], upToCount: 1)
+  func refreshSession() async throws {
+    // ...
+  }
+}
+```
+
+`containing:` uses AND semantics after normalization, so every token must match.
 
 ### OSLog integration
 

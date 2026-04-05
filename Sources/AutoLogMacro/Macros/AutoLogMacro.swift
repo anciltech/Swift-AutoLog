@@ -46,6 +46,9 @@ extension AutoLogMacro {
   ) throws -> [CodeBlockItemSyntax] {
     guard let function = FunctionSyntax(from: declaration)
     else { return self.body() }
+    if function.syntax.attributes.hasBareOmitMarker {
+      return function.body
+    }
 
     // Extract measure: Bool? from @Log(measure: ...).
     // nil → default (generate timing, not explicitly requested)
@@ -67,6 +70,7 @@ extension AutoLogMacro {
     let levelTrait = function.syntax.attributes.extractTraits(for: .level).first
     let deduplicationTrait = function.syntax.attributes.extractTraits(for: .deduplicate).first
     let resultFilterTrait = function.syntax.attributes.extractTraits(for: .when).first
+    let omitRuleTraits = function.syntax.attributes.extractOmitRuleTraits()
     let instrumentedPlain = self.instrumentedPlain(of: function)
 
     return body {
@@ -79,7 +83,8 @@ extension AutoLogMacro {
         levelTrait: levelTrait,
         taggableTraits: tagTraits,
         omittableTraits: omitTraits,
-        deduplicationTrait: deduplicationTrait
+        deduplicationTrait: deduplicationTrait,
+        omitRuleTraits: omitRuleTraits
       )
 
       if isMeasuredExplicitly {
@@ -116,7 +121,9 @@ extension AutoLogMacro {
           CodeBlockItemSyntax(instrumentedPlain)
           CodeBlockItemSyntax.try {
             CodeBlockItemSyntax.call(function)
-            self.capture(.result)
+            if !omitTraits.contains(where: \.isOmitResult) {
+              self.capture(.result)
+            }
             if shouldMeasure { self.captureTimingEnd() }
             self.emit(when: resultFilterTrait)
             CodeBlockItemSyntax.return
@@ -211,7 +218,8 @@ extension AutoLogMacro {
     levelTrait: (any ExprSyntaxProtocol)?,
     taggableTraits: [any ExprSyntaxProtocol],
     omittableTraits: [any ExprSyntaxProtocol],
-    deduplicationTrait: (any ExprSyntaxProtocol)?
+    deduplicationTrait: (any ExprSyntaxProtocol)?,
+    omitRuleTraits: [AttributeListSyntax.OmitRuleTrait]
   ) -> CodeBlockItemSyntax {
     let capturedParameters = declaration.parameters.filter { parameter in
       !omittableTraits.contains(where: { trait in trait.isOmitParameter(parameter.name) })
@@ -322,8 +330,8 @@ extension AutoLogMacro {
                         }
                       }
                     ),
-                    trailingComma: deduplicationTrait == nil ? nil : .commaToken(),
-                    trailingTrivia: deduplicationTrait == nil ? .newline : []
+                    trailingComma: deduplicationTrait == nil && omitRuleTraits.isEmpty ? nil : .commaToken(),
+                    trailingTrivia: deduplicationTrait == nil && omitRuleTraits.isEmpty ? .newline : []
                   )
 
                   if let deduplicationTrait {
@@ -331,6 +339,51 @@ extension AutoLogMacro {
                       label: .identifier("deduplicateWithin"),
                       colon: .colonToken(),
                       expression: deduplicationTrait,
+                      trailingComma: omitRuleTraits.isEmpty ? nil : .commaToken(),
+                      trailingTrivia: omitRuleTraits.isEmpty ? .newline : []
+                    )
+                  }
+
+                  if !omitRuleTraits.isEmpty {
+                    LabeledExprSyntax(
+                      label: .identifier("omissionRules"),
+                      colon: .colonToken(),
+                      expression: ArrayExprSyntax(
+                        elements: ArrayElementListSyntax {
+                          omitRuleTraits.map { omitRule in
+                            ArrayElementSyntax(
+                              expression: FunctionCallExprSyntax(
+                                calledExpression: DeclReferenceExprSyntax(
+                                  baseName: .identifier("AutoLogOmissionRule")
+                                ),
+                                leftParen: .leftParenToken(),
+                                arguments: LabeledExprListSyntax {
+                                  LabeledExprSyntax(
+                                    label: .identifier("scope"),
+                                    colon: .colonToken(),
+                                    expression: Self.omitRuleScopeExpression(omitRule.scope),
+                                    trailingComma: .commaToken()
+                                  )
+                                  LabeledExprSyntax(
+                                    label: .identifier("tokens"),
+                                    colon: .colonToken(),
+                                    expression: Self.omitRuleTokensExpression(omitRule.containing),
+                                    trailingComma: omitRule.upToCount == nil ? nil : .commaToken()
+                                  )
+                                  if let upToCount = omitRule.upToCount {
+                                    LabeledExprSyntax(
+                                      label: .identifier("upToCount"),
+                                      colon: .colonToken(),
+                                      expression: upToCount
+                                    )
+                                  }
+                                },
+                                rightParen: .rightParenToken()
+                              )
+                            )
+                          }
+                        }
+                      ),
                       trailingTrivia: .newline
                     )
                   }
@@ -340,6 +393,38 @@ extension AutoLogMacro {
             )
           )
         )
+      )
+    )
+  }
+
+  static func omitRuleTokensExpression(
+    _ containing: ExprSyntax?
+  ) -> ExprSyntax {
+    guard let containing else {
+      return ExprSyntax(ArrayExprSyntax(elements: ArrayElementListSyntax()))
+    }
+
+    if containing.is(ArrayExprSyntax.self) {
+      return containing
+    }
+
+    return ExprSyntax(
+      ArrayExprSyntax(
+        elements: ArrayElementListSyntax {
+          ArrayElementSyntax(expression: containing)
+        }
+      )
+    )
+  }
+
+  static func omitRuleScopeExpression(
+    _ scope: ExprSyntax
+  ) -> ExprSyntax {
+    ExprSyntax(
+      MemberAccessExprSyntax(
+        base: DeclReferenceExprSyntax(baseName: .identifier("AutoLogOmissionRule.Scope")),
+        period: .periodToken(),
+        name: .identifier(scope.isOmitError ? "error" : "result")
       )
     )
   }

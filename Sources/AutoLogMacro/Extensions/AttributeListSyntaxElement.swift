@@ -27,6 +27,19 @@ extension ExprSyntaxProtocol {
         return false
     }
   }
+
+  var isOmitError: Bool {
+    switch ExprSyntax(fromProtocol: self).as(ExprSyntaxEnum.self) {
+      case let .memberAccessExpr(memberAccessExprSyntax):
+        return memberAccessExprSyntax.declName.baseName.text == "error"
+
+      case let .stringLiteralExpr(stringLiteralExprSyntax):
+        return stringLiteralExprSyntax.isEqual(to: "__error")
+
+      default:
+        return false
+    }
+  }
   
   func isOmitParameter(_ label: TokenSyntax) -> Bool {
     switch ExprSyntax(fromProtocol: self).as(ExprSyntaxEnum.self) {
@@ -56,6 +69,12 @@ extension StringLiteralExprSyntax {
 }
 
 extension AttributeListSyntax {
+  struct OmitRuleTrait {
+    let scope: ExprSyntax
+    let containing: ExprSyntax?
+    let upToCount: ExprSyntax?
+  }
+
   /// Extracts all arguments passed as parameters to given annotation as well
   /// all arguments found in trait annotations.
   ///
@@ -79,7 +98,19 @@ extension AttributeListSyntax {
             return attributes.map(\.expression)
             
           case .predefined(.Omit) where label == .omit:
-            return attributes.map(\.expression)
+            let hasConditionalArguments = attributes.contains { element in
+              guard let tokenKind = element.label?.tokenKind else { return false }
+              return tokenKind == .predefined(.containing) || tokenKind == .predefined(.upToCount)
+            }
+
+            guard hasConditionalArguments else {
+              return attributes.map(\.expression)
+            }
+
+            return attributes
+              .filter { $0.label == nil }
+              .map(\.expression)
+              .filter { !$0.isOmitResult && !$0.isOmitError }
             
           case .predefined(.Level) where label == .level:
             return attributes.map(\.expression)
@@ -99,6 +130,40 @@ extension AttributeListSyntax {
             return []
         }
       }
+  }
+
+  func extractOmitRuleTraits() -> [OmitRuleTrait] {
+    attributesFromAllAttachedAnnotations.compactMap { annotation, attributes in
+      guard annotation == .predefined(.Omit) else { return nil }
+
+      let hasConditionalArguments = attributes.contains { element in
+        guard let tokenKind = element.label?.tokenKind else { return false }
+        return tokenKind == .predefined(.containing) || tokenKind == .predefined(.upToCount)
+      }
+
+      guard hasConditionalArguments else { return nil }
+      guard let scope = attributes.first(where: { $0.label == nil })?.expression else { return nil }
+
+      let containing = attributes.first(where: {
+        $0.label?.tokenKind == .predefined(.containing)
+      })?.expression
+
+      let upToCount = attributes.first(where: {
+        $0.label?.tokenKind == .predefined(.upToCount)
+      })?.expression
+
+      return OmitRuleTrait(
+        scope: ExprSyntax(scope),
+        containing: containing.map { ExprSyntax($0) },
+        upToCount: upToCount.map { ExprSyntax($0) }
+      )
+    }
+  }
+
+  var hasBareOmitMarker: Bool {
+    attributesFromAllAttachedAnnotations.contains { annotation, attributes in
+      annotation == .predefined(.Omit) && attributes.isEmpty
+    }
   }
 }
 

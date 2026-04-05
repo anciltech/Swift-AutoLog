@@ -23,6 +23,8 @@ extension TokenKind {
     case Deduplicate
     case when
     case When
+    case containing
+    case upToCount
 
     var identifier: TokenKind {
       switch self {
@@ -88,6 +90,12 @@ extension TokenKind {
 
       case .When:
         return TokenKind.identifier("When")
+
+      case .containing:
+        return TokenKind.identifier("containing")
+
+      case .upToCount:
+        return TokenKind.identifier("upToCount")
       }
     }
   }

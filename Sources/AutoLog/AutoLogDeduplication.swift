@@ -26,6 +26,7 @@ public struct AutoLogDeduplication: Sendable, Hashable, Codable {
 
 struct AutoLogDeduplicationState: Sendable {
   var lastEmissionByFingerprint: [String: ContinuousClock.Instant] = [:]
+  var omissionCountByFingerprint: [String: Int] = [:]
 
   mutating func shouldEmit(
     fingerprint: String,
@@ -41,6 +42,15 @@ struct AutoLogDeduplicationState: Sendable {
 
     lastEmissionByFingerprint[fingerprint] = now
     return true
+  }
+
+  mutating func shouldEmitForOmissionRule(
+    fingerprint: String,
+    upToCount: Int
+  ) -> Bool {
+    let count = (omissionCountByFingerprint[fingerprint] ?? 0) + 1
+    omissionCountByFingerprint[fingerprint] = count
+    return count > upToCount
   }
 
   mutating func prune(now: ContinuousClock.Instant) {
@@ -66,6 +76,23 @@ public final class AutoLogDeduplicator: @unchecked Sendable {
     configuration: AutoLogConfiguration,
     now: ContinuousClock.Instant = .now
   ) -> Bool {
+    if let omissionDecision = omissionDecision(for: event) {
+      switch omissionDecision {
+      case .omitAlways:
+        return false
+
+      case .omitUpToCount(let fingerprint, let upToCount):
+        let shouldEmit = state.withLock {
+          $0.shouldEmitForOmissionRule(
+            fingerprint: fingerprint,
+            upToCount: upToCount
+          )
+        }
+
+        guard shouldEmit else { return false }
+      }
+    }
+
     let effectiveWindow = event.deduplicateWithin ?? configuration.deduplicateWithin
 
     guard let effectiveWindow, effectiveWindow.milliseconds > 0 else {
@@ -81,18 +108,50 @@ public final class AutoLogDeduplicator: @unchecked Sendable {
       )
     }
   }
+
+  private func omissionDecision(for event: AutoLogEvent) -> AutoLogOmissionDecision? {
+    for rule in event.omissionRules {
+      guard let fingerprint = event.omissionFingerprint(for: rule) else { continue }
+
+      if let upToCount = rule.upToCount {
+        return .omitUpToCount(fingerprint: fingerprint, upToCount: upToCount)
+      }
+
+      return .omitAlways
+    }
+
+    return nil
+  }
 }
 
 extension AutoLogEvent {
+  fileprivate func omissionFingerprint(for rule: AutoLogOmissionRule) -> String? {
+    switch rule.scope {
+    case .result:
+      guard case .success(let value) = result else { return nil }
+      let summary = AutoLogComparison.summary(for: value)
+      guard AutoLogComparison.matches(all: rule.tokens, in: summary) else { return nil }
+      return [location, declaration, "result", summary, rule.tokens.joined(separator: "|")]
+        .joined(separator: "|")
+
+    case .error:
+      guard case .failure(let error) = result else { return nil }
+      let summary = AutoLogComparison.errorSummary(error)
+      guard AutoLogComparison.matches(all: rule.tokens, in: summary) else { return nil }
+      return [location, declaration, "error", summary, rule.tokens.joined(separator: "|")]
+        .joined(separator: "|")
+    }
+  }
+
   fileprivate var deduplicationFingerprint: String {
     [
       location,
       declaration,
       level.map { String(describing: $0) } ?? "nil",
-      source.map(deduplicationSummary(for:)) ?? "nil",
+      source.map(AutoLogComparison.summary(for:)) ?? "nil",
       parameters
         .sorted { $0.key < $1.key }
-        .map { "\($0.key)=\(deduplicationSummary(for: $0.value))" }
+        .map { "\($0.key)=\(AutoLogComparison.summary(for: $0.value))" }
         .joined(separator: "&"),
       resultSummary,
       tags.map { String(describing: $0) }.joined(separator: ","),
@@ -105,18 +164,15 @@ extension AutoLogEvent {
   private var resultSummary: String {
     switch result {
     case .success(let value):
-      return "success:\(deduplicationSummary(for: value))"
+      return "success:\(AutoLogComparison.summary(for: value))"
 
     case .failure(let error):
-      return "failure:\(type(of: error)):\(String(describing: error))"
+      return "failure:\(AutoLogComparison.errorSummary(error))"
     }
   }
+}
 
-  private func deduplicationSummary(for value: Any) -> String {
-    if let type = value as? Any.Type {
-      return String(reflecting: type)
-    }
-
-    return String(describing: value)
-  }
+private enum AutoLogOmissionDecision {
+  case omitAlways
+  case omitUpToCount(fingerprint: String, upToCount: Int)
 }

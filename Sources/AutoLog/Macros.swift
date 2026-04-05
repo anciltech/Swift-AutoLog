@@ -239,6 +239,7 @@ public macro When<T: Equatable>(
   type: "WhenMacro"
 )
 
+
 /// Overload that allows controlling performance timing at the function level.
 ///
 /// - Parameter measure: `true` forces timing display even when the global setting is off;
@@ -453,6 +454,38 @@ public macro Omit() = #externalMacro(
 /// ```
 @attached(body)
 public macro Omit(_ traits: any Omittable...) = #externalMacro(
+  module: "AutoLogMacro",
+  type: "OmitMacro"
+)
+
+/// Conditionally omits matching result or error events using a single token.
+@attached(body)
+public macro Omit(
+  _ trait: any Omittable,
+  containing token: String,
+  upToCount: Int? = nil
+) = #externalMacro(
+  module: "AutoLogMacro",
+  type: "OmitMacro"
+)
+
+/// Conditionally omits matching result or error events using AND-matched tokens.
+@attached(body)
+public macro Omit(
+  _ trait: any Omittable,
+  containing tokens: [String],
+  upToCount: Int? = nil
+) = #externalMacro(
+  module: "AutoLogMacro",
+  type: "OmitMacro"
+)
+
+/// Conditionally omits matching result or error events for the first N occurrences.
+@attached(body)
+public macro Omit(
+  _ trait: any Omittable,
+  upToCount: Int
+) = #externalMacro(
   module: "AutoLogMacro",
   type: "OmitMacro"
 )

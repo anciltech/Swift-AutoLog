@@ -13,6 +13,9 @@ public protocol Omittable: __Trait {
   
   /// A information to ignore result of a function.
   static var __result: Self { get }
+
+  /// A information to ignore errors of a function.
+  static var __error: Self { get }
 }
 
 public enum Omit: Omittable {
@@ -36,6 +39,10 @@ public enum Omit: Omittable {
   /// Do not pass this directly as a parameter. Use ``Omit.parameters``.
   case __parameters
 
+  /// Signals to ignore thrown errors from a function.
+  /// Do not pass this directly as a parameter. Use ``Omit.error``.
+  case __error
+
   /// Initalizes an instance of this type from given string literal.
   ///
   /// - Parameter value: Parameter name to be ignored.
@@ -46,6 +53,9 @@ public enum Omit: Omittable {
 
     case "__parameters":
       self = .__parameters
+
+    case "__error":
+      self = .__error
 
     default:
       self = .parameter(value)
@@ -64,6 +74,11 @@ extension Omittable where Self == Omit {
   /// Does not affect thrown errors, they will be still captured.
   public static var result: Self {
     Omit.__result
+  }
+
+  /// Errors thrown by the attached function will not be emitted.
+  public static var error: Self {
+    Omit.__error
   }
 }
 
@@ -91,6 +106,13 @@ extension StringLiteralType: Omittable {
   /// Passing `"__result"` as an argument yields the same effect.
   public static var __result: String {
     "__result"
+  }
+
+  @_spi(Private)
+  /// A static constat representing property name as string literal.
+  /// Passing `"__error"` as an argument yields the same effect.
+  public static var __error: String {
+    "__error"
   }
 }
 

@@ -141,6 +141,9 @@ public struct AutoLogEvent: CustomStringConvertible, CustomDebugStringConvertibl
   /// When `nil`, the runtime falls back to ``AutoLogConfiguration/deduplicateWithin``.
   public let deduplicateWithin: AutoLogDeduplication?
 
+  /// Conditional omission rules evaluated before duplicate suppression.
+  public let omissionRules: [AutoLogOmissionRule]
+
   /// Describes an early-exit path taken within the function body, when known.
   ///
   /// This metadata is orthogonal to `result`. For example, a function may exit early from a
@@ -164,6 +167,7 @@ public struct AutoLogEvent: CustomStringConvertible, CustomDebugStringConvertibl
     branchDecisions: \(branchDecisions)
     tags: \(tags)
     deduplicateWithin: \(String(describing: deduplicateWithin))
+    omissionRules: \(omissionRules)
     """
   }
 
@@ -180,6 +184,7 @@ public struct AutoLogEvent: CustomStringConvertible, CustomDebugStringConvertibl
     tags: \(tags)
     duration: \(duration.map { String(describing: $0) } ?? "nil")
     deduplicateWithin: \(String(describing: deduplicateWithin))
+    omissionRules: \(omissionRules)
     """
   }
 
@@ -194,6 +199,7 @@ public struct AutoLogEvent: CustomStringConvertible, CustomDebugStringConvertibl
   ///   - result: The result returned by the function.
   ///   - tags: A collection of tags to associate with the event.
   ///   - deduplicateWithin: A per-event duplicate suppression window override.
+  ///   - omissionRules: Conditional omission rules evaluated before emission.
   ///   - isMeasuredExplicitly: Whether timing was explicitly requested via `@Log(measure: true)`.
   public init(
     level: (any Levelable)? = nil,
@@ -204,6 +210,7 @@ public struct AutoLogEvent: CustomStringConvertible, CustomDebugStringConvertibl
     result: Result<Any, any Error> = .success(()),
     tags: [any Taggable] = [],
     deduplicateWithin: AutoLogDeduplication? = nil,
+    omissionRules: [AutoLogOmissionRule] = [],
     isMeasuredExplicitly: Bool = false
   ) {
     self.level = level
@@ -214,6 +221,7 @@ public struct AutoLogEvent: CustomStringConvertible, CustomDebugStringConvertibl
     self.result = result
     self.tags = tags
     self.deduplicateWithin = deduplicateWithin
+    self.omissionRules = omissionRules
     self.duration = nil
     self.isMeasuredExplicitly = isMeasuredExplicitly
     self.earlyExit = nil
@@ -231,7 +239,8 @@ public struct AutoLogEvent: CustomStringConvertible, CustomDebugStringConvertibl
       parameters: parameters,
       result: .success(()),
       tags: tags,
-      deduplicateWithin: deduplicateWithin
+      deduplicateWithin: deduplicateWithin,
+      omissionRules: omissionRules
     )
   }
 
