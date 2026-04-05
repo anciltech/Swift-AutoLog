@@ -3,10 +3,28 @@
 [![](https://img.shields.io/endpoint?url=https%3A%2F%2Fswiftpackageindex.com%2Fapi%2Fpackages%2Fanciltech%2FSwift-AutoLog%2Fbadge%3Ftype%3Dswift-versions)](https://swiftpackageindex.com/anciltech/Swift-AutoLog)
 [![](https://img.shields.io/endpoint?url=https%3A%2F%2Fswiftpackageindex.com%2Fapi%2Fpackages%2Fanciltech%2FSwift-AutoLog%2Fbadge%3Ftype%3Dplatforms)](https://swiftpackageindex.com/anciltech/Swift-AutoLog)
 
+Swift AutoLog is an architectural execution log for Swift apps. It makes behavior observable across architecture, lifecycle, time, and cause: where work moves through the app, how each function executes, when it happens over time, and what triggered it.
+
 A set of macros that support type-wide and per-function logging with ability to customize how logs are handled.
 
 ## Overview
 There are many situations where logging additional information is helpful. However most of them are neglected as they require some boilerplate, this is especially present in bidirectional architectures. Swift AutoLog aims to simplify this by providing macros that can:
+
+* **Show architectural flow**
+
+Swift AutoLog is designed to make work visible across layers such as `View -> ViewModel -> UseCase -> Repository -> DataSource`, so logs show not just that something happened, but where it moved through the app.
+
+* **Capture execution lifecycle**
+
+Events preserve function start and completion context, along with outcomes such as success, throw, early exit, and branch path decisions, so logs describe how work actually executed instead of only emitting isolated print lines.
+
+* **Make time visible**
+
+Timing, duration, ordering, and concurrent interleaving stay visible in the emitted output, which makes it easier to reason about slow work, overlap, and async behavior.
+
+* **Preserve causality**
+
+Interaction and system sources such as buttons, toggles, text fields, timers, and API triggers can propagate downstream, so a log line still carries the intent that started the chain.
 
 * **Annotate all methods within type or extension**
 
