@@ -292,6 +292,18 @@ struct CompactFormatterTests {
         #expect(lines[1].contains("user"))
     }
 
+    @Test func routingTags_areHiddenFromFormattedTagLine() {
+        let event = makeEvent(
+            result: .success(()),
+            tags: ["update", AutoLogRoute.splunk] as [any Taggable]
+        )
+        let output = CompactFormatter().format(event: event, configuration: configuration)
+        let lines = output.split(separator: "\n", omittingEmptySubsequences: false)
+        #expect(lines.count == 2)
+        #expect(lines[1].contains("update"))
+        #expect(!lines[1].contains("splunk"))
+    }
+
     @Test func branchDecisions_showOnSecondLineWhenNoEarlyExit() {
         var event = makeEvent(result: .success(()))
         event.recordBranchDecision(kind: .if, condition: "isVisible")

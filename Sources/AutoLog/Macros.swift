@@ -497,6 +497,8 @@ public macro Omit(
 ///
 /// You can use ``Tag(_:)``  and macros that use ``Taggable`` traits
 /// interchengably. E.g. both bellow code snippets will produce the same result.
+/// Route tags such as ``AutoLogRoute`` can also be attached here to forward
+/// an event to specific sinks like `.console`, `.splunk`, or `.firebase`.
 ///
 /// ```swift
 /// class Foo {

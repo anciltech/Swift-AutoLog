@@ -134,6 +134,31 @@ extension FavoriteFactsModel {
 }
 ```
 
+Tags can also declare sink routing. The built-in console route is the default
+when no routing tags are attached. If you attach one or more routes, only those
+destinations receive the event.
+
+```swift
+// AuditTrailService.swift
+
+@AutoLog
+struct AuditTrailService {
+  @Tag(.console, .splunk)
+  func syncAuditSnapshot() async throws {
+    // Visible in Console and forwarded to the Splunk sink.
+  }
+
+  @Tag(.firebase)
+  func recordPushOpen() {
+    // Forwarded only to Firebase.
+  }
+}
+```
+
+Routing tags are logger directives, so `CompactFormatter` keeps them out of the
+visible tag line. User-facing tags such as `"analytics"` or `.swiftData` still
+render normally.
+
 ### Deduplicating noisy functions
 
 For fast-changing UI probes or repeated cache checks, it can be more useful to

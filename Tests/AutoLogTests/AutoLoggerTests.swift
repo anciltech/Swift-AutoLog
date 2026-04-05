@@ -99,6 +99,42 @@ struct AutoLoggerTests {
       #expect(Self.mock.events.count == beforeFilteredError + 1)
     }
   }
+
+  @Test
+  func routeTags_forwardOnlyToMatchingSinks() {
+    let sink = MockEventSink(route: .splunk)
+    let logger = AutoLogLogger(formatter: MockFormatter(), sinks: [sink])
+    let configuration = AutoLogConfiguration.default
+
+    logger.emit(
+      event: AutoLogEvent(
+        location: "App/Feature.swift:1:1",
+        declaration: "func uploadAuditTrail()",
+        tags: [AutoLogRoute.splunk]
+      ),
+      configuration: configuration
+    )
+
+    #expect(sink.events.count == 1)
+  }
+
+  @Test
+  func routeTags_doNotForwardToNonMatchingSinks() {
+    let sink = MockEventSink(route: .firebase)
+    let logger = AutoLogLogger(formatter: MockFormatter(), sinks: [sink])
+    let configuration = AutoLogConfiguration.default
+
+    logger.emit(
+      event: AutoLogEvent(
+        location: "App/Feature.swift:1:1",
+        declaration: "func uploadAuditTrail()",
+        tags: [AutoLogRoute.splunk]
+      ),
+      configuration: configuration
+    )
+
+    #expect(sink.events.isEmpty)
+  }
 }
 
 extension AutoLoggerTests {
@@ -178,5 +214,24 @@ extension AutoLoggerTests {
     var isCreating: Bool {
       false
     }
+  }
+}
+
+private final class MockEventSink: AutoLogEventSink, @unchecked Sendable {
+  let route: AutoLogRoute
+  var events: [AutoLogEvent] = []
+
+  init(route: AutoLogRoute) {
+    self.route = route
+  }
+
+  func emit(event: AutoLogEvent, configuration: AutoLogConfiguration) {
+    events.append(event)
+  }
+}
+
+private struct MockFormatter: AutoLogFormatter {
+  func format(event: AutoLogEvent, configuration: AutoLogConfiguration) -> String {
+    "formatted"
   }
 }

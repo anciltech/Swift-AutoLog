@@ -99,6 +99,44 @@ struct SentryLogger: AutoLogger {
 }
 ```
 
+### Listen only for explicitly routed events
+
+If you want a backend to receive only a subset of events, conform it to
+``AutoLogEventSink`` and give it a route name. `AutoLogLogger` continues to
+handle Console output and forwards only matching events to the extra sink.
+
+```swift
+// SplunkSink.swift
+
+public import AutoLog
+
+struct SplunkSink: AutoLogEventSink {
+  let route: AutoLogRoute = .splunk
+
+  func emit(event: AutoLogEvent, configuration: AutoLogConfiguration) {
+    // Send `event` to Splunk.
+  }
+}
+
+let logger = AutoLogLogger(
+  formatter: CompactFormatter(),
+  sinks: [SplunkSink()]
+)
+
+@AutoLog(using: logger)
+struct AuditTrailService {
+  @Tag(.console, .splunk)
+  func uploadAuditSnapshot() {
+    // Console + Splunk
+  }
+
+  @Tag(.splunk)
+  func uploadBackgroundHeartbeat() {
+    // Splunk only
+  }
+}
+```
+
 You can determine whether the attached function emitted a success or failure event by checking `event.result`.
 
 On failure, we use `SentrySDK.capture(error:)`, passing in the error that triggered the event. Before sending the error to Sentry, we attach relevant metadata to the scope, providing additional context. Upon success, we simply add a breadcrumb that will be sent along with an error.

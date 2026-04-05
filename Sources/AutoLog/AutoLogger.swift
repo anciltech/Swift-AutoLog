@@ -128,6 +128,18 @@ public struct AutoLogEvent: CustomStringConvertible, CustomDebugStringConvertibl
   /// The collection of tags associated with the event.
   public let tags: [any Taggable]
 
+  /// The sink routes declared for this event via ``Tag(_:)``.
+  ///
+  /// When empty, the event defaults to the built-in console sink.
+  public var routes: Set<AutoLogRoute> {
+    Set(tags.compactMap { $0 as? AutoLogRoute })
+  }
+
+  /// User-facing tags after removing routing directives used by the logger.
+  public var visibleTags: [any Taggable] {
+    tags.filter { !($0 is AutoLogRoute) }
+  }
+
   /// The measured execution duration of the function, when timing is enabled.
   /// `nil` when `@Log(measure: false)` suppresses timing at compile time.
   public var duration: Duration?
@@ -166,6 +178,7 @@ public struct AutoLogEvent: CustomStringConvertible, CustomDebugStringConvertibl
     earlyExit: \(String(describing: earlyExit))
     branchDecisions: \(branchDecisions)
     tags: \(tags)
+    routes: \(Array(routes).sorted { $0.rawValue < $1.rawValue })
     deduplicateWithin: \(String(describing: deduplicateWithin))
     omissionRules: \(omissionRules)
     """
@@ -182,6 +195,7 @@ public struct AutoLogEvent: CustomStringConvertible, CustomDebugStringConvertibl
     earlyExit: \(String(describing: earlyExit))
     branchDecisions: \(branchDecisions)
     tags: \(tags)
+    routes: \(Array(routes).sorted { $0.rawValue < $1.rawValue })
     duration: \(duration.map { String(describing: $0) } ?? "nil")
     deduplicateWithin: \(String(describing: deduplicateWithin))
     omissionRules: \(omissionRules)
@@ -272,12 +286,21 @@ public struct AutoLogEvent: CustomStringConvertible, CustomDebugStringConvertibl
 }
 
 // TODO: 23122K - Consider using swift-log as a fallback when not running on Apple platforms
+public protocol AutoLogEventSink: Sendable {
+  /// The route name this sink listens for.
+  var route: AutoLogRoute { get }
+
+  /// Handles an emitted event that matched `route`.
+  func emit(event: AutoLogEvent, configuration: AutoLogConfiguration)
+}
+
 /// A default `AutoLogger` implementation that
 /// uses a ``Logger`` instance to log to the default subsystem.
 public struct AutoLogLogger: AutoLogger {
   /// The logger instance used for logging.
   let logger: Logger
   let formatter: any AutoLogFormatter
+  let sinks: [any AutoLogEventSink]
 
   /// Logs captured event metadata to the default subsystem.
   ///
@@ -285,11 +308,19 @@ public struct AutoLogLogger: AutoLogger {
   /// - ``OSLogType.info`` for successful function executions.
   /// - ``OSLogType.error`` for functions that throw errors.
   public func emit(event: AutoLogEvent, configuration: AutoLogConfiguration) {
-    let message = formatter.format(event: event, configuration: configuration)
-    if let level = event.level as? OSLogType {
-      self.logger.log(level: level, "\(message)")
-    } else {
-      self.logger.log(level: event.result.isSuccess ? .info : .error, "\(message)")
+    let routes = event.routes
+
+    if routes.isEmpty || routes.contains(.console) {
+      let message = formatter.format(event: event, configuration: configuration)
+      if let level = event.level as? OSLogType {
+        self.logger.log(level: level, "\(message)")
+      } else {
+        self.logger.log(level: event.result.isSuccess ? .info : .error, "\(message)")
+      }
+    }
+
+    for sink in sinks where routes.contains(sink.route) {
+      sink.emit(event: event, configuration: configuration)
     }
   }
 
@@ -309,10 +340,12 @@ public struct AutoLogLogger: AutoLogger {
   ///   - formatter: Formatter used to produce the log message string.
   public init(
     logger: Logger = Logger(),
-    formatter: any AutoLogFormatter = CompactFormatter()
+    formatter: any AutoLogFormatter = CompactFormatter(),
+    sinks: [any AutoLogEventSink] = []
   ) {
     self.logger = logger
     self.formatter = formatter
+    self.sinks = sinks
   }
 }
 

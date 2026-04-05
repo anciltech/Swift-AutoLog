@@ -174,8 +174,8 @@ public struct CompactFormatter: AutoLogFormatter {
       let errorType = String(describing: type(of: error))
       let desc      = String(describing: error)
       annotations.append("         ↳ \(desc) [\(errorType)]")
-    } else if !event.tags.isEmpty {
-      let tagList = event.tags.map { "\($0)" }.joined(separator: ", ")
+    } else if !event.visibleTags.isEmpty {
+      let tagList = event.visibleTags.map { "\($0)" }.joined(separator: ", ")
       annotations.append("         ↳ [\(tagList)]")
     }
 
