@@ -194,6 +194,49 @@ struct LogMacroTests {
   }
 
   @Test
+  func boolFunction_withWhenTrait_emitsOnlyMatchingSuccessValue() throws {
+    assertMacro {
+      #"""
+      @When(true)
+      @Log
+      func isSelected(frameID: Int) -> Bool {
+        return frameID.isMultiple(of: 2)
+      }
+      """#
+    } expansion: {
+      """
+      @When(true)
+      func isSelected(frameID: Int) -> Bool {
+        let runtime = AutoLog.runtimeSnapshot()
+        let autoLogger: any AutoLogger = runtime.logger
+        var event = AutoLogEvent(
+          source: AutoLogSource.current,
+
+          location: "TestModule/Test.swift:1:1",
+          declaration: "func isSelected(frameID: Int) -> Bool",
+          parameters: [
+            "frameID": frameID
+          ],
+          tags: []
+        )
+        autoLogger.emitStart(event: event, configuration: runtime.configuration, deduplicator: runtime.deduplicator)
+        let __logStart = ContinuousClock.now
+        func _isSelected(frameID: Int) -> Bool {
+          return frameID.isMultiple(of: 2)
+        }
+        let result = _isSelected(frameID: frameID)
+        event.result = .success(result)
+        event.duration = ContinuousClock.now - __logStart
+        if result == true {
+          autoLogger.emitIfEnabled(event: event, configuration: runtime.configuration, deduplicator: runtime.deduplicator)
+        }
+        return result
+      }
+      """
+    }
+  }
+
+  @Test
   func boolFunction_logsGuardEarlyReturn() throws {
     assertMacro {
       #"""
@@ -319,6 +362,7 @@ struct LogMacroTests {
         let __logStart = ContinuousClock.now
         func _deleteActiveLayout(collection: LayoutCollection) -> Bool {
           if collection.layouts.isEmpty {
+            event.recordBranchDecision(kind: AutoLogEarlyExit.Kind.if, condition: "collection.layouts.isEmpty")
             event.earlyExit = AutoLogEarlyExit(kind: AutoLogEarlyExit.Kind.if, intent: .unknown, condition: "collection.layouts.isEmpty", message: nil)
             return false
           }
@@ -368,6 +412,7 @@ struct LogMacroTests {
         let __logStart = ContinuousClock.now
         func _cachedLookup(hit: Bool) -> Bool {
           if hit {
+            event.recordBranchDecision(kind: AutoLogEarlyExit.Kind.if, condition: "hit")
             event.earlyExit = AutoLogEarlyExit(kind: AutoLogEarlyExit.Kind.if, intent: .optimize, condition: "hit", message: "cache hit")
                 return true
           }
@@ -417,6 +462,7 @@ struct LogMacroTests {
         let __logStart = ContinuousClock.now
         func _cachedLookup(hit: Bool) -> Bool {
           if hit {
+            event.recordBranchDecision(kind: AutoLogEarlyExit.Kind.if, condition: "hit")
             event.earlyExit = AutoLogEarlyExit(kind: AutoLogEarlyExit.Kind.if, intent: .optimize, condition: "hit", message: nil)
                 return true
           }
@@ -558,6 +604,53 @@ struct LogMacroTests {
         return result
       }
       """#
+    }
+  }
+
+  @Test
+  func voidFunction_recordsNonReturningIfElseBranchPath() throws {
+    assertMacro {
+      #"""
+      @Log
+      func toggleFramePicker(isVisible: Bool) {
+        if isVisible {
+          pickerPanel.hide()
+        } else {
+          pickerPanel.show()
+        }
+      }
+      """#
+    } expansion: {
+      """
+      func toggleFramePicker(isVisible: Bool) {
+        let runtime = AutoLog.runtimeSnapshot()
+        let autoLogger: any AutoLogger = runtime.logger
+        var event = AutoLogEvent(
+          source: AutoLogSource.current,
+
+          location: "TestModule/Test.swift:1:1",
+          declaration: "func toggleFramePicker(isVisible: Bool)",
+          parameters: [
+            "isVisible": isVisible
+          ],
+          tags: []
+        )
+        autoLogger.emitStart(event: event, configuration: runtime.configuration, deduplicator: runtime.deduplicator)
+        let __logStart = ContinuousClock.now
+        func _toggleFramePicker(isVisible: Bool) {
+          if isVisible {
+            event.recordBranchDecision(kind: AutoLogEarlyExit.Kind.if, condition: "isVisible")
+                pickerPanel.hide()
+          } else {
+            event.recordBranchDecision(kind: AutoLogEarlyExit.Kind.else, condition: "isVisible")
+                pickerPanel.show()
+          }
+        }
+        let _ = _toggleFramePicker(isVisible: isVisible)
+        event.duration = ContinuousClock.now - __logStart
+        autoLogger.emitIfEnabled(event: event, configuration: runtime.configuration, deduplicator: runtime.deduplicator)
+      }
+      """
     }
   }
 
@@ -707,10 +800,12 @@ struct LogMacroTests {
         let __logStart = ContinuousClock.now
         func _foo() throws {
           if self.counter == 0 {
+            event.recordBranchDecision(kind: AutoLogEarlyExit.Kind.if, condition: "self.counter == 0")
             event.earlyExit = AutoLogEarlyExit(kind: AutoLogEarlyExit.Kind.if, intent: .unknown, condition: "self.counter == 0", message: nil)
             throw NSError(domain: com.foo.test, code: .zero)
           } else {
-            self.counter -= 1
+            event.recordBranchDecision(kind: AutoLogEarlyExit.Kind.else, condition: "self.counter == 0")
+                self.counter -= 1
           }
         }
         do {
@@ -805,9 +900,11 @@ struct LogMacroTests {
         let __logStart = ContinuousClock.now
         func _foo() throws -> Int {
           if Bool.random() {
+            event.recordBranchDecision(kind: AutoLogEarlyExit.Kind.if, condition: "Bool.random()")
             event.earlyExit = AutoLogEarlyExit(kind: AutoLogEarlyExit.Kind.if, intent: .unknown, condition: "Bool.random()", message: nil)
             throw NSError(domain: com.foo.test, code: .zero)
           } else {
+            event.recordBranchDecision(kind: AutoLogEarlyExit.Kind.else, condition: "Bool.random()")
             event.earlyExit = AutoLogEarlyExit(kind: AutoLogEarlyExit.Kind.else, intent: .unknown, condition: "Bool.random()", message: nil)
             return .zero
           }
@@ -862,11 +959,13 @@ struct LogMacroTests {
         let __logStart = ContinuousClock.now
         func _foo(value: Int) throws {
           if Bool.random() {
-            print("true")
+            event.recordBranchDecision(kind: AutoLogEarlyExit.Kind.if, condition: "Bool.random()")
+                print("true")
             event.earlyExit = AutoLogEarlyExit(kind: AutoLogEarlyExit.Kind.if, intent: .unknown, condition: "Bool.random()", message: nil)
             throw NSError(domain: com.foo.test, code: .zero)
           } else {
-            print("false")
+            event.recordBranchDecision(kind: AutoLogEarlyExit.Kind.else, condition: "Bool.random()")
+                print("false")
           }
         }
         do {
@@ -913,9 +1012,11 @@ struct LogMacroTests {
         let __logStart = ContinuousClock.now
         func _foo(value: Int, content: String) throws -> (Int, String) {
           if Bool.random() {
+            event.recordBranchDecision(kind: AutoLogEarlyExit.Kind.if, condition: "Bool.random()")
             event.earlyExit = AutoLogEarlyExit(kind: AutoLogEarlyExit.Kind.if, intent: .unknown, condition: "Bool.random()", message: nil)
             throw NSError(domain: com.foo.test, code: .zero)
           } else {
+            event.recordBranchDecision(kind: AutoLogEarlyExit.Kind.else, condition: "Bool.random()")
             event.earlyExit = AutoLogEarlyExit(kind: AutoLogEarlyExit.Kind.else, intent: .unknown, condition: "Bool.random()", message: nil)
             return (value, "\(content): \(value)")
           }

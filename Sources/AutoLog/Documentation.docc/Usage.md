@@ -119,6 +119,24 @@ struct InteractionManager {
 AutoLog compares the emitted event metadata and suppresses repeated identical
 entries inside the configured time window.
 
+For chatty boolean probes where only the positive case matters, add
+``When(_:)``:
+
+```swift
+// InteractionManager.swift
+
+@AutoLog
+struct InteractionManager {
+  @When(true)
+  func isSelected(frame: Frame) -> Bool {
+    selectedFrameIDs.contains(frame.id)
+  }
+}
+```
+
+The function still returns normally, but AutoLog only emits the success event
+when the returned value matches the expression you provided.
+
 > Initializers are not implicitly marked with the ``Log(using:)`` annotation. Marking them explicitly also has no effect.
 
 ## Overriding @AutoLog behavior
@@ -199,7 +217,7 @@ extension FavoriteFactsModel {
 
 Upon invocation of `deleteAllFavoriteFacts`, the `"Delete"` tag will be passed along with the event. Learn more about traits in <doc:CustomizingMacroBehavior>.
 
-## Capture early exits
+## Capture early exits and branch paths
 
 `@Log` and `@AutoLog` also capture structured metadata for early exits inside a function body. This includes exits from `guard`, `if`, `else if`, and `else` branches when they return or throw before the function reaches its normal end.
 
@@ -252,9 +270,28 @@ AutoLog.earlyExit()
 
 If an explicit `AutoLog.earlyExit(...)` call is present in a branch, the macro uses that metadata and does not inject a second default early-exit record for the same branch.
 
+### Record non-returning branch choices
+
+AutoLog also records the executed `if`, `else if`, or `else` path when the branch continues normally and the function later finishes through its usual completion path.
+
+```swift
+// ShortcutManager.swift
+
+@Log
+func toggleFramePicker(isVisible: Bool) {
+  if isVisible {
+    pickerPanel.hide()
+  } else {
+    pickerPanel.show()
+  }
+}
+```
+
+In this case, the final event still carries the normal success result and duration, and now also includes a branch-path annotation such as `if branch condition=isVisible` or `else branch condition=isVisible`.
+
 ### What gets captured automatically
 
-For each early exit, AutoLog captures:
+For each early exit or recorded branch path, AutoLog captures:
 
 * the branch kind (`guard`, `if`, `elseif`, or `else`)
 * the evaluated branch condition, when available
@@ -262,4 +299,4 @@ For each early exit, AutoLog captures:
 * the final function result or thrown error through the normal `event.result`
 * the function duration, just like any other completion path
 
-This keeps early exits visible without treating them as automatic failures. A branch may exit early and still be a successful, expected outcome such as `.success(false)` or `.success(nil)`.
+This keeps branch decisions visible without treating them as automatic failures. A branch may exit early and still be a successful, expected outcome such as `.success(false)` or `.success(nil)`, and a non-returning branch can now remain visible even when the function later completes normally.

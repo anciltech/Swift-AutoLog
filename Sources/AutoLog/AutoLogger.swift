@@ -76,6 +76,32 @@ public struct AutoLogEarlyExit: Sendable, Hashable, CustomStringConvertible {
   }
 }
 
+/// Structured metadata describing a conditional branch that executed within a logged function.
+public struct AutoLogBranchDecision: Sendable, Hashable, CustomStringConvertible {
+  /// The structural branch kind that executed.
+  public let kind: AutoLogEarlyExit.Kind
+  /// The branch condition captured by the macro when available.
+  public let condition: String?
+
+  public init(
+    kind: AutoLogEarlyExit.Kind,
+    condition: String? = nil
+  ) {
+    self.kind = kind
+    self.condition = condition
+  }
+
+  public var description: String {
+    var components: [String] = ["\(kind.rawValue) branch"]
+
+    if let condition, !condition.isEmpty {
+      components.append("condition=\(condition)")
+    }
+
+    return components.joined(separator: " ")
+  }
+}
+
 // TODO: 23122K - Make this type conform to Sendable and use CustomDebugStringConvertible
 /// A type representing captured metadata from an invoked function.
 public struct AutoLogEvent: CustomStringConvertible, CustomDebugStringConvertible {
@@ -121,6 +147,12 @@ public struct AutoLogEvent: CustomStringConvertible, CustomDebugStringConvertibl
   /// `guard` branch and still finish with `.success(false)` or `.success(nil)`.
   public var earlyExit: AutoLogEarlyExit?
 
+  /// The conditional branches that executed while the function continued normally.
+  ///
+  /// This keeps meaningful `if` / `else if` / `else` decisions visible even when they do not
+  /// immediately `return` or `throw`.
+  public var branchDecisions: [AutoLogBranchDecision]
+
   public var description: String {
     """
     source: \(source.map { String(describing: $0) } ?? "nil")
@@ -129,6 +161,7 @@ public struct AutoLogEvent: CustomStringConvertible, CustomDebugStringConvertibl
     parameters: \(parameters)
     result: \(result)
     earlyExit: \(String(describing: earlyExit))
+    branchDecisions: \(branchDecisions)
     tags: \(tags)
     deduplicateWithin: \(String(describing: deduplicateWithin))
     """
@@ -143,6 +176,7 @@ public struct AutoLogEvent: CustomStringConvertible, CustomDebugStringConvertibl
     parameters: \(parameters)
     result: \(result)
     earlyExit: \(String(describing: earlyExit))
+    branchDecisions: \(branchDecisions)
     tags: \(tags)
     duration: \(duration.map { String(describing: $0) } ?? "nil")
     deduplicateWithin: \(String(describing: deduplicateWithin))
@@ -183,6 +217,7 @@ public struct AutoLogEvent: CustomStringConvertible, CustomDebugStringConvertibl
     self.duration = nil
     self.isMeasuredExplicitly = isMeasuredExplicitly
     self.earlyExit = nil
+    self.branchDecisions = []
   }
 
   /// A copy of this event representing the function's start, with `.start` level
@@ -211,6 +246,18 @@ public struct AutoLogEvent: CustomStringConvertible, CustomDebugStringConvertibl
       intent: intent,
       condition: condition,
       message: message
+    )
+  }
+
+  public mutating func recordBranchDecision(
+    kind: AutoLogEarlyExit.Kind,
+    condition: String? = nil
+  ) {
+    branchDecisions.append(
+      AutoLogBranchDecision(
+        kind: kind,
+        condition: condition
+      )
     )
   }
 }

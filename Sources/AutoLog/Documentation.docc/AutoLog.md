@@ -11,7 +11,7 @@ There is no need to annotate each method individually - simply apply the desired
 
 * **Customize how logs are handled**
 
-All macros include the ability to add tags to logged functions, suppress their output or parameters, deduplicate noisy repeated events, or exclude the functions entirely from emmiting an event.
+All macros include the ability to add tags to logged functions, suppress their output or parameters, deduplicate noisy repeated events, emit only interesting return values, or exclude the functions entirely from emmiting an event.
 
 The no-argument ``Omit()`` marker is also accepted on computed properties so
 those declarations can opt out explicitly without triggering a compiler error.
@@ -26,7 +26,7 @@ that function is already running.
 
 * **Capture early exits as structured metadata**
 
-AutoLog can record when a function exits early from `guard`, `if`, `else if`, or `else` branches, while still preserving the final result, error, and timing information. You can also add explicit intent such as optimization or expected control flow.
+AutoLog can record when a function exits early from `guard`, `if`, `else if`, or `else` branches, and it can also preserve non-returning `if` / `else if` / `else` branch choices that later fall through to the normal function completion path. Final result, error, and timing information remain intact, and you can still add explicit intent such as optimization or expected control flow.
 
 * **Leverage OSLog support**
 
@@ -60,6 +60,7 @@ Swift AutoLog provides macros that leverage Apple's OSLog framework, eliminating
 - ``Omit()``
 - ``Omit(_:)``
 - ``Deduplicate(_:)``
+- ``When(_:)``
 - ``Tag(_:)``
 - ``Level(_:)``
 

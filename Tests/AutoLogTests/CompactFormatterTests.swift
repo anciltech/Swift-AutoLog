@@ -292,6 +292,19 @@ struct CompactFormatterTests {
         #expect(lines[1].contains("user"))
     }
 
+    @Test func branchDecisions_showOnSecondLineWhenNoEarlyExit() {
+        var event = makeEvent(result: .success(()))
+        event.recordBranchDecision(kind: .if, condition: "isVisible")
+        event.recordBranchDecision(kind: .else, condition: "isVisible")
+
+        let output = CompactFormatter().format(event: event, configuration: configuration)
+        let lines = output.split(separator: "\n", omittingEmptySubsequences: false)
+        #expect(lines.count == 2)
+        #expect(lines[1].contains("branch path"))
+        #expect(lines[1].contains("if branch condition=isVisible"))
+        #expect(lines[1].contains("else branch condition=isVisible"))
+    }
+
     @Test func noTagsNoError_noSecondLine() {
         let event = makeEvent(result: .success(()))
         #expect(!CompactFormatter().format(event: event, configuration: configuration).contains("\n"))

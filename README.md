@@ -14,7 +14,7 @@ There is no need to annotate each method individually - simply apply the desired
 
 * **Customize how logs are handled**
 
-All macros include the ability to add tags to logged functions, suppress their output or parameters, deduplicate noisy repeated events, or even exclude the functions entirely from emitting an event.
+All macros include the ability to add tags to logged functions, suppress their output or parameters, deduplicate noisy repeated events, log only interesting return values, or even exclude the functions entirely from emitting an event.
 
 * **Leverage OSLog support**
 
@@ -128,6 +128,20 @@ struct InteractionManager {
   @Deduplicate(.seconds(1))
   func hover(frame: Frame) -> Bool {
     frame.isHovered
+  }
+}
+```
+
+For boolean probes where only one outcome matters, add `@When(true)`:
+
+```swift
+import AutoLog
+
+@AutoLog
+struct InteractionManager {
+  @When(true)
+  func isSelected(frame: Frame) -> Bool {
+    selectedFrameIDs.contains(frame.id)
   }
 }
 ```
@@ -295,14 +309,14 @@ You can also create your own custom source by conforming a type to `Sourceable`.
 
 If you prefer namespaced source builders over enum cases, `AutoLogInteraction.button("Save")` and the other static helpers return the matching `InteractionSource` values.
 
-## Early exits
+## Early exits and branch paths
 
-Swift AutoLog captures early exits as part of the final event instead of treating them as a separate log line. That means the event still includes:
+Swift AutoLog captures early exits as part of the final event instead of treating them as a separate log line. It also records the executed `if` / `else if` / `else` branch path when a conditional branch continues normally instead of returning or throwing. That means the event still includes:
 
 * the final `result`
 * any thrown error
 * execution duration
-* branch metadata describing the early exit
+* branch metadata describing the early exit or executed branch path
 
 For example:
 
@@ -348,6 +362,21 @@ AutoLog.earlyExit()
 ```
 
 If an explicit `AutoLog.earlyExit(...)` call is present in a branch, Swift AutoLog uses that metadata and does not inject another default early-exit record for the same branch.
+
+When a branch does not exit early, Swift AutoLog records the taken path instead:
+
+```swift
+@Log
+func toggleFramePicker(isVisible: Bool) {
+  if isVisible {
+    pickerPanel.hide()
+  } else {
+    pickerPanel.show()
+  }
+}
+```
+
+That emitted event keeps the normal success result and timing, and adds branch-path metadata such as `if branch condition=isVisible` or `else branch condition=isVisible`.
 
 ## Replacing existing logs
 

@@ -66,6 +66,7 @@ extension AutoLogMacro {
     let omitTraits = function.syntax.attributes.extractTraits(for: .omit)
     let levelTrait = function.syntax.attributes.extractTraits(for: .level).first
     let deduplicationTrait = function.syntax.attributes.extractTraits(for: .deduplicate).first
+    let resultFilterTrait = function.syntax.attributes.extractTraits(for: .when).first
     let instrumentedPlain = self.instrumentedPlain(of: function)
 
     return body {
@@ -117,7 +118,7 @@ extension AutoLogMacro {
             CodeBlockItemSyntax.call(function)
             self.capture(.result)
             if shouldMeasure { self.captureTimingEnd() }
-            self.emit()
+            self.emit(when: resultFilterTrait)
             CodeBlockItemSyntax.return
           } catch: {
             self.capture(.error)
@@ -133,7 +134,7 @@ extension AutoLogMacro {
             self.capture(.result)
           }
           if shouldMeasure { self.captureTimingEnd() }
-          self.emit()
+          self.emit(when: resultFilterTrait)
           CodeBlockItemSyntax.return
       }
     }
@@ -369,8 +370,37 @@ extension AutoLogMacro {
 
   /// Generates:
   /// `autoLogger.emitIfEnabled(event: event, configuration: runtime.configuration, deduplicator: runtime.deduplicator)`
-  static func emit() -> CodeBlockItemSyntax {
-    CodeBlockItemSyntax(
+  static func emit(
+    when resultFilterTrait: (any ExprSyntaxProtocol)? = nil
+  ) -> CodeBlockItemSyntax {
+    if let resultFilterTrait {
+      return CodeBlockItemSyntax(
+        IfExprSyntax(
+          conditions: ConditionElementListSyntax {
+            ConditionElementSyntax(
+              condition: .expression(
+                ExprSyntax(
+                  InfixOperatorExprSyntax(
+                  leftOperand: DeclReferenceExprSyntax(baseName: .predefined(.result)),
+                  operator: BinaryOperatorExprSyntax(
+                    operator: .binaryOperator("==")
+                  ),
+                  rightOperand: ExprSyntax(fromProtocol: resultFilterTrait)
+                  )
+                )
+              )
+            )
+          },
+          body: CodeBlockSyntax(
+            statements: CodeBlockItemListSyntax {
+              self.emit()
+            }
+          )
+        )
+      )
+    }
+
+    return CodeBlockItemSyntax(
       FunctionCallExprSyntax(
         calledExpression: MemberAccessExprSyntax(
           base: DeclReferenceExprSyntax(
@@ -762,7 +792,7 @@ extension AutoLogMacro {
     if var ifExpr = expression.as(IfExprSyntax.self) {
       let condition = ifExpr.conditions.trimmedDescription
       ifExpr.body.statements = CodeBlockItemListSyntax(
-        rewriteStatements(
+        rewriteConditionalBranchStatements(
           Array(ifExpr.body.statements),
           yieldCaptureIndex: &yieldCaptureIndex,
           earlyExitContext: EarlyExitContext(
@@ -776,7 +806,7 @@ extension AutoLogMacro {
         switch elseBody {
         case .codeBlock(var codeBlock):
           codeBlock.statements = CodeBlockItemListSyntax(
-            rewriteStatements(
+            rewriteConditionalBranchStatements(
               Array(codeBlock.statements),
               yieldCaptureIndex: &yieldCaptureIndex,
               earlyExitContext: EarlyExitContext(
@@ -804,6 +834,20 @@ extension AutoLogMacro {
     }
 
     return expression
+  }
+
+  static func rewriteConditionalBranchStatements(
+    _ statements: [CodeBlockItemSyntax],
+    yieldCaptureIndex: inout Int,
+    earlyExitContext: EarlyExitContext
+  ) -> [CodeBlockItemSyntax] {
+    [
+      captureBranchDecision(earlyExitContext),
+    ] + rewriteStatements(
+      statements,
+      yieldCaptureIndex: &yieldCaptureIndex,
+      earlyExitContext: earlyExitContext
+    )
   }
 
   static func rewriteYieldStatement(
@@ -942,7 +986,7 @@ extension AutoLogMacro {
             LabeledExprSyntax(
               label: .identifier("kind"),
               colon: .colonToken(),
-              expression: earlyExitKindExpression(context.kind),
+              expression: branchKindExpression(context.kind),
               trailingComma: .commaToken()
             )
             LabeledExprSyntax(
@@ -969,7 +1013,40 @@ extension AutoLogMacro {
     )
   }
 
-  static func earlyExitKindExpression(_ kind: EarlyExitContext.Kind) -> ExprSyntax {
+  static func captureBranchDecision(
+    _ context: EarlyExitContext
+  ) -> CodeBlockItemSyntax {
+    let conditionExpression: ExprSyntax = context.condition.map {
+      ExprSyntax(StringLiteralExprSyntax(content: $0))
+    } ?? ExprSyntax(NilLiteralExprSyntax(nilKeyword: .keyword(.nil)))
+
+    return CodeBlockItemSyntax(
+      FunctionCallExprSyntax(
+        calledExpression: MemberAccessExprSyntax(
+          base: DeclReferenceExprSyntax(baseName: .predefined(.event)),
+          period: .periodToken(),
+          name: .identifier("recordBranchDecision")
+        ),
+        leftParen: .leftParenToken(),
+        arguments: LabeledExprListSyntax {
+          LabeledExprSyntax(
+            label: .identifier("kind"),
+            colon: .colonToken(),
+            expression: branchKindExpression(context.kind),
+            trailingComma: .commaToken()
+          )
+          LabeledExprSyntax(
+            label: .identifier("condition"),
+            colon: .colonToken(),
+            expression: conditionExpression
+          )
+        },
+        rightParen: .rightParenToken()
+      )
+    )
+  }
+
+  static func branchKindExpression(_ kind: EarlyExitContext.Kind) -> ExprSyntax {
     let kindName: String
     switch kind {
     case .guard:

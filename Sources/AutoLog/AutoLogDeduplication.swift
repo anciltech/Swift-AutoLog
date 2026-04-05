@@ -97,6 +97,7 @@ extension AutoLogEvent {
       resultSummary,
       tags.map { String(describing: $0) }.joined(separator: ","),
       earlyExit.map { String(describing: $0) } ?? "nil",
+      branchDecisions.map { String(describing: $0) }.joined(separator: ","),
     ]
       .joined(separator: "|")
   }

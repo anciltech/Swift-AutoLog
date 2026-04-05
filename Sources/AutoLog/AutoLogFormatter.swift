@@ -163,6 +163,11 @@ public struct CompactFormatter: AutoLogFormatter {
 
     if let earlyExit = event.earlyExit {
       annotations.append("         ↳ early exit: \(earlyExit)")
+    } else if !event.branchDecisions.isEmpty {
+      let branches = event.branchDecisions
+        .map(\.description)
+        .joined(separator: " -> ")
+      annotations.append("         ↳ branch path: \(branches)")
     }
 
     if case .failure(let error) = event.result {
