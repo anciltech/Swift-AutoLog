@@ -159,6 +159,10 @@ Routing tags are logger directives, so `CompactFormatter` keeps them out of the
 visible tag line. User-facing tags such as `"analytics"` or `.swiftData` still
 render normally.
 
+The sample `LoggingExample` app includes a matching `Routed Backends` scenario in
+the Async Examples tab so you can verify `.console + .splunk` versus
+`.firebase`-only delivery without wiring up a real backend first.
+
 ### Deduplicating noisy functions
 
 For fast-changing UI probes or repeated cache checks, it can be more useful to
