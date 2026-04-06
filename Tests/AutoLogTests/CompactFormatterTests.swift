@@ -504,6 +504,28 @@ struct LogFormatElementToggleTests {
         #expect(output.contains("fetchData(id: 42)"))
     }
 
+    @Test func typeName_suppressedViaConfigurationLogFormat() {
+        var format = LogFormat.default
+        format.mainLine.removeAll { $0 == .typeName || $0 == .dotSeparator }
+        let configWithoutTypeName = AutoLogConfiguration(logFormat: format)
+        let formatter = CompactFormatter(profile: .mvvm)
+        let event = makeEvent()
+        let output = formatter.format(event: event, configuration: configWithoutTypeName)
+        #expect(!output.contains("MyViewModel"))
+        #expect(output.contains("fetchData(id: 42)"))
+    }
+
+    @Test func traceEvent_typeName_suppressedViaConfigurationLogFormat() {
+        var format = LogFormat.default
+        format.mainLine.removeAll { $0 == .typeName || $0 == .dotSeparator }
+        let configWithoutTypeName = AutoLogConfiguration(logFormat: format)
+        let formatter = CompactFormatter(profile: .mvvm)
+        let event = makeTraceEvent()
+        let output = formatter.format(event: event, configuration: configWithoutTypeName)
+        #expect(!output.contains("MyViewModel"))
+        #expect(output.contains("fetchData(id: 42)"))
+    }
+
     @Test func effectSpecifiers_suppressedWhenElementRemoved() {
         var format = LogFormat.default
         format.mainLine.removeAll { $0 == .effectSpecifiers }
