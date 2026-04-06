@@ -460,6 +460,40 @@ struct LogFormatElementToggleTests {
         #expect(!output.contains(" async"))
     }
 
+    @Test func effectSpecifiers_visibleByDefault() {
+        let formatter = CompactFormatter(profile: .mvvm)
+        let event = makeEvent(declaration: "func fetchData(id: Int) async -> String")
+        let output = formatter.format(event: event, configuration: configuration)
+        #expect(output.contains(" async"))
+    }
+
+    @Test func traceEvent_effectSpecifiers_visibleByDefault() {
+        let formatter = CompactFormatter(profile: .mvvm)
+        let event = makeTraceEvent()
+        let output = formatter.format(event: event, configuration: configuration)
+        #expect(output.contains(" async"))
+    }
+
+    @Test func effectSpecifiers_suppressedViaConfigurationLogFormat() {
+        var format = LogFormat.default
+        format.mainLine.removeAll { $0 == .effectSpecifiers }
+        let configWithoutAsync = AutoLogConfiguration(logFormat: format)
+        let formatter = CompactFormatter(profile: .mvvm)
+        let event = makeEvent(declaration: "func fetchData(id: Int) async -> String")
+        let output = formatter.format(event: event, configuration: configWithoutAsync)
+        #expect(!output.contains(" async"))
+    }
+
+    @Test func traceEvent_effectSpecifiers_suppressedViaConfigurationLogFormat() {
+        var format = LogFormat.default
+        format.mainLine.removeAll { $0 == .effectSpecifiers }
+        let configWithoutAsync = AutoLogConfiguration(logFormat: format)
+        let formatter = CompactFormatter(profile: .mvvm)
+        let event = makeTraceEvent()
+        let output = formatter.format(event: event, configuration: configWithoutAsync)
+        #expect(!output.contains(" async"))
+    }
+
     @Test func typeName_suppressedWhenElementRemoved() {
         var format = LogFormat.default
         format.mainLine.removeAll { $0 == .typeName || $0 == .dotSeparator }
