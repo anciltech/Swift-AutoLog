@@ -491,6 +491,50 @@ struct LogFormatElementToggleTests {
         #expect(output.contains(":42"))
     }
 
+    @Test func parameters_suppressedWhenElementRemoved() {
+        var format = LogFormat.default
+        format.mainLine.removeAll { $0 == .parameters }
+        let formatter = CompactFormatter(profile: .mvvm, format: format)
+        let event = makeEvent()
+        let output = formatter.format(event: event, configuration: configuration)
+        #expect(!output.contains("(id: 42)"))
+        #expect(output.contains("fetchData"))
+    }
+
+    @Test func parameters_visibleByDefault() {
+        let formatter = CompactFormatter(profile: .mvvm)
+        let event = makeEvent()
+        let output = formatter.format(event: event, configuration: configuration)
+        #expect(output.contains("(id: 42)"))
+    }
+
+    @Test func traceEvent_parameters_suppressedWhenElementRemoved() {
+        var format = LogFormat.default
+        format.mainLine.removeAll { $0 == .parameters }
+        let formatter = CompactFormatter(profile: .mvvm, format: format)
+        let event = makeTraceEvent()
+        let output = formatter.format(event: event, configuration: configuration)
+        #expect(!output.contains("(id: 42)"))
+        #expect(output.contains("fetchData"))
+    }
+
+    @Test func traceEvent_parameters_visibleByDefault() {
+        let formatter = CompactFormatter(profile: .mvvm)
+        let event = makeTraceEvent()
+        let output = formatter.format(event: event, configuration: configuration)
+        #expect(output.contains("(id: 42)"))
+    }
+
+    @Test func traceEvent_parameters_suppressedViaConfigurationLogFormat() {
+        var format = LogFormat.default
+        format.mainLine.removeAll { $0 == .parameters }
+        let configWithoutParams = AutoLogConfiguration(logFormat: format)
+        let formatter = CompactFormatter(profile: .mvvm)
+        let event = makeTraceEvent()
+        let output = formatter.format(event: event, configuration: configWithoutParams)
+        #expect(!output.contains("(id: 42)"))
+    }
+
     @Test func defaultFormat_roundTripsViaConfiguration() throws {
         let config = AutoLogConfiguration(logFormat: .default)
         let data = try JSONEncoder().encode(config)

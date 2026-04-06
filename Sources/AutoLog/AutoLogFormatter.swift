@@ -247,7 +247,8 @@ public struct CompactFormatter: AutoLogFormatter {
     let specifiers = effectSpecifiers(from: event.declaration)
     let prefix     = tracePrefix(for: event, depth: depth)
 
-    var line = "\(prefix)\(em) \(typeName).\(funcName)(\(params))"
+    let paramsClause = fmt.mainLine.contains(.parameters) ? "(\(params))" : ""
+    var line = "\(prefix)\(em) \(typeName).\(funcName)\(paramsClause)"
 
     let trimmedSpecifiers = specifiers.trimmingCharacters(in: .whitespaces)
     if !trimmedSpecifiers.isEmpty && fmt.mainLine.contains(.effectSpecifiers) {
