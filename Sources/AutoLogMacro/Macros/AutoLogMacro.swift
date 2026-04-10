@@ -65,7 +65,7 @@ extension AutoLogMacro {
       isMeasuredExplicitly = false
     }
 
-    let tagTraits = function.syntax.attributes.extractTraits(for: .tag)
+    let tagTraits = function.syntax.attributes.extractTagTraitsInSourceOrder()
     let omitTraits = function.syntax.attributes.extractTraits(for: .omit)
     let levelTrait = function.syntax.attributes.extractTraits(for: .level).first
     let deduplicationTrait = function.syntax.attributes.extractTraits(for: .deduplicate).first
@@ -216,7 +216,7 @@ extension AutoLogMacro {
     in context: some MacroExpansionContext,
     of declaration: FunctionSyntax,
     levelTrait: (any ExprSyntaxProtocol)?,
-    taggableTraits: [any ExprSyntaxProtocol],
+    taggableTraits: [ExprSyntax],
     omittableTraits: [any ExprSyntaxProtocol],
     deduplicationTrait: (any ExprSyntaxProtocol)?,
     omitRuleTraits: [AttributeListSyntax.OmitRuleTrait]

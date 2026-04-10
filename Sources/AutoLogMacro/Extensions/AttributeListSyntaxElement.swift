@@ -75,6 +75,38 @@ extension AttributeListSyntax {
     let upToCount: ExprSyntax?
   }
 
+  /// Extracts tag expressions in lexical source order across `@Tag(...)` and
+  /// variadic `tag:` arguments attached to `@Log(...)` / `@OSLog(...)`.
+  func extractTagTraitsInSourceOrder() -> [ExprSyntax] {
+    attributesFromAllAttachedAnnotations
+      .flatMap { annotation, attributes -> [(Int, ExprSyntax)] in
+        switch annotation {
+        case .predefined(.Tag):
+          return attributes.map { argument in
+            (
+              argument.expression.positionAfterSkippingLeadingTrivia.utf8Offset,
+              ExprSyntax(argument.expression)
+            )
+          }
+
+        case .predefined(.Log), .predefined(.OSLog):
+          return attributes
+            .extractVariadicArguments(for: .tag)
+            .map { argument in
+              (
+                argument.expression.positionAfterSkippingLeadingTrivia.utf8Offset,
+                ExprSyntax(argument.expression)
+              )
+            }
+
+        default:
+          return []
+        }
+      }
+      .sorted { lhs, rhs in lhs.0 < rhs.0 }
+      .map(\.1)
+  }
+
   /// Extracts all arguments passed as parameters to given annotation as well
   /// all arguments found in trait annotations.
   ///

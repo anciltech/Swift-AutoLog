@@ -157,7 +157,9 @@ struct AuditTrailService {
 
 Routing tags are logger directives, so `CompactFormatter` keeps them out of the
 visible tag line. User-facing tags such as `"analytics"` or `.swiftData` still
-render normally.
+render normally. When you attach multiple `@Tag(...)` annotations, AutoLog keeps
+their values in source order so visible tags and routing directives stay
+predictable in tests and downstream sinks.
 
 The sample `LoggingExample` app includes a matching `Routed Backends` scenario in
 the Async Examples tab so you can verify `.console + .splunk` versus

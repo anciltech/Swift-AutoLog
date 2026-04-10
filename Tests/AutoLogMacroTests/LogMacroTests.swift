@@ -1469,47 +1469,38 @@ struct LogMacroTests {
     }
   }
 
-// TODO: 23122K - Multiple @Tag macros have non-deterministic order
-//  func genericFunction_default_withAllAnnotations() throws {
-//    assertMacro {
-//      #"""
-//      @Omit(.result, "value")
-//      @Tag("example")
-//      @Tag(.commonTag)
-//      @Level(.info)
-//      @Log
-//      func identity<T>(_ value: T) -> T {
-//        return value
-//      }
-//      """#
-//    } expansion: {
-//      """
-//      @Omit(.result, "value")
-//      @Tag("example")
-//      @Tag(.commonTag)
-//      @Level(.info)
-//      func identity<T>(_ value: T) -> T {
-//        let autoLogger: any AutoLogger = runtime.logger
-//        var event = AutoLogEvent(
-//          level: "level_info",
-//          location: "TestModule/Test.swift:5:1",
-//          declaration: "func identity<T>(_ value: T) -> T",
-//          tags: ["tag_commonTag", "tag_example"]
-//        )
-//        event.parameters = [
-//          :
-//        ]
-//        func _identity(value: T) -> T {
-//          return value
-//        }
-//        let result = _identity(value: value)
-//        event.duration = ContinuousClock.now - __logStart
-//        autoLogger.emitIfEnabled(event: event, configuration: runtime.configuration, deduplicator: runtime.deduplicator)
-//        return result
-//      }
-//      """
-//    }
-//  }
+  @Test
+  func function_default_withMultipleTagAnnotations_preservesSourceOrder() throws {
+    assertMacro {
+      #"""
+      @Tag("example")
+      @Tag(.commonTag)
+      @Log
+      func ping() {}
+      """#
+    } expansion: {
+      """
+      func ping() {
+        let runtime = AutoLog.runtimeSnapshot()
+        let autoLogger: any AutoLogger = runtime.logger
+        var event = AutoLogEvent(
+          source: AutoLogSource.current,
+
+          location: "TestModule/Test.swift:3:1",
+          declaration: "func ping()",
+          tags: ["example", .commonTag]
+        )
+        autoLogger.emitStart(event: event, configuration: runtime.configuration, deduplicator: runtime.deduplicator)
+        let __logStart = ContinuousClock.now
+        func _ping() {
+        }
+        let _ = _ping()
+        event.duration = ContinuousClock.now - __logStart
+        autoLogger.emitIfEnabled(event: event, configuration: runtime.configuration, deduplicator: runtime.deduplicator)
+      }
+      """
+    }
+  }
 
   @Test
   func genericTupleFunctionWithWhereClauseAndArguments_default_withRedundantTagAnnotation() throws {
