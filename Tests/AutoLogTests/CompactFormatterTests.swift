@@ -567,6 +567,20 @@ struct LogFormatElementToggleTests {
         #expect(output.contains(":42"))
     }
 
+    @Test func traceEvent_lineNumber_appearsWhenElementAdded() {
+        var format = LogFormat.default
+        if let idx = format.mainLine.firstIndex(of: .timing) {
+            format.mainLine.insert(.lineNumber, at: idx)
+        } else {
+            format.mainLine.append(.lineNumber)
+        }
+
+        let formatter = CompactFormatter(profile: .mvvm, format: format)
+        let event = makeTraceEvent(location: "App/MyViewModel.swift:42:5")
+        let output = formatter.format(event: event, configuration: configuration)
+        #expect(output.contains("fetchData(id: 42) async → traced-result:42"))
+    }
+
     @Test func parameters_suppressedWhenElementRemoved() {
         var format = LogFormat.default
         format.mainLine.removeAll { $0 == .parameters }

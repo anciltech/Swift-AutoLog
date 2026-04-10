@@ -263,6 +263,10 @@ public struct CompactFormatter: AutoLogFormatter {
       line += " → \(value)"
     }
 
+    if fmt.mainLine.contains(.lineNumber) {
+      line += ":\(extractLine(from: event.location))"
+    }
+
     let timing = timingSuffix(for: event, depth: depth, configuration: configuration)
       .trimmingCharacters(in: .whitespaces)
     if !timing.isEmpty {

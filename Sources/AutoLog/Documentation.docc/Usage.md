@@ -131,7 +131,9 @@ understandable while still mapping directly to the runtime configuration.
 When you need more than one destination or view of the same runtime events, add
 `outputs`. Each output can target a route like `.console` or `.firebase`,
 choose its own `LogFormat`, exclude start events, filter type names, and attach
-its own amount of recent failure context.
+its own amount of recent failure context. When that `LogFormat` includes
+`.lineNumber`, the `:42` suffix applies to both standard compact lines and the
+interaction trace-tree lines rendered under a source badge.
 
 If a single hot path is too noisy, add ``Deduplicate(_:)`` to that function
 while leaving the rest of the type untouched:
