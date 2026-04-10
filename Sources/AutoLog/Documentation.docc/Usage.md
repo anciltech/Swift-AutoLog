@@ -93,7 +93,32 @@ AutoLog.start(
   configuration: AutoLogConfiguration(
     emitStartEvents: false,
     deduplicateWithin: .seconds(1),
-    measureTimingDepths: [2, 3]
+    measureTimingDepths: [2, 3],
+    outputs: [
+      AutoLogOutput(
+        name: "Console Results",
+        route: .console,
+        eventTypes: [.success, .failure],
+        typeNameFilters: ["ViewModel"],
+        measureTiming: false,
+        errorContextLimit: 10,
+        logFormat: LogFormat(
+          mainLine: [.depthArrow, .statusEmoji, .typeName, .dotSeparator, .functionName, .returnValue]
+        )
+      ),
+      AutoLogOutput(
+        name: "Firebase Errors",
+        route: .firebase,
+        eventTypes: [.failure],
+        typeNameFilters: ["ViewModel", "Service"],
+        measureTiming: true,
+        timingDepths: [2, 3, 4],
+        errorContextLimit: 10,
+        logFormat: LogFormat(
+          mainLine: [.statusEmoji, .typeName, .dotSeparator, .functionName, .parameters, .timing, .lineNumber]
+        )
+      )
+    ]
   )
 )
 ```
@@ -103,6 +128,10 @@ Advanced setups can still pass a custom logger, store, or refresh interval.
 If you ship a companion settings screen, matching presets such as "all depths",
 "depths 1-2", "depths 2-3", and "depths 3+" keep `measureTimingDepths`
 understandable while still mapping directly to the runtime configuration.
+When you need more than one destination or view of the same runtime events, add
+`outputs`. Each output can target a route like `.console` or `.firebase`,
+choose its own `LogFormat`, exclude start events, filter type names, and attach
+its own amount of recent failure context.
 
 If a single hot path is too noisy, add ``Deduplicate(_:)`` to that function
 while leaving the rest of the type untouched:

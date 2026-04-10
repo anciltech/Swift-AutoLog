@@ -260,10 +260,44 @@ AutoLog.start(
   configuration: AutoLogConfiguration(
     emitStartEvents: false,
     deduplicateWithin: .seconds(1),
-    measureTimingDepths: [2, 3]
+    measureTimingDepths: [2, 3],
+    outputs: [
+      AutoLogOutput(
+        name: "Console Results",
+        route: .console,
+        eventTypes: [.success, .failure],
+        typeNameFilters: ["ViewModel"],
+        measureTiming: false,
+        errorContextLimit: 10,
+        logFormat: LogFormat(
+          mainLine: [.depthArrow, .statusEmoji, .typeName, .dotSeparator, .functionName, .returnValue]
+        )
+      ),
+      AutoLogOutput(
+        name: "Firebase Errors",
+        route: .firebase,
+        eventTypes: [.failure],
+        typeNameFilters: ["ViewModel", "Service"],
+        measureTiming: true,
+        timingDepths: [2, 3, 4],
+        errorContextLimit: 10,
+        logFormat: LogFormat(
+          mainLine: [.statusEmoji, .typeName, .dotSeparator, .functionName, .parameters, .timing, .lineNumber]
+        )
+      )
+    ]
   )
 )
 ```
+
+When `outputs` is present, each output profile can decide:
+
+* which route it targets, such as `.console`, `.firebase`, or `.splunk`
+* which event kinds pass through: interaction, start, success, and/or failure
+* which type names should match, using case-insensitive text filters such as `ViewModel`
+* whether timing is shown for that output, and optionally which timing depths are visible
+* how many recent log summaries are attached when a failure is emitted
+* the exact `LogFormat` layout for that destination
 
 You can still provide a custom logger and advanced store settings when needed:
 

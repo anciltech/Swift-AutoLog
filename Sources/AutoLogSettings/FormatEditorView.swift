@@ -57,6 +57,8 @@ struct FormatEditorView: View {
 
       ScrollView {
         VStack(alignment: .leading, spacing: 20) {
+          outputProfilesSection
+          outputFiltersSection
           activeSection
           paletteSection
           arrowStyleSection
@@ -77,7 +79,7 @@ struct FormatEditorView: View {
     VStack(alignment: .leading, spacing: 2) {
       Text("Format Builder")
         .font(.headline)
-      Text("Drag chips to build your log line · drag to palette to remove")
+      Text("Build one output at a time: route, filters, and log line layout")
         .font(.caption)
         .foregroundStyle(.secondary)
     }
@@ -99,6 +101,186 @@ struct FormatEditorView: View {
       .buttonStyle(.borderedProminent)
     }
     .padding(16)
+  }
+
+  // MARK: - Output profiles
+
+  private var outputProfilesSection: some View {
+    VStack(alignment: .leading, spacing: 10) {
+      Label("Outputs", systemImage: "switch.2")
+        .font(.subheadline.weight(.semibold))
+
+      Picker("Selected Output", selection: $viewModel.selectedOutputID) {
+        ForEach(viewModel.outputs) { output in
+          Text(output.name).tag(output.id)
+        }
+      }
+      .pickerStyle(.segmented)
+      .onChange(of: viewModel.selectedOutputID) { _, newValue in
+        viewModel.selectOutput(id: newValue)
+      }
+
+      if let output = viewModel.selectedOutput {
+        VStack(alignment: .leading, spacing: 10) {
+          HStack(spacing: 12) {
+            VStack(alignment: .leading, spacing: 4) {
+              Text("Name")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+              TextField(
+                "Console",
+                text: Binding(
+                  get: { output.name },
+                  set: { viewModel.updateSelectedOutputName($0) }
+                )
+              )
+              .textFieldStyle(.roundedBorder)
+            }
+
+            VStack(alignment: .leading, spacing: 4) {
+              Text("Route")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+              TextField(
+                "console",
+                text: Binding(
+                  get: { viewModel.selectedOutputRouteText },
+                  set: { viewModel.updateSelectedOutputRoute($0) }
+                )
+              )
+              .textFieldStyle(.roundedBorder)
+            }
+
+            Toggle(
+              "Enabled",
+              isOn: Binding(
+                get: { output.isEnabled },
+                set: { viewModel.updateSelectedOutputEnabled($0) }
+              )
+            )
+            .toggleStyle(.switch)
+            .padding(.top, 18)
+          }
+
+          HStack(spacing: 8) {
+            outputRouteShortcut("Console", route: "console")
+            outputRouteShortcut("Firebase", route: "firebase")
+            outputRouteShortcut("Splunk", route: "splunk")
+            Spacer()
+            Button("Add Output") { viewModel.addOutput() }
+            Button("Duplicate") { viewModel.duplicateSelectedOutput() }
+            Button("Remove", role: .destructive) { viewModel.removeSelectedOutput() }
+              .disabled(viewModel.outputs.count <= 1)
+          }
+        }
+        .padding(12)
+        .background(Color.secondary.opacity(0.04))
+        .clipShape(RoundedRectangle(cornerRadius: 10))
+      }
+    }
+  }
+
+  private func outputRouteShortcut(_ title: String, route: String) -> some View {
+    Button(title) {
+      viewModel.updateSelectedOutputRoute(route)
+    }
+    .buttonStyle(.bordered)
+  }
+
+  // MARK: - Output filters
+
+  private var outputFiltersSection: some View {
+    VStack(alignment: .leading, spacing: 10) {
+      Label("Filters", systemImage: "line.3.horizontal.decrease.circle")
+        .font(.subheadline.weight(.semibold))
+
+      if let output = viewModel.selectedOutput {
+        VStack(alignment: .leading, spacing: 12) {
+          HStack(spacing: 12) {
+            ForEach(AutoLogOutputEventType.allCases, id: \.rawValue) { eventType in
+              Toggle(
+                eventTypeLabel(eventType),
+                isOn: Binding(
+                  get: { output.eventTypes.contains(eventType) },
+                  set: { viewModel.toggleSelectedOutputEventType(eventType, isOn: $0) }
+                )
+              )
+              .toggleStyle(.checkbox)
+            }
+          }
+
+          HStack(spacing: 12) {
+            VStack(alignment: .leading, spacing: 4) {
+              Text("Type Name Filter")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+              TextField(
+                "ViewModel, AuthService",
+                text: Binding(
+                  get: { viewModel.selectedTypeFilterText },
+                  set: { viewModel.updateSelectedOutputTypeFilters(from: $0) }
+                )
+              )
+              .textFieldStyle(.roundedBorder)
+            }
+
+            VStack(alignment: .leading, spacing: 4) {
+              Text("Timing Depths")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+              TextField(
+                "2, 3",
+                text: Binding(
+                  get: {
+                    output.timingDepths?
+                      .sorted()
+                      .map(String.init)
+                      .joined(separator: ", ") ?? ""
+                  },
+                  set: { viewModel.updateSelectedOutputTimingDepths($0) }
+                )
+              )
+              .textFieldStyle(.roundedBorder)
+            }
+          }
+
+          HStack(spacing: 16) {
+            Toggle(
+              "Show Timing",
+              isOn: Binding(
+                get: { output.measureTiming },
+                set: { viewModel.updateSelectedOutputMeasureTiming($0) }
+              )
+            )
+
+            Stepper(
+              "Failure Context: \(output.errorContextLimit)",
+              value: Binding(
+                get: { output.errorContextLimit },
+                set: { viewModel.updateSelectedOutputErrorContextLimit($0) }
+              ),
+              in: 0...50
+            )
+          }
+
+          Text("Examples: set route to `console` and disable Start for result-only console logs, or set route to `firebase`, filter type names to `ViewModel`, and raise failure context to 10.")
+            .font(.caption)
+            .foregroundStyle(.secondary)
+        }
+        .padding(12)
+        .background(Color.secondary.opacity(0.04))
+        .clipShape(RoundedRectangle(cornerRadius: 10))
+      }
+    }
+  }
+
+  private func eventTypeLabel(_ eventType: AutoLogOutputEventType) -> String {
+    switch eventType {
+    case .interaction: "Interaction"
+    case .start: "Start"
+    case .success: "Success"
+    case .failure: "Failure"
+    }
   }
 
   // MARK: - Active strip section

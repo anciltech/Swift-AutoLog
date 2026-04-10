@@ -120,7 +120,7 @@ struct CompactFormatterTests {
         )
 
         let output = CompactFormatter().format(event: event, configuration: config)
-        #expect(output.contains("MyViewModel.refresh():42"))
+        #expect(output.contains("MyViewModel.refresh:42"))
     }
 
     // MARK: - Function name + parameters

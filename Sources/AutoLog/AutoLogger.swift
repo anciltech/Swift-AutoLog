@@ -349,12 +349,21 @@ public struct AutoLogLogger: AutoLogger {
   /// - ``OSLogType.info`` for successful function executions.
   /// - ``OSLogType.error`` for functions that throw errors.
   public func emit(event: AutoLogEvent, configuration: AutoLogConfiguration) {
-    let routes = event.routes
-    let snapshot = makeContextEntry(for: event, configuration: configuration)
-    let enrichedEvent = enrichFailureContextIfNeeded(for: event)
+    let outputs = configuration.effectiveOutputs.filter { output in
+      outputMatchesEvent(output, event: event)
+    }
+    let preferredContextConfiguration = configuration.applying(
+      output: outputs.first(where: { $0.route == .console }) ?? configuration.effectiveOutputs.first ?? .default
+    )
+    let snapshot = makeContextEntry(for: event, configuration: preferredContextConfiguration)
 
-    if routes.isEmpty || routes.contains(.console) {
-      let message = formatter.format(event: enrichedEvent, configuration: configuration)
+    for output in outputs where output.route == .console {
+      let outputConfiguration = configuration.applying(output: output)
+      let enrichedEvent = enrichFailureContextIfNeeded(
+        for: event,
+        contextLimit: output.errorContextLimit
+      )
+      let message = formatter.format(event: enrichedEvent, configuration: outputConfiguration)
       if let level = enrichedEvent.level as? OSLogType {
         self.logger.log(level: level, "\(message)")
       } else {
@@ -362,11 +371,18 @@ public struct AutoLogLogger: AutoLogger {
       }
     }
 
-    for sink in sinks where routes.contains(sink.route) {
-      sink.emit(event: enrichedEvent, configuration: configuration)
+    for output in outputs where output.route != .console {
+      let outputConfiguration = configuration.applying(output: output)
+      let enrichedEvent = enrichFailureContextIfNeeded(
+        for: event,
+        contextLimit: output.errorContextLimit
+      )
+      for sink in sinks where sink.route == output.route {
+        sink.emit(event: enrichedEvent, configuration: outputConfiguration)
+      }
     }
 
-    record(snapshot)
+    record(snapshot, capacity: max(errorContextLimit, configuration.maxErrorContextLimit))
   }
 
   // NOTE: @_spi(Experimental) intentionally removed — using it with @AutoLog(using:) in
@@ -396,12 +412,15 @@ public struct AutoLogLogger: AutoLogger {
     self.storage = Storage()
   }
 
-  private func enrichFailureContextIfNeeded(for event: AutoLogEvent) -> AutoLogEvent {
-    guard case .failure = event.result, errorContextLimit > 0 else { return event }
+  private func enrichFailureContextIfNeeded(
+    for event: AutoLogEvent,
+    contextLimit: Int
+  ) -> AutoLogEvent {
+    guard case .failure = event.result, contextLimit > 0 else { return event }
 
     var enriched = event
     enriched.errorContext = storage.state.withLock { state in
-      Array(state.recentEntries.suffix(errorContextLimit))
+      Array(state.recentEntries.suffix(contextLimit))
     }
     return enriched
   }
@@ -420,15 +439,64 @@ public struct AutoLogLogger: AutoLogger {
     return AutoLogErrorContextEntry(summary: summary)
   }
 
-  private func record(_ entry: AutoLogErrorContextEntry) {
-    guard errorContextLimit > 0 else { return }
+  private func record(_ entry: AutoLogErrorContextEntry, capacity: Int) {
+    guard capacity > 0 else { return }
 
     storage.state.withLock { state in
       state.recentEntries.append(entry)
-      if state.recentEntries.count > errorContextLimit {
-        state.recentEntries.removeFirst(state.recentEntries.count - errorContextLimit)
+      if state.recentEntries.count > capacity {
+        state.recentEntries.removeFirst(state.recentEntries.count - capacity)
       }
     }
+  }
+
+  private func outputMatchesEvent(_ output: AutoLogOutput, event: AutoLogEvent) -> Bool {
+    guard output.isEnabled else { return false }
+    guard routeMatches(output.route, eventRoutes: event.routes) else { return false }
+    guard output.eventTypes.contains(eventType(for: event)) else { return false }
+
+    let filters = output.typeNameFilters
+      .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+      .filter { !$0.isEmpty }
+    guard !filters.isEmpty else { return true }
+
+    let typeName = extractTypeName(from: event.location)
+    return filters.contains { token in
+      typeName.localizedCaseInsensitiveContains(token)
+    }
+  }
+
+  private func routeMatches(
+    _ route: AutoLogRoute,
+    eventRoutes: Set<AutoLogRoute>
+  ) -> Bool {
+    if route == .console {
+      return eventRoutes.isEmpty || eventRoutes.contains(.console)
+    }
+
+    return eventRoutes.contains(route)
+  }
+
+  private func eventType(for event: AutoLogEvent) -> AutoLogOutputEventType {
+    if let source = event.source, event.declaration == source.description {
+      return .interaction
+    }
+
+    if let level = event.level as? LogLevel, level == .start {
+      return .start
+    }
+
+    if case .failure = event.result {
+      return .failure
+    }
+
+    return .success
+  }
+
+  private func extractTypeName(from location: String) -> String {
+    let filename = location.split(separator: "/").last.map(String.init) ?? location
+    let stem = filename.components(separatedBy: ".swift").first ?? filename
+    return stem.isEmpty ? "Unknown" : stem
   }
 }
 

@@ -1,20 +1,18 @@
 import SwiftUI
 import AutoLog
 
-/// Right-hand panel: live formatted output preview.
+/// Right-hand panel: live formatted output preview for the selected output profile.
 struct LivePreviewView: View {
-  let format: LogFormat
+  let output: AutoLogOutput
 
-  // A fixed DepthProfile for preview purposes (ViewModel → depth 2 → "-->")
   private let profile = DepthProfile.mvvm
 
   var body: some View {
     VStack(alignment: .leading, spacing: 0) {
-      // ── Header ──────────────────────────────────────────────────────────────
       VStack(alignment: .leading, spacing: 2) {
         Text("Live Preview")
           .font(.headline)
-        Text("Example output with your current format")
+        Text("Shows only the sample events that pass the selected output's filters")
           .font(.caption)
           .foregroundStyle(.secondary)
       }
@@ -23,53 +21,34 @@ struct LivePreviewView: View {
 
       Divider()
 
-      // ── Preview content ──────────────────────────────────────────────────────
       ScrollView {
         VStack(alignment: .leading, spacing: 20) {
-          previewGroup(
-            title: "Success",
-            lines: successLines()
-          )
-
-          previewGroup(
-            title: "Failure",
-            lines: failureLines()
-          )
-
-          previewGroup(
-            title: "Tagged",
-            lines: taggedLines()
-          )
-
-          previewGroup(
-            title: "Interaction (always fixed)",
-            lines: interactionLines()
-          )
+          previewGroup(title: "Interaction", event: interactionEvent)
+          previewGroup(title: "Start", event: startEvent)
+          previewGroup(title: "Success", event: successEvent)
+          previewGroup(title: "Failure", event: failureEvent)
+          previewGroup(title: "Firebase VM Result", event: firebaseViewModelEvent)
         }
         .padding(16)
       }
 
       Divider()
 
-      // ── Format code snippet ──────────────────────────────────────────────────
       VStack(alignment: .leading, spacing: 4) {
-        Text("Active elements:")
+        Text("Output summary:")
           .font(.caption)
           .foregroundStyle(.secondary)
-        Text(elementSummary)
+        Text(summaryText)
           .font(.system(.caption, design: .monospaced))
           .foregroundStyle(.secondary)
-          .lineLimit(2)
       }
       .padding(12)
     }
     .frame(minWidth: 360)
   }
 
-  // MARK: - Helpers
-
   @ViewBuilder
-  private func previewGroup(title: String, lines: [String]) -> some View {
+  private func previewGroup(title: String, event: AutoLogEvent) -> some View {
     VStack(alignment: .leading, spacing: 6) {
       Text(title)
         .font(.caption)
@@ -78,11 +57,15 @@ struct LivePreviewView: View {
         .textCase(.uppercase)
 
       VStack(alignment: .leading, spacing: 4) {
-        ForEach(lines, id: \.self) { line in
-          Text(line)
+        if matches(event) {
+          Text(formatter.format(event: eventWithContext(event), configuration: configuration))
             .font(.system(.body, design: .monospaced))
             .textSelection(.enabled)
             .fixedSize(horizontal: false, vertical: true)
+        } else {
+          Text("Filtered out by this output profile")
+            .font(.system(.body, design: .monospaced))
+            .foregroundStyle(.tertiary)
         }
       }
       .padding(10)
@@ -91,62 +74,73 @@ struct LivePreviewView: View {
     }
   }
 
-  // MARK: - Example events
-
   private var formatter: CompactFormatter {
-    CompactFormatter(profile: profile, format: format)
+    CompactFormatter(profile: profile, format: output.logFormat)
   }
 
   private var configuration: AutoLogConfiguration {
-    AutoLogConfiguration(logFormat: format)
+    AutoLogConfiguration(
+      measureTimingDefault: output.measureTiming,
+      measureTimingDepths: output.timingDepths,
+      logFormat: output.logFormat,
+      outputs: [output]
+    )
   }
 
-  private func successLines() -> [String] {
-    [
-      formatter.format(event: makeEvent(
-        location: "App/MyViewModel.swift:42:5",
-        declaration: "func fetchData(userId: Int) async",
-        parameters: ["userId": 42],
-        result: .success("User(id: 1)")
-      ), configuration: configuration)
-    ]
+  private var interactionEvent: AutoLogEvent {
+    makeEvent(
+      location: "App/CheckoutView.swift:30:5",
+      declaration: "button(\"Pay\")",
+      source: AutoLogInteraction.button("Pay"),
+      result: .success(())
+    )
   }
 
-  private func failureLines() -> [String] {
-    struct NetworkError: Error, CustomStringConvertible {
-      var description: String { "notFound" }
+  private var startEvent: AutoLogEvent {
+    AutoLogEvent(
+      level: LogLevel.start,
+      location: "App/CheckoutViewModel.swift:32:5",
+      declaration: "func processPayment(amount: Decimal) async",
+      parameters: ["amount": "49.99"],
+      tags: [output.route]
+    )
+  }
+
+  private var successEvent: AutoLogEvent {
+    var event = makeEvent(
+      location: "App/CheckoutViewModel.swift:33:5",
+      declaration: "func processPayment(amount: Decimal) async",
+      parameters: ["amount": "49.99"],
+      result: .success("receipt-42"),
+      tags: [output.route]
+    )
+    event.duration = .milliseconds(24)
+    return event
+  }
+
+  private var failureEvent: AutoLogEvent {
+    struct PaymentError: Error, CustomStringConvertible {
+      var description: String { "cardDeclined" }
     }
-    return [
-      formatter.format(event: makeEvent(
-        location: "App/MyViewModel.swift:42:5",
-        declaration: "func fetchData(userId: Int) async",
-        parameters: ["userId": 99],
-        result: .failure(NetworkError())
-      ), configuration: configuration)
-    ]
+
+    var event = makeEvent(
+      location: "App/CheckoutViewModel.swift:34:5",
+      declaration: "func processPayment(amount: Decimal) async throws",
+      parameters: ["amount": "49.99"],
+      result: .failure(PaymentError()),
+      tags: [output.route]
+    )
+    event.duration = .milliseconds(120)
+    return event
   }
 
-  private func taggedLines() -> [String] {
-    [
-      formatter.format(event: makeEvent(
-        location: "App/AccountService.swift:18:5",
-        declaration: "func processPayment(amount: Decimal)",
-        parameters: ["amount": "49.99"],
-        result: .success(()),
-        tags: ["payments", "critical"]
-      ), configuration: configuration)
-    ]
-  }
-
-  private func interactionLines() -> [String] {
-    [
-      formatter.format(event: makeEvent(
-        location: "App/ContentView.swift:30:5",
-        declaration: "button(\"Deposit\")",
-        source: AutoLogInteraction.button("Deposit"),
-        result: .success(())
-      ), configuration: configuration)
-    ]
+  private var firebaseViewModelEvent: AutoLogEvent {
+    makeEvent(
+      location: "App/AuthViewModel.swift:12:5",
+      declaration: "func syncSession() async",
+      result: .success("ok"),
+      tags: [AutoLogRoute.firebase]
+    )
   }
 
   private func makeEvent(
@@ -169,7 +163,77 @@ struct LivePreviewView: View {
     return event
   }
 
-  private var elementSummary: String {
-    format.mainLine.map { ".\($0.rawValue)" }.joined(separator: " · ")
+  private func eventWithContext(_ event: AutoLogEvent) -> AutoLogEvent {
+    guard case .failure = event.result, output.errorContextLimit > 0 else { return event }
+
+    var enriched = event
+    enriched.errorContext = [
+      AutoLogErrorContextEntry(summary: "👆🏼 Pay 🧵A1B2C3"),
+      AutoLogErrorContextEntry(summary: "├──🔵 CheckoutViewModel.processPayment(amount: 49.99) async"),
+      AutoLogErrorContextEntry(summary: "└──🟢 CheckoutRepository.prepareCharge(amount: 49.99)"),
+      AutoLogErrorContextEntry(summary: "└──🟢 PaymentGateway.authorize(amount: 49.99) async"),
+    ]
+    enriched.errorContext = Array(enriched.errorContext.suffix(output.errorContextLimit))
+    return enriched
+  }
+
+  private func matches(_ event: AutoLogEvent) -> Bool {
+    guard output.isEnabled else { return false }
+    guard routeMatches(event) else { return false }
+    guard output.eventTypes.contains(eventType(for: event)) else { return false }
+
+    let filters = output.typeNameFilters
+      .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+      .filter { !$0.isEmpty }
+    guard !filters.isEmpty else { return true }
+
+    let typeName = extractTypeName(from: event.location)
+    return filters.contains { typeName.localizedCaseInsensitiveContains($0) }
+  }
+
+  private func routeMatches(_ event: AutoLogEvent) -> Bool {
+    let routes = event.routes
+    if output.route == .console {
+      return routes.isEmpty || routes.contains(.console)
+    }
+
+    return routes.contains(output.route)
+  }
+
+  private func eventType(for event: AutoLogEvent) -> AutoLogOutputEventType {
+    if let source = event.source, event.declaration == source.description {
+      return .interaction
+    }
+
+    if let level = event.level as? LogLevel, level == .start {
+      return .start
+    }
+
+    if case .failure = event.result {
+      return .failure
+    }
+
+    return .success
+  }
+
+  private func extractTypeName(from location: String) -> String {
+    let filename = location.split(separator: "/").last.map(String.init) ?? location
+    let stem = filename.components(separatedBy: ".swift").first ?? filename
+    return stem.isEmpty ? "Unknown" : stem
+  }
+
+  private var summaryText: String {
+    let eventTypes = output.eventTypes
+      .sorted { $0.rawValue < $1.rawValue }
+      .map(\.rawValue)
+      .joined(separator: ", ")
+    let typeFilters = output.typeNameFilters.isEmpty
+      ? "all types"
+      : output.typeNameFilters.joined(separator: ", ")
+    let formatSummary = output.logFormat.mainLine
+      .map { ".\($0.rawValue)" }
+      .joined(separator: " · ")
+
+    return "route=\(output.route.rawValue) events=[\(eventTypes)] types=\(typeFilters) context=\(output.errorContextLimit) format=\(formatSummary)"
   }
 }

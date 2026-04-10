@@ -15,7 +15,7 @@ struct ContentView: View {
       Divider()
 
       // ── Right: Live preview ────────────────────────────────────────────────
-      LivePreviewView(format: viewModel.currentFormat)
+      LivePreviewView(output: viewModel.selectedOutput ?? .default)
     }
     .frame(minHeight: 480)
     .overlay(alignment: .top) {

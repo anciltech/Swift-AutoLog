@@ -17,7 +17,19 @@ struct AutoLogRuntimeTests {
       measureTimingDefault: false,
       deduplicateWithin: .seconds(1),
       measureTimingDepths: [2, 3],
-      logFormat: LogFormat(mainLine: [.depthArrow, .statusEmoji, .functionName])
+      logFormat: LogFormat(mainLine: [.depthArrow, .statusEmoji, .functionName]),
+      outputs: [
+        AutoLogOutput(
+          name: "Console Results",
+          route: .console,
+          eventTypes: [.success, .failure],
+          typeNameFilters: ["ViewModel"],
+          measureTiming: false,
+          timingDepths: [2],
+          errorContextLimit: 10,
+          logFormat: LogFormat(mainLine: [.statusEmoji, .functionName])
+        )
+      ]
     )
 
     #expect(store.loadRevision() == 0)

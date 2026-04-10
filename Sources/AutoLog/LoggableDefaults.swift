@@ -5,6 +5,52 @@ private struct UserDefaultsBox: @unchecked Sendable {
   var value: UserDefaults
 }
 
+public enum AutoLogOutputEventType: String, Sendable, Codable, CaseIterable, Hashable {
+  case interaction
+  case start
+  case success
+  case failure
+}
+
+public struct AutoLogOutput: Sendable, Codable, Equatable, Identifiable {
+  public var id: String
+  public var name: String
+  public var route: AutoLogRoute
+  public var isEnabled: Bool
+  public var eventTypes: Set<AutoLogOutputEventType>
+  public var typeNameFilters: [String]
+  public var measureTiming: Bool
+  public var timingDepths: Set<Int>?
+  public var errorContextLimit: Int
+  public var logFormat: LogFormat
+
+  public init(
+    id: String = UUID().uuidString,
+    name: String,
+    route: AutoLogRoute = .console,
+    isEnabled: Bool = true,
+    eventTypes: Set<AutoLogOutputEventType> = Set(AutoLogOutputEventType.allCases),
+    typeNameFilters: [String] = [],
+    measureTiming: Bool = true,
+    timingDepths: Set<Int>? = nil,
+    errorContextLimit: Int = 5,
+    logFormat: LogFormat = .default
+  ) {
+    self.id = id
+    self.name = name
+    self.route = route
+    self.isEnabled = isEnabled
+    self.eventTypes = eventTypes
+    self.typeNameFilters = typeNameFilters
+    self.measureTiming = measureTiming
+    self.timingDepths = timingDepths
+    self.errorContextLimit = max(0, errorContextLimit)
+    self.logFormat = logFormat
+  }
+
+  public static let `default` = AutoLogOutput(name: "Console")
+}
+
 /// Live-tunable logging behavior shared across app processes.
 public struct AutoLogConfiguration: Sendable, Codable, Equatable {
   /// Whether the macro should emit a 🔵 start event before a function executes.
@@ -24,21 +70,89 @@ public struct AutoLogConfiguration: Sendable, Codable, Equatable {
   /// The visual layout used by ``CompactFormatter`` when no formatter-local override exists.
   public var logFormat: LogFormat
 
+  /// Optional per-destination output profiles.
+  ///
+  /// When empty, runtime behavior falls back to the legacy single-output fields
+  /// above (`emitStartEvents`, `measureTimingDefault`, `measureTimingDepths`,
+  /// and `logFormat`).
+  public var outputs: [AutoLogOutput]
+
   public init(
     emitStartEvents: Bool = true,
     measureTimingDefault: Bool = true,
     deduplicateWithin: AutoLogDeduplication? = nil,
     measureTimingDepths: Set<Int>? = nil,
-    logFormat: LogFormat = .default
+    logFormat: LogFormat = .default,
+    outputs: [AutoLogOutput] = []
   ) {
     self.emitStartEvents = emitStartEvents
     self.measureTimingDefault = measureTimingDefault
     self.deduplicateWithin = deduplicateWithin
     self.measureTimingDepths = measureTimingDepths
     self.logFormat = logFormat
+    self.outputs = outputs
   }
 
   public static let `default` = AutoLogConfiguration()
+
+  private enum CodingKeys: String, CodingKey {
+    case emitStartEvents
+    case measureTimingDefault
+    case deduplicateWithin
+    case measureTimingDepths
+    case logFormat
+    case outputs
+  }
+
+  public init(from decoder: Decoder) throws {
+    let container = try decoder.container(keyedBy: CodingKeys.self)
+    emitStartEvents = try container.decodeIfPresent(Bool.self, forKey: .emitStartEvents) ?? true
+    measureTimingDefault = try container.decodeIfPresent(Bool.self, forKey: .measureTimingDefault) ?? true
+    deduplicateWithin = try container.decodeIfPresent(AutoLogDeduplication.self, forKey: .deduplicateWithin)
+    measureTimingDepths = try container.decodeIfPresent(Set<Int>.self, forKey: .measureTimingDepths)
+    logFormat = try container.decodeIfPresent(LogFormat.self, forKey: .logFormat) ?? .default
+    outputs = try container.decodeIfPresent([AutoLogOutput].self, forKey: .outputs) ?? []
+  }
+
+  public func encode(to encoder: Encoder) throws {
+    var container = encoder.container(keyedBy: CodingKeys.self)
+    try container.encode(emitStartEvents, forKey: .emitStartEvents)
+    try container.encode(measureTimingDefault, forKey: .measureTimingDefault)
+    try container.encodeIfPresent(deduplicateWithin, forKey: .deduplicateWithin)
+    try container.encodeIfPresent(measureTimingDepths, forKey: .measureTimingDepths)
+    try container.encode(logFormat, forKey: .logFormat)
+    try container.encode(outputs, forKey: .outputs)
+  }
+
+  public var effectiveOutputs: [AutoLogOutput] {
+    guard !outputs.isEmpty else {
+      return [
+        AutoLogOutput(
+          name: "Console",
+          route: .console,
+          measureTiming: measureTimingDefault,
+          timingDepths: measureTimingDepths,
+          errorContextLimit: 5,
+          logFormat: logFormat
+        )
+      ]
+    }
+
+    return outputs
+  }
+
+  public func applying(output: AutoLogOutput) -> Self {
+    var copy = self
+    copy.measureTimingDefault = output.measureTiming
+    copy.measureTimingDepths = output.timingDepths
+    copy.logFormat = output.logFormat
+    copy.outputs = [output]
+    return copy
+  }
+
+  public var maxErrorContextLimit: Int {
+    max(effectiveOutputs.map(\.errorContextLimit).max() ?? 0, 5)
+  }
 }
 
 /// A process-local runtime snapshot used by the logging hot path.

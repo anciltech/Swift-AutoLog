@@ -104,7 +104,11 @@ struct AutoLoggerTests {
   func routeTags_forwardOnlyToMatchingSinks() {
     let sink = MockEventSink(route: .splunk)
     let logger = AutoLogLogger(formatter: MockFormatter(), sinks: [sink])
-    let configuration = AutoLogConfiguration.default
+    let configuration = AutoLogConfiguration(
+      outputs: [
+        AutoLogOutput(name: "Splunk", route: .splunk)
+      ]
+    )
 
     logger.emit(
       event: AutoLogEvent(
@@ -140,7 +144,16 @@ struct AutoLoggerTests {
   func failureEvents_receiveRecentContextFromPreviousLogs() {
     let sink = MockEventSink(route: .splunk)
     let logger = AutoLogLogger(formatter: CompactFormatter(), sinks: [sink], errorContextLimit: 2)
-    let configuration = AutoLogConfiguration.default
+    let configuration = AutoLogConfiguration(
+      outputs: [
+        AutoLogOutput(
+          name: "Splunk",
+          route: .splunk,
+          eventTypes: [.start, .failure],
+          errorContextLimit: 2
+        )
+      ]
+    )
 
     logger.emit(
       event: AutoLogEvent(
@@ -174,6 +187,109 @@ struct AutoLoggerTests {
     #expect(failure?.errorContext.count == 2)
     #expect(failure?.errorContext[0].summary.contains("Run()") == true)
     #expect(failure?.errorContext[1].summary.contains("processPayment() async") == true)
+  }
+
+  @Test
+  func outputProfiles_filterEventsBeforeForwardingToSink() {
+    let sink = MockEventSink(route: .firebase)
+    let logger = AutoLogLogger(formatter: MockFormatter(), sinks: [sink])
+    let configuration = AutoLogConfiguration(
+      outputs: [
+        AutoLogOutput(
+          name: "Firebase VM Failures",
+          route: .firebase,
+          eventTypes: [.failure],
+          typeNameFilters: ["ViewModel"]
+        )
+      ]
+    )
+
+    logger.emit(
+      event: AutoLogEvent(
+        location: "App/AuthViewModel.swift:1:1",
+        declaration: "func login()",
+        result: .success(())
+      ),
+      configuration: configuration
+    )
+
+    logger.emit(
+      event: AutoLogEvent(
+        location: "App/AuthService.swift:1:1",
+        declaration: "func login()",
+        result: .failure(Failure.mock),
+        tags: [AutoLogRoute.firebase]
+      ),
+      configuration: configuration
+    )
+
+    logger.emit(
+      event: AutoLogEvent(
+        location: "App/AuthViewModel.swift:1:1",
+        declaration: "func login()",
+        result: .failure(Failure.mock),
+        tags: [AutoLogRoute.firebase]
+      ),
+      configuration: configuration
+    )
+
+    #expect(sink.events.count == 1)
+    #expect(sink.events.first?.location.contains("AuthViewModel") == true)
+  }
+
+  @Test
+  func outputProfiles_applyTheirOwnFailureContextLimit() {
+    let sink = MockEventSink(route: .splunk)
+    let logger = AutoLogLogger(formatter: CompactFormatter(), sinks: [sink], errorContextLimit: 1)
+    let configuration = AutoLogConfiguration(
+      outputs: [
+        AutoLogOutput(
+          name: "Splunk Errors",
+          route: .splunk,
+          eventTypes: [.failure],
+          errorContextLimit: 3
+        )
+      ]
+    )
+
+    logger.emit(
+      event: AutoLogEvent(
+        location: "App/StartView.swift:10:1",
+        declaration: "Run"
+      ),
+      configuration: configuration
+    )
+
+    logger.emit(
+      event: AutoLogEvent(
+        level: LogLevel.start,
+        location: "App/CheckoutViewModel.swift:11:1",
+        declaration: "func processPayment() async",
+        tags: [AutoLogRoute.splunk]
+      ),
+      configuration: configuration
+    )
+
+    logger.emit(
+      event: AutoLogEvent(
+        location: "App/CheckoutRepository.swift:12:1",
+        declaration: "func authorize() async",
+        tags: [AutoLogRoute.splunk]
+      ),
+      configuration: configuration
+    )
+
+    logger.emit(
+      event: AutoLogEvent(
+        location: "App/CheckoutViewModel.swift:13:1",
+        declaration: "func processPayment() async throws",
+        result: .failure(Failure.mock),
+        tags: [AutoLogRoute.splunk]
+      ),
+      configuration: configuration
+    )
+
+    #expect(sink.events.last?.errorContext.count == 3)
   }
 }
 
