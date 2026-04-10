@@ -183,6 +183,9 @@ lengths to hint at architectural depth:
      └── declined [PaymentError]
 ```
 
+Timing keeps the smallest useful unit, so very short work renders as `ns` or
+`µs`, longer work uses `ms`, and multi-second spans use `s`.
+
 For chatty boolean probes where only the positive case matters, add
 ``When(_:)``:
 

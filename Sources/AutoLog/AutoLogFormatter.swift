@@ -345,10 +345,24 @@ public struct CompactFormatter: AutoLogFormatter {
     let totalNs = d.components.seconds * 1_000_000_000
                 + d.components.attoseconds / 1_000_000_000
     switch totalNs {
-    case ..<1_000:     return "\(totalNs)µs"
-    case ..<1_000_000: return "\(totalNs / 1_000)ms"
-    default:           return String(format: "%.1fs", Double(totalNs) / 1_000_000_000)
+    case ..<1_000:
+      return "\(totalNs)ns"
+    case ..<1_000_000:
+      return formatDurationComponent(Double(totalNs) / 1_000, unit: "µs")
+    case ..<1_000_000_000:
+      return formatDurationComponent(Double(totalNs) / 1_000_000, unit: "ms")
+    default:
+      return formatDurationComponent(Double(totalNs) / 1_000_000_000, unit: "s")
     }
+  }
+
+  private func formatDurationComponent(_ value: Double, unit: String) -> String {
+    let rounded = value.rounded()
+    if abs(value - rounded) < 0.05 {
+      return "\(Int(rounded))\(unit)"
+    }
+
+    return String(format: "%.1f%@", value, unit)
   }
 
   private func formatErrorContext(

@@ -625,6 +625,38 @@ struct LogFormatElementToggleTests {
         #expect(!output.contains("(id: 42)"))
     }
 
+    @Test func timing_usesNanosecondsBelowOneMicrosecond() {
+        let formatter = CompactFormatter(profile: .mvvm)
+        var event = makeEvent()
+        event.duration = .nanoseconds(500)
+        let output = formatter.format(event: event, configuration: configuration)
+        #expect(output.contains("⏱ 500ns"))
+    }
+
+    @Test func timing_usesMicrosecondsBelowOneMillisecond() {
+        let formatter = CompactFormatter(profile: .mvvm)
+        var event = makeEvent()
+        event.duration = .microseconds(250)
+        let output = formatter.format(event: event, configuration: configuration)
+        #expect(output.contains("⏱ 250µs"))
+    }
+
+    @Test func timing_usesMillisecondsBelowOneSecond() {
+        let formatter = CompactFormatter(profile: .mvvm)
+        var event = makeEvent()
+        event.duration = .milliseconds(12)
+        let output = formatter.format(event: event, configuration: configuration)
+        #expect(output.contains("⏱ 12ms"))
+    }
+
+    @Test func timing_usesSecondsAtOneSecondOrMore() {
+        let formatter = CompactFormatter(profile: .mvvm)
+        var event = makeEvent()
+        event.duration = .seconds(2)
+        let output = formatter.format(event: event, configuration: configuration)
+        #expect(output.contains("⏱ 2s"))
+    }
+
     @Test func defaultFormat_roundTripsViaConfiguration() throws {
         let config = AutoLogConfiguration(logFormat: .default)
         let data = try JSONEncoder().encode(config)
