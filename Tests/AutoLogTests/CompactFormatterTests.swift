@@ -103,6 +103,26 @@ struct CompactFormatterTests {
         #expect(!output.hasPrefix("-->"))
     }
 
+    @Test func lineNumberElement_appendsSourceLineSuffix() {
+        let event = makeEvent(
+            location: "App/MyViewModel.swift:42:5",
+            declaration: "func refresh()"
+        )
+        let config = AutoLogConfiguration(
+            logFormat: LogFormat(mainLine: [
+                .depthArrow,
+                .statusEmoji,
+                .typeName,
+                .dotSeparator,
+                .functionName,
+                .lineNumber,
+            ])
+        )
+
+        let output = CompactFormatter().format(event: event, configuration: config)
+        #expect(output.contains("MyViewModel.refresh():42"))
+    }
+
     // MARK: - Function name + parameters
 
     @Test func funcName_extractedFromDeclaration() {
