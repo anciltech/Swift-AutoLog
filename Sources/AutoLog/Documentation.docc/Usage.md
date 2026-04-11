@@ -134,6 +134,9 @@ choose its own `LogFormat`, exclude start events, filter type names, and attach
 its own amount of recent failure context. When that `LogFormat` includes
 `.lineNumber`, the `:42` suffix applies to both standard compact lines and the
 interaction trace-tree lines rendered under a source badge.
+Likewise, `.timing` is now controlled entirely by the `mainLine` element list:
+keep it to render elapsed durations, or remove it when a destination should log
+the same events without inline timing text.
 
 If a single hot path is too noisy, add ``Deduplicate(_:)`` to that function
 while leaving the rest of the type untouched:

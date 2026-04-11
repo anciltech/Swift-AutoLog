@@ -649,6 +649,25 @@ struct LogFormatElementToggleTests {
         #expect(output.contains("⏱ 12ms"))
     }
 
+    @Test func timing_rendersOnlyOnceWhenTimingElementIsPresent() {
+        let formatter = CompactFormatter(profile: .mvvm)
+        var event = makeEvent()
+        event.duration = .milliseconds(12)
+        let output = formatter.format(event: event, configuration: configuration)
+        #expect(output.components(separatedBy: "⏱").count == 2)
+    }
+
+    @Test func timing_isSuppressedWhenElementRemovedFromConfigurationLogFormat() {
+        var format = LogFormat.default
+        format.mainLine.removeAll { $0 == .timing }
+        let configWithoutTiming = AutoLogConfiguration(logFormat: format)
+        let formatter = CompactFormatter(profile: .mvvm)
+        var event = makeEvent()
+        event.duration = .milliseconds(12)
+        let output = formatter.format(event: event, configuration: configWithoutTiming)
+        #expect(!output.contains("⏱"))
+    }
+
     @Test func timing_usesSecondsAtOneSecondOrMore() {
         let formatter = CompactFormatter(profile: .mvvm)
         var event = makeEvent()

@@ -267,12 +267,6 @@ public struct CompactFormatter: AutoLogFormatter {
       line += ":\(extractLine(from: event.location))"
     }
 
-    let timing = timingSuffix(for: event, depth: depth, configuration: configuration)
-      .trimmingCharacters(in: .whitespaces)
-    if !timing.isEmpty {
-      line = appendAlignedSuffix(timing, to: line)
-    }
-
     var annotations: [String] = []
     let detailIndent = String(repeating: " ", count: max(depth + 1, 3))
     let branchLead   = detailIndent + "└── "
@@ -323,12 +317,6 @@ public struct CompactFormatter: AutoLogFormatter {
     guard (globalOn && depthOk) || event.isMeasuredExplicitly else { return "" }
 
     return " ⏱ \(formatDuration(duration))"
-  }
-
-  private func appendAlignedSuffix(_ suffix: String, to line: String) -> String {
-    let targetColumn = 56
-    let padding = max(2, targetColumn - line.count)
-    return line + String(repeating: " ", count: padding) + suffix
   }
 
   private func tracePrefix(for event: AutoLogEvent, depth: Int) -> String {
