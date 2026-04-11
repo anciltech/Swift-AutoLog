@@ -5,7 +5,8 @@ runtime cost of `@Log` with different tag profiles.
 
 ## What the benchmark measures
 
-`AutoLogPerformanceTests` compares the same function body in five scenarios:
+`AutoLogPerformanceTests` compares the same control-flow-heavy function body in
+five tag-focused scenarios:
 
 - a plain baseline with no logging
 - `@Log` without tags
@@ -13,16 +14,24 @@ runtime cost of `@Log` with different tag profiles.
 - `@Log` with routing tags such as `.splunk` and `.firebase`
 - `@Log` with mixed visible and routing tags
 
+That shared body deliberately exercises `guard`, `if`/`else`, and `do`/`catch`
+paths so the benchmark covers more than a straight arithmetic hot loop. The
+suite also includes a baseline and logged async `TaskGroup` scenario to show
+how the macro behaves once structured concurrency is part of the call path.
+
 The test runtime installs a benchmark logger that mirrors the production
 formatter and route-filtering decisions while discarding final output. That
-keeps the results stable enough to compare tag profiles without console I/O
-dominating the measurement.
+keeps the results stable enough to compare tag profiles and async wrapper cost
+without console I/O dominating the measurement.
 
 ## Run the benchmark in Xcode
 
 1. Open the `swift-autolog` package in Xcode.
 2. Run the `AutoLogPerformanceTests` test case from the Test navigator.
-3. Compare the reported wall-clock metrics across the five scenarios.
+3. Compare the per-test wall-clock metrics across the five scenarios.
+4. Check the end of the suite output for a summary table that lists each
+   scenario's average runtime, relative standard deviation, and slowdown
+   versus the plain baseline.
 
 Because each test uses the same loop count, logger configuration, and function
 body, the relative deltas are the signal to focus on rather than any absolute
@@ -35,6 +44,9 @@ swift test \
   --package-path AutoLogSourceCode/swift-autolog \
   --filter AutoLogPerformanceTests
 ```
+
+The suite prints the same comparison table at the end of the run, which makes
+it easier to copy a single summary into notes or pull requests.
 
 ## Profile the benchmark with Instruments
 
