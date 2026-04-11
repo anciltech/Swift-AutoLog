@@ -692,7 +692,8 @@ struct LogFormatElementToggleTests {
         var event = makeEvent()
         event.duration = .nanoseconds(500)
         let output = formatter.format(event: event, configuration: configuration)
-        #expect(output.contains("⏱ 500ns"))
+        #expect(output.contains("500ns"))
+        #expect(!output.contains("⏱"))
     }
 
     @Test func timing_usesMicrosecondsBelowOneMillisecond() {
@@ -700,7 +701,8 @@ struct LogFormatElementToggleTests {
         var event = makeEvent()
         event.duration = .microseconds(250)
         let output = formatter.format(event: event, configuration: configuration)
-        #expect(output.contains("⏱ 250µs"))
+        #expect(output.contains("250µs"))
+        #expect(!output.contains("⏱"))
     }
 
     @Test func timing_usesMillisecondsBelowOneSecond() {
@@ -708,7 +710,8 @@ struct LogFormatElementToggleTests {
         var event = makeEvent()
         event.duration = .milliseconds(12)
         let output = formatter.format(event: event, configuration: configuration)
-        #expect(output.contains("⏱ 12ms"))
+        #expect(output.contains("12ms"))
+        #expect(!output.contains("⏱"))
     }
 
     @Test func timing_rendersOnlyOnceWhenTimingElementIsPresent() {
@@ -716,7 +719,8 @@ struct LogFormatElementToggleTests {
         var event = makeEvent()
         event.duration = .milliseconds(12)
         let output = formatter.format(event: event, configuration: configuration)
-        #expect(output.components(separatedBy: "⏱").count == 2)
+        #expect(output.components(separatedBy: "12ms").count == 2)
+        #expect(output.components(separatedBy: "⏱").count == 1)
     }
 
     @Test func timing_isSuppressedWhenElementRemovedFromConfigurationLogFormat() {
@@ -735,7 +739,8 @@ struct LogFormatElementToggleTests {
         var event = makeEvent()
         event.duration = .seconds(2)
         let output = formatter.format(event: event, configuration: configuration)
-        #expect(output.contains("⏱ 2s"))
+        #expect(output.contains("2s"))
+        #expect(!output.contains("⏱"))
     }
 
     @Test func defaultFormat_roundTripsViaConfiguration() throws {

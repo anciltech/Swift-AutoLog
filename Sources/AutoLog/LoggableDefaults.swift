@@ -285,7 +285,12 @@ public struct AutoLogConfigurationStore: @unchecked Sendable {
       let configuration = try? JSONDecoder().decode(AutoLogConfiguration.self, from: data)
     else { return nil }
 
-    return configuration
+    let normalized = configuration.normalizedForCurrentDefaults()
+    if normalized != configuration {
+      saveConfiguration(normalized)
+    }
+
+    return normalized
   }
 
   public func saveConfiguration(_ configuration: AutoLogConfiguration) {
@@ -301,6 +306,25 @@ public struct AutoLogConfigurationStore: @unchecked Sendable {
   }
 
   private var userDefaults: UserDefaults { userDefaultsBox.value }
+}
+
+private extension AutoLogConfiguration {
+  func normalizedForCurrentDefaults() -> Self {
+    var copy = self
+
+    if copy.logFormat == .legacyDefault {
+      copy.logFormat = .default
+    }
+
+    copy.outputs = copy.outputs.map { output in
+      guard output.logFormat == .legacyDefault else { return output }
+      var migrated = output
+      migrated.logFormat = .default
+      return migrated
+    }
+
+    return copy
+  }
 }
 
 struct AutoLogRuntimeState {

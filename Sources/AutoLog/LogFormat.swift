@@ -340,7 +340,20 @@ public struct LogFormat: Sendable, Codable, Equatable {
     try c.encode(statusStyle, forKey: .statusStyle)
   }
 
-  /// The default format, equivalent to the original ``CompactFormatter`` output.
+  /// The legacy pre-column default format.
+  static let legacyDefault = LogFormat(mainLine: [
+    .depthArrow,
+    .statusEmoji,
+    .typeName,
+    .dotSeparator,
+    .functionName,
+    .parameters,
+    .effectSpecifiers,
+    .returnValue,
+    .timing,
+  ])
+
+  /// The default format for ``CompactFormatter``.
   ///
   /// Produces lines such as:
   /// ```
@@ -358,6 +371,5 @@ public struct LogFormat: Sendable, Codable, Equatable {
     .parameters,
     .effectSpecifiers,
     .returnValue,
-    .timing,
   ])
 }

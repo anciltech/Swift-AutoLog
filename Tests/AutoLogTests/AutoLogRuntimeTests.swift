@@ -42,6 +42,49 @@ struct AutoLogRuntimeTests {
   }
 
   @Test
+  func configurationStore_migratesLegacyDefaultFormatToColumnLayout() {
+    let suiteName = "AutoLogRuntimeTests.migration.\(UUID().uuidString)"
+    let defaults = UserDefaults(suiteName: suiteName)!
+    defaults.removePersistentDomain(forName: suiteName)
+    defer { defaults.removePersistentDomain(forName: suiteName) }
+
+    let store = AutoLogConfigurationStore(userDefaults: defaults)
+    let legacyFormat = LogFormat(mainLine: [
+      .depthArrow,
+      .statusEmoji,
+      .typeName,
+      .dotSeparator,
+      .functionName,
+      .parameters,
+      .effectSpecifiers,
+      .returnValue,
+      .timing,
+    ])
+    let legacyConfiguration = AutoLogConfiguration(
+      logFormat: legacyFormat,
+      outputs: [
+        AutoLogOutput(
+          name: "Console",
+          logFormat: legacyFormat
+        ),
+        AutoLogOutput(
+          name: "Custom",
+          route: .firebase,
+          logFormat: LogFormat(mainLine: [.statusEmoji, .functionName])
+        )
+      ]
+    )
+
+    store.saveConfiguration(legacyConfiguration)
+
+    let loaded = store.loadConfiguration()
+
+    #expect(loaded?.logFormat == .default)
+    #expect(loaded?.outputs.first?.logFormat == .default)
+    #expect(loaded?.outputs.last?.logFormat == LogFormat(mainLine: [.statusEmoji, .functionName]))
+  }
+
+  @Test
   func withConfiguration_restoresPreviousRuntimeAfterScope() {
     let originalRuntime = AutoLog.runtimeSnapshot()
     let override = AutoLogConfiguration(

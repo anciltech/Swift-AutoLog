@@ -142,6 +142,9 @@ If you want to embed that editor directly in an iOS or macOS app, the package
 also ships `AutoLogSettingsUI` with `AutoLogOutputSettingsView`, which reuses
 the same output-profile model, live preview, and code-snippet generation as the
 standalone `AutoLogSettings` companion app.
+Persisted configurations that still match the package's former single-line
+default are automatically migrated to the newer columnar origin/duration/thread
+layout the next time the shared configuration store is loaded.
 Likewise, `.timing` is now controlled entirely by the `mainLine` element list:
 keep it to render elapsed durations, or remove it when a destination should log
 the same events without inline timing text.
