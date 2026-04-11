@@ -570,6 +570,50 @@ struct LogFormatElementToggleTests {
         #expect(!output.contains(" async"))
     }
 
+    @Test func depthArrow_suppressedWhenElementRemoved() {
+        var format = LogFormat.default
+        format.mainLine.removeAll { $0 == .depthArrow }
+        let formatter = CompactFormatter(profile: .mvvm, format: format)
+        let event = makeEvent()
+        let output = formatter.format(event: event, configuration: configuration)
+        #expect(!output.hasPrefix("->"))
+        #expect(!output.hasPrefix("-->"))
+        #expect(output.contains("fetchData"))
+    }
+
+    @Test func depthArrow_suppressedViaConfigurationLogFormat() {
+        var format = LogFormat.default
+        format.mainLine.removeAll { $0 == .depthArrow }
+        let configWithoutArrow = AutoLogConfiguration(logFormat: format)
+        let formatter = CompactFormatter(profile: .mvvm)
+        let event = makeEvent()
+        let output = formatter.format(event: event, configuration: configWithoutArrow)
+        #expect(!output.hasPrefix("->"))
+        #expect(output.contains("fetchData"))
+    }
+
+    @Test func statusEmoji_suppressedWhenElementRemoved() {
+        var format = LogFormat.default
+        format.mainLine.removeAll { $0 == .statusEmoji }
+        let formatter = CompactFormatter(profile: .mvvm, format: format)
+        let event = makeEvent()
+        let output = formatter.format(event: event, configuration: configuration)
+        #expect(!output.contains("🟢"))
+        #expect(!output.contains("🔴"))
+        #expect(output.contains("fetchData"))
+    }
+
+    @Test func statusEmoji_suppressedViaConfigurationLogFormat() {
+        var format = LogFormat.default
+        format.mainLine.removeAll { $0 == .statusEmoji }
+        let configWithoutEmoji = AutoLogConfiguration(logFormat: format)
+        let formatter = CompactFormatter(profile: .mvvm)
+        let event = makeEvent()
+        let output = formatter.format(event: event, configuration: configWithoutEmoji)
+        #expect(!output.contains("🟢"))
+        #expect(output.contains("fetchData"))
+    }
+
     @Test func lineNumber_appearsWhenElementAdded() {
         var format = LogFormat.default
         // Insert lineNumber after the typeName
