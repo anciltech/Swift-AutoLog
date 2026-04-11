@@ -305,7 +305,7 @@ func deleteActiveLayout(from collection: LayoutCollection) -> Bool {
 }
 ```
 
-In this example, the emitted event still contains the final result (`.success(false)`), duration, tags, and any other captured metadata. In addition, the event records that the function took an early-exit path from a `guard` branch and stores the branch condition.
+In this example, the emitted event still contains the final result (`.success(false)`), duration, tags, and any other captured metadata. In addition, the event records that the function took an early-exit path from a `guard` branch and stores the branch condition. The compact formatter renders that annotation as a short visual detail line such as `└── ↪️ guard ? collection.layouts.count > 1`.
 
 ### Add explicit intent to an early exit
 
@@ -338,7 +338,7 @@ AutoLog.earlyExit(.optimize)
 AutoLog.earlyExit()
 ```
 
-If an explicit `AutoLog.earlyExit(...)` call is present in a branch, the macro uses that metadata and does not inject a second default early-exit record for the same branch.
+If an explicit `AutoLog.earlyExit(...)` call is present in a branch, the macro uses that metadata and does not inject a second default early-exit record for the same branch. Intent is shown as a compact badge in the formatter detail line: `⚡` optimize, `✅` expected, `🛂` validation, `🛑` cancellation.
 
 ### Record non-returning branch choices
 

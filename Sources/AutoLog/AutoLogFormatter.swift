@@ -173,7 +173,7 @@ public struct CompactFormatter: AutoLogFormatter {
     var annotations: [String] = []
 
     if let earlyExit = event.earlyExit {
-      annotations.append("         ↳ early exit: \(earlyExit)")
+      annotations.append("         ↳ \(formatEarlyExitAnnotation(earlyExit))")
     } else if !event.branchDecisions.isEmpty {
       let branches = event.branchDecisions
         .map(\.description)
@@ -274,7 +274,7 @@ public struct CompactFormatter: AutoLogFormatter {
     let contextItem  = detailIndent + "│   • "
 
     if let earlyExit = event.earlyExit {
-      annotations.append(branchLead + "early exit: \(earlyExit)")
+      annotations.append(branchLead + formatEarlyExitAnnotation(earlyExit))
     } else if !event.branchDecisions.isEmpty {
       let branches = event.branchDecisions
         .map(\.description)
@@ -357,6 +357,44 @@ public struct CompactFormatter: AutoLogFormatter {
     _ entries: [AutoLogErrorContextEntry]
   ) -> [String] {
     entries.map { "           • \($0.summary)" }
+  }
+
+  private func formatEarlyExitAnnotation(_ earlyExit: AutoLogEarlyExit) -> String {
+    var parts = ["↪️", earlyExit.kind.rawValue]
+
+    if let condition = earlyExit.condition?.trimmingCharacters(in: .whitespacesAndNewlines),
+       !condition.isEmpty {
+      parts.append("?")
+      parts.append(condition)
+    }
+
+    if let intentBadge = earlyExitIntentBadge(for: earlyExit.intent) {
+      parts.append(intentBadge)
+    }
+
+    if let message = earlyExit.message?.trimmingCharacters(in: .whitespacesAndNewlines),
+       !message.isEmpty {
+      parts.append(message)
+    }
+
+    return parts.joined(separator: " ")
+  }
+
+  private func earlyExitIntentBadge(
+    for intent: AutoLogEarlyExit.Intent
+  ) -> String? {
+    switch intent {
+    case .unknown:
+      return nil
+    case .optimize:
+      return "⚡"
+    case .expected:
+      return "✅"
+    case .validation:
+      return "🛂"
+    case .cancellation:
+      return "🛑"
+    }
   }
 
   private func extractTypeName(from location: String) -> String {

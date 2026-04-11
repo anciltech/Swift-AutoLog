@@ -362,9 +362,11 @@ struct CompactFormatterTests {
         let output = CompactFormatter().format(event: event, configuration: configuration)
         let lines = output.split(separator: "\n", omittingEmptySubsequences: false)
         #expect(lines.count == 2)
-        #expect(lines[1].contains("early exit"))
+        #expect(lines[1].contains("↪️"))
         #expect(lines[1].contains("guard"))
-        #expect(lines[1].contains("expected"))
+        #expect(lines[1].contains("✅"))
+        #expect(lines[1].contains("? count > 0"))
+        #expect(lines[1].contains("empty list"))
     }
 
     @Test func earlyExit_takesPriorityOverBranchDecisions() {
@@ -375,7 +377,7 @@ struct CompactFormatterTests {
         let output = CompactFormatter().format(event: event, configuration: configuration)
         let lines = output.split(separator: "\n", omittingEmptySubsequences: false)
         #expect(lines.count == 2)
-        #expect(lines[1].contains("early exit"))
+        #expect(lines[1].contains("↪️"))
         #expect(!lines[1].contains("branch path"))
     }
 
