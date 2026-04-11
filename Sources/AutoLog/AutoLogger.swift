@@ -341,6 +341,13 @@ public struct AutoLogLogger: AutoLogger {
     var recentEntries: [AutoLogErrorContextEntry] = []
   }
 
+  private struct ResolvedOutputs {
+    let matchedOutputs: [AutoLogOutput]
+    let preferredContextOutput: AutoLogOutput
+    let preferredConsoleOutput: AutoLogOutput?
+    let snapshotCapacity: Int
+  }
+
   private final class Storage: @unchecked Sendable {
     let state = Mutex(State())
   }
@@ -358,20 +365,27 @@ public struct AutoLogLogger: AutoLogger {
   /// - ``OSLogType.info`` for successful function executions.
   /// - ``OSLogType.error`` for functions that throw errors.
   public func emit(event: AutoLogEvent, configuration: AutoLogConfiguration) {
-    let outputs = configuration.effectiveOutputs.filter { $0.matches(event) }
+    let outputs = resolveOutputs(for: event, configuration: configuration)
     let preferredContextConfiguration = configuration.applying(
-      output: outputs.first(where: { $0.route == .console }) ?? configuration.effectiveOutputs.first ?? .default
+      output: outputs.preferredContextOutput
     )
-    let snapshot = makeContextEntry(for: event, configuration: preferredContextConfiguration)
+    var snapshot: AutoLogErrorContextEntry?
 
-    for output in outputs where output.route == .console {
-      let outputConfiguration = configuration.applying(output: output)
+    for output in outputs.matchedOutputs where output.route == .console {
+      let outputConfiguration = if output == outputs.preferredContextOutput {
+        preferredContextConfiguration
+      } else {
+        configuration.applying(output: output)
+      }
       let enrichedEvent = enrichFailureContextIfNeeded(
         for: event,
         contextLimit: output.errorContextLimit,
         triggerLimit: output.failureContextTriggerLimit
       )
       let message = formatter.format(event: enrichedEvent, configuration: outputConfiguration)
+      if snapshot == nil, output == outputs.preferredConsoleOutput {
+        snapshot = makeContextEntry(from: message, event: event)
+      }
       if let level = enrichedEvent.level as? OSLogType {
         self.logger.log(level: level, "\(message)")
       } else {
@@ -379,7 +393,11 @@ public struct AutoLogLogger: AutoLogger {
       }
     }
 
-    for output in outputs where output.route != .console {
+    if snapshot == nil {
+      snapshot = makeContextEntry(for: event, configuration: preferredContextConfiguration)
+    }
+
+    for output in outputs.matchedOutputs where output.route != .console {
       let outputConfiguration = configuration.applying(output: output)
       let enrichedEvent = enrichFailureContextIfNeeded(
         for: event,
@@ -391,7 +409,9 @@ public struct AutoLogLogger: AutoLogger {
       }
     }
 
-    record(snapshot, capacity: max(errorContextLimit, configuration.maxErrorContextLimit))
+    if let snapshot {
+      record(snapshot, capacity: outputs.snapshotCapacity)
+    }
   }
 
   // NOTE: @_spi(Experimental) intentionally removed — using it with @AutoLog(using:) in
@@ -447,6 +467,13 @@ public struct AutoLogLogger: AutoLogger {
       event: event.withoutErrorContext(),
       configuration: configuration
     )
+    return makeContextEntry(from: message, event: event)
+  }
+
+  private func makeContextEntry(
+    from message: String,
+    event: AutoLogEvent
+  ) -> AutoLogErrorContextEntry {
     let summary = message
       .split(separator: "\n", maxSplits: 1, omittingEmptySubsequences: false)
       .first
@@ -456,6 +483,35 @@ public struct AutoLogLogger: AutoLogger {
     return AutoLogErrorContextEntry(
       summary: summary,
       isTrigger: event.outputEventType == .interaction || event.outputEventType == .start
+    )
+  }
+
+  private func resolveOutputs(
+    for event: AutoLogEvent,
+    configuration: AutoLogConfiguration
+  ) -> ResolvedOutputs {
+    let effectiveOutputs = configuration.effectiveOutputs
+    var matchedOutputs: [AutoLogOutput] = []
+    matchedOutputs.reserveCapacity(effectiveOutputs.count)
+    var preferredConsoleOutput: AutoLogOutput?
+    var maxOutputErrorContextLimit = 0
+
+    for output in effectiveOutputs {
+      maxOutputErrorContextLimit = max(maxOutputErrorContextLimit, output.errorContextLimit)
+
+      guard output.matches(event) else { continue }
+      matchedOutputs.append(output)
+
+      if preferredConsoleOutput == nil, output.route == .console {
+        preferredConsoleOutput = output
+      }
+    }
+
+    return ResolvedOutputs(
+      matchedOutputs: matchedOutputs,
+      preferredContextOutput: preferredConsoleOutput ?? effectiveOutputs.first ?? .default,
+      preferredConsoleOutput: preferredConsoleOutput,
+      snapshotCapacity: max(errorContextLimit, maxOutputErrorContextLimit, 5)
     )
   }
 

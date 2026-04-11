@@ -29,6 +29,10 @@ that keep the benchmark focused on real formatting cost instead of avoidable
 bookkeeping: route and visible-tag filtering are cached on `AutoLogEvent`,
 single-parameter calls skip dictionary sorting, and async detection uses direct
 string checks instead of regex matching on every emit.
+Outside the synthetic benchmark logger, `AutoLogLogger` now also resolves
+output profiles in one pass and reuses the first console render as the rolling
+failure-context snapshot, which removes an extra formatter call from the common
+console path without changing the emitted first line.
 
 ## Run the benchmark in Xcode
 

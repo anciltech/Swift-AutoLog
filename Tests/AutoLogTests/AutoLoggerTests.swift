@@ -141,6 +141,22 @@ struct AutoLoggerTests {
   }
 
   @Test
+  func consoleOutput_reusesRenderedLineForContextSnapshot() {
+    let formatter = CountingFormatter()
+    let logger = AutoLogLogger(formatter: formatter)
+
+    logger.emit(
+      event: AutoLogEvent(
+        location: "App/Feature.swift:1:1",
+        declaration: "func refreshDashboard()"
+      ),
+      configuration: .default
+    )
+
+    #expect(formatter.formatCallCount == 1)
+  }
+
+  @Test
   func failureEvents_receiveRecentContextFromPreviousLogs() {
     let sink = MockEventSink(route: .splunk)
     let logger = AutoLogLogger(formatter: CompactFormatter(), sinks: [sink], errorContextLimit: 2)
@@ -517,5 +533,20 @@ private final class MockEventSink: AutoLogEventSink, @unchecked Sendable {
 private struct MockFormatter: AutoLogFormatter {
   func format(event: AutoLogEvent, configuration: AutoLogConfiguration) -> String {
     "formatted"
+  }
+}
+
+private final class CountingFormatter: AutoLogFormatter, @unchecked Sendable {
+  private let formatCount = Mutex(0)
+
+  var formatCallCount: Int {
+    formatCount.withLock { $0 }
+  }
+
+  func format(event: AutoLogEvent, configuration: AutoLogConfiguration) -> String {
+    formatCount.withLock { count in
+      count += 1
+    }
+    return "formatted"
   }
 }
