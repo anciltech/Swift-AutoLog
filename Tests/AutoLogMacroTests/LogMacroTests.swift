@@ -173,8 +173,9 @@ struct LogMacroTests {
 
           location: "TestModule/Test.swift:1:1",
           declaration: "func hover(frameID: Int) -> Bool",
-          singleParameterLabel: "frameID",
-          singleParameterValue: frameID,
+          parameters: [
+            "frameID": frameID
+          ],
           tags: [], deduplicateWithin: .seconds(1)
         )
         autoLogger.emitStart(event: event, configuration: runtime.configuration, deduplicator: runtime.deduplicator)
@@ -213,8 +214,9 @@ struct LogMacroTests {
 
           location: "TestModule/Test.swift:1:1",
           declaration: "func isSelected(frameID: Int) -> Bool",
-          singleParameterLabel: "frameID",
-          singleParameterValue: frameID,
+          parameters: [
+            "frameID": frameID
+          ],
           tags: []
         )
         autoLogger.emitStart(event: event, configuration: runtime.configuration, deduplicator: runtime.deduplicator)
@@ -275,8 +277,9 @@ struct LogMacroTests {
 
           location: "TestModule/Test.swift:1:1",
           declaration: "func isSelected(flag: Bool) -> Bool",
-          singleParameterLabel: "flag",
-          singleParameterValue: flag,
+          parameters: [
+            "flag": flag
+          ],
           tags: [], omissionRules: [AutoLogOmissionRule(scope: AutoLogOmissionRule.Scope.result, tokens: ["false"])]
         )
         autoLogger.emitStart(event: event, configuration: runtime.configuration, deduplicator: runtime.deduplicator)
@@ -408,8 +411,9 @@ struct LogMacroTests {
 
           location: "TestModule/Test.swift:1:1",
           declaration: "func deleteActiveLayout(collection: LayoutCollection) -> Bool",
-          singleParameterLabel: "collection",
-          singleParameterValue: collection,
+          parameters: [
+            "collection": collection
+          ],
           tags: []
         )
         autoLogger.emitStart(event: event, configuration: runtime.configuration, deduplicator: runtime.deduplicator)
@@ -455,8 +459,9 @@ struct LogMacroTests {
 
           location: "TestModule/Test.swift:1:1",
           declaration: "func refresh(sessionToken: String?)",
-          singleParameterLabel: "sessionToken",
-          singleParameterValue: sessionToken,
+          parameters: [
+            "sessionToken": sessionToken
+          ],
           tags: []
         )
         autoLogger.emitStart(event: event, configuration: runtime.configuration, deduplicator: runtime.deduplicator)
@@ -500,8 +505,9 @@ struct LogMacroTests {
 
           location: "TestModule/Test.swift:1:1",
           declaration: "func deleteActiveLayout(collection: LayoutCollection) -> Bool",
-          singleParameterLabel: "collection",
-          singleParameterValue: collection,
+          parameters: [
+            "collection": collection
+          ],
           tags: []
         )
         autoLogger.emitStart(event: event, configuration: runtime.configuration, deduplicator: runtime.deduplicator)
@@ -549,8 +555,9 @@ struct LogMacroTests {
 
           location: "TestModule/Test.swift:1:1",
           declaration: "func cachedLookup(hit: Bool) -> Bool",
-          singleParameterLabel: "hit",
-          singleParameterValue: hit,
+          parameters: [
+            "hit": hit
+          ],
           tags: []
         )
         autoLogger.emitStart(event: event, configuration: runtime.configuration, deduplicator: runtime.deduplicator)
@@ -598,8 +605,9 @@ struct LogMacroTests {
 
           location: "TestModule/Test.swift:1:1",
           declaration: "func cachedLookup(hit: Bool) -> Bool",
-          singleParameterLabel: "hit",
-          singleParameterValue: hit,
+          parameters: [
+            "hit": hit
+          ],
           tags: []
         )
         autoLogger.emitStart(event: event, configuration: runtime.configuration, deduplicator: runtime.deduplicator)
@@ -647,8 +655,9 @@ struct LogMacroTests {
 
           location: "TestModule/Test.swift:1:1",
           declaration: "func deleteActiveLayout(collection: LayoutCollection) -> Bool",
-          singleParameterLabel: "collection",
-          singleParameterValue: collection,
+          parameters: [
+            "collection": collection
+          ],
           tags: []
         )
         autoLogger.emitStart(event: event, configuration: runtime.configuration, deduplicator: runtime.deduplicator)
@@ -691,8 +700,9 @@ struct LogMacroTests {
 
           location: "TestModule/Test.swift:1:1",
           declaration: "func foo(bar: String) -> String",
-          singleParameterLabel: "bar",
-          singleParameterValue: bar,
+          parameters: [
+            "bar": bar
+          ],
           tags: []
         )
         autoLogger.emitStart(event: event, configuration: runtime.configuration, deduplicator: runtime.deduplicator)
@@ -729,8 +739,9 @@ struct LogMacroTests {
 
           location: "TestModule/Test.swift:1:1",
           declaration: "func foo(bar: String) -> String",
-          singleParameterLabel: "bar",
-          singleParameterValue: bar,
+          parameters: [
+            "bar": bar
+          ],
           tags: ["example"]
         )
         autoLogger.emitStart(event: event, configuration: runtime.configuration, deduplicator: runtime.deduplicator)
@@ -771,8 +782,9 @@ struct LogMacroTests {
 
           location: "TestModule/Test.swift:1:1",
           declaration: "func toggleFramePicker(isVisible: Bool)",
-          singleParameterLabel: "isVisible",
-          singleParameterValue: isVisible,
+          parameters: [
+            "isVisible": isVisible
+          ],
           tags: []
         )
         autoLogger.emitStart(event: event, configuration: runtime.configuration, deduplicator: runtime.deduplicator)
@@ -892,8 +904,9 @@ struct LogMacroTests {
 
           location: "TestModule/Test.swift:1:1",
           declaration: "mutating func foo(bar: String)",
-          singleParameterLabel: "bar",
-          singleParameterValue: bar,
+          parameters: [
+            "bar": bar
+          ],
           tags: [.common, "example"]
         )
         autoLogger.emitStart(event: event, configuration: runtime.configuration, deduplicator: runtime.deduplicator)
@@ -1241,8 +1254,9 @@ struct LogMacroTests {
 
           location: "TestModule/Test.swift:1:1",
           declaration: "func performTask(completion: @escaping () -> Void)",
-          singleParameterLabel: "completion",
-          singleParameterValue: completion,
+          parameters: [
+            "completion": completion
+          ],
           tags: []
         )
         autoLogger.emitStart(event: event, configuration: runtime.configuration, deduplicator: runtime.deduplicator)
@@ -1280,8 +1294,9 @@ struct LogMacroTests {
 
           location: "TestModule/Test.swift:1:1",
           declaration: "func check(condition: @autoclosure () -> Bool) -> Bool",
-          singleParameterLabel: "condition",
-          singleParameterValue: condition,
+          parameters: [
+            "condition": condition
+          ],
           tags: []
         )
         autoLogger.emitStart(event: event, configuration: runtime.configuration, deduplicator: runtime.deduplicator)
@@ -1551,8 +1566,9 @@ struct LogMacroTests {
 
           location: "TestModule/Test.swift:1:1",
           declaration: #"func greet(name: String = "Guest") -> String"#,
-          singleParameterLabel: "name",
-          singleParameterValue: name,
+          parameters: [
+            "name": name
+          ],
           tags: []
         )
         autoLogger.emitStart(event: event, configuration: runtime.configuration, deduplicator: runtime.deduplicator)
@@ -1589,8 +1605,9 @@ struct LogMacroTests {
 
           location: "TestModule/Test.swift:1:1",
           declaration: "func sum(numbers: Int...) -> Int",
-          singleParameterLabel: "numbers",
-          singleParameterValue: numbers,
+          parameters: [
+            "numbers": numbers
+          ],
           tags: []
         )
         autoLogger.emitStart(event: event, configuration: runtime.configuration, deduplicator: runtime.deduplicator)
@@ -1631,8 +1648,9 @@ struct LogMacroTests {
 
           location: "TestModule/Test.swift:1:1",
           declaration: "func compute(value: Int) -> Int",
-          singleParameterLabel: "value",
-          singleParameterValue: value,
+          parameters: [
+            "value": value
+          ],
           tags: []
         )
         autoLogger.emitStart(event: event, configuration: runtime.configuration, deduplicator: runtime.deduplicator)
@@ -1710,8 +1728,9 @@ struct LogMacroTests {
 
           location: "TestModule/Test.swift:1:1",
           declaration: "func fetchData(completion: @escaping () async -> String)",
-          singleParameterLabel: "completion",
-          singleParameterValue: completion,
+          parameters: [
+            "completion": completion
+          ],
           tags: []
         )
         autoLogger.emitStart(event: event, configuration: runtime.configuration, deduplicator: runtime.deduplicator)
@@ -1751,8 +1770,9 @@ struct LogMacroTests {
 
           location: "TestModule/Test.swift:1:1",
           declaration: "func updateUI(message: String)",
-          singleParameterLabel: "message",
-          singleParameterValue: message,
+          parameters: [
+            "message": message
+          ],
           tags: []
         )
         autoLogger.emitStart(event: event, configuration: runtime.configuration, deduplicator: runtime.deduplicator)
@@ -1902,8 +1922,9 @@ struct LogMacroTests {
 
           location: "TestModule/Test.swift:1:1",
           declaration: "func performAsyncTask(completion: @escaping () async throws -> String) async throws -> String",
-          singleParameterLabel: "completion",
-          singleParameterValue: completion,
+          parameters: [
+            "completion": completion
+          ],
           tags: []
         )
         autoLogger.emitStart(event: event, configuration: runtime.configuration, deduplicator: runtime.deduplicator)
@@ -2022,8 +2043,9 @@ struct LogMacroTests {
 
           location: "TestModule/Test.swift:1:1",
           declaration: "func optionalTest(value: String?) -> String",
-          singleParameterLabel: "value",
-          singleParameterValue: value,
+          parameters: [
+            "value": value
+          ],
           tags: []
         )
         autoLogger.emitStart(event: event, configuration: runtime.configuration, deduplicator: runtime.deduplicator)
@@ -2065,8 +2087,9 @@ struct LogMacroTests {
 
           location: "TestModule/Test.swift:1:1",
           declaration: "func merge<T, U>(_ first: [T], with second: [U]) -> [(T, U)]\n  where T: Comparable, U: Comparable",
-          singleParameterLabel: "first",
-          singleParameterValue: first,
+          parameters: [
+            "first": first
+          ],
           tags: []
         )
         autoLogger.emitStart(event: event, configuration: runtime.configuration, deduplicator: runtime.deduplicator)
@@ -2104,8 +2127,9 @@ struct LogMacroTests {
 
           location: "TestModule/Test.swift:1:1",
           declaration: "func perform(action: (() -> Void)? = nil)",
-          singleParameterLabel: "action",
-          singleParameterValue: action,
+          parameters: [
+            "action": action
+          ],
           tags: []
         )
         autoLogger.emitStart(event: event, configuration: runtime.configuration, deduplicator: runtime.deduplicator)
@@ -2142,8 +2166,9 @@ struct LogMacroTests {
 
           location: "TestModule/Test.swift:1:1",
           declaration: "static func create<T>(value: T) -> [T]",
-          singleParameterLabel: "value",
-          singleParameterValue: value,
+          parameters: [
+            "value": value
+          ],
           tags: []
         )
         autoLogger.emitStart(event: event, configuration: runtime.configuration, deduplicator: runtime.deduplicator)
@@ -2180,8 +2205,9 @@ struct LogMacroTests {
 
           location: "TestModule/Test.swift:1:1",
           declaration: "func process(pair: (Int, String)) -> String",
-          singleParameterLabel: "pair",
-          singleParameterValue: pair,
+          parameters: [
+            "pair": pair
+          ],
           tags: []
         )
         autoLogger.emitStart(event: event, configuration: runtime.configuration, deduplicator: runtime.deduplicator)

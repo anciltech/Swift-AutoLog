@@ -377,7 +377,7 @@ public struct CompactFormatter: AutoLogFormatter {
     let arrow = fmt.arrowStyle.arrow(for: depth)
     let em = emoji(for: event, style: fmt.statusStyle)
     let funcName = event.functionName
-    let params = formatParameters(event)
+    let params = formatParameters(event.parameters)
     let hasAsyncSpecifier = event.hasAsyncEffect
     var line = ""
     var isFirstSegment = true
@@ -674,15 +674,15 @@ public struct CompactFormatter: AutoLogFormatter {
     return trimmed
   }
 
-  private func formatParameters(_ event: AutoLogEvent) -> String {
-    switch event.parameterCount {
+  private func formatParameters(_ parameters: [String: Any]) -> String {
+    switch parameters.count {
     case 0:
       return ""
     case 1:
-      guard let parameter = event.singleParameter else { return "" }
-      return "\(parameter.label): \(formatParameterValue(parameter.value))"
+      guard let (label, value) = parameters.first else { return "" }
+      return "\(label): \(formatParameterValue(value))"
     default:
-      let sortedParameters = event.parameters.sorted { $0.key < $1.key }
+      let sortedParameters = parameters.sorted { $0.key < $1.key }
       var result = ""
 
       for (index, parameter) in sortedParameters.enumerated() {
