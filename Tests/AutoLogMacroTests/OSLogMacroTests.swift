@@ -64,9 +64,8 @@ struct OSLogMacroTests {
 
           location: "TestModule/Test.swift:1:1",
           declaration: "func sum(numbers: Int...) -> Int",
-          parameters: [
-            "numbers": numbers
-          ],
+          singleParameterLabel: "numbers",
+          singleParameterValue: numbers,
           tags: ["example"]
         )
         autoLogger.emitStart(event: event, configuration: runtime.configuration, deduplicator: runtime.deduplicator)

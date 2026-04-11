@@ -225,7 +225,6 @@ extension AutoLogMacro {
     let capturedParameters = declaration.parameters.filter { parameter in
       !omittableTraits.contains(where: { trait in trait.isOmitParameter(parameter.name) })
     }
-
     return CodeBlockItemSyntax(
       VariableDeclSyntax(
         // Always `var` — timing (`event.duration`) and result are assigned post-construction.
@@ -289,35 +288,53 @@ extension AutoLogMacro {
                     trailingTrivia: .newline
                   )
 
-                  // MARK: - parameters: [String: Any]
+                  // MARK: - parameters
                   if !omittableTraits.contains(where: \.isOmitParameters) {
-                    LabeledExprSyntax(
-                      label: .predefined(.parameters),
-                      colon: .colonToken(),
-                      expression: DictionaryExprSyntax(
-                        leftSquare: .leftSquareToken(
-                          trailingTrivia: capturedParameters.isEmpty ? [] : .newline
-                        ),
-                        rightSquare: .rightSquareToken(
-                          leadingTrivia: capturedParameters.isEmpty ? [] : .newline
-                        )
-                      ) {
-                        DictionaryElementListSyntax {
-                          capturedParameters.map { parameter in
-                            return DictionaryElementSyntax(
-                              key: StringLiteralExprSyntax(content: parameter.name.text),
-                              value: DeclReferenceExprSyntax(baseName: parameter.name.trimmed),
-                              trailingComma: .commaToken(
-                                presence: capturedParameters.last == parameter ? .missing : .present
-                              ),
-                              trailingTrivia: .newline
-                            )
+                    if capturedParameters.count == 1, let parameter = capturedParameters.first {
+                      LabeledExprSyntax(
+                        label: .identifier("singleParameterLabel"),
+                        colon: .colonToken(),
+                        expression: StringLiteralExprSyntax(content: parameter.name.text),
+                        trailingComma: .commaToken(),
+                        trailingTrivia: .newline
+                      )
+
+                      LabeledExprSyntax(
+                        label: .identifier("singleParameterValue"),
+                        colon: .colonToken(),
+                        expression: DeclReferenceExprSyntax(baseName: parameter.name.trimmed),
+                        trailingComma: .commaToken(),
+                        trailingTrivia: .newline
+                      )
+                    } else {
+                      LabeledExprSyntax(
+                        label: .predefined(.parameters),
+                        colon: .colonToken(),
+                        expression: DictionaryExprSyntax(
+                          leftSquare: .leftSquareToken(
+                            trailingTrivia: capturedParameters.isEmpty ? [] : .newline
+                          ),
+                          rightSquare: .rightSquareToken(
+                            leadingTrivia: capturedParameters.isEmpty ? [] : .newline
+                          )
+                        ) {
+                          DictionaryElementListSyntax {
+                            capturedParameters.map { parameter in
+                              return DictionaryElementSyntax(
+                                key: StringLiteralExprSyntax(content: parameter.name.text),
+                                value: DeclReferenceExprSyntax(baseName: parameter.name.trimmed),
+                                trailingComma: .commaToken(
+                                  presence: capturedParameters.last == parameter ? .missing : .present
+                                ),
+                                trailingTrivia: .newline
+                              )
+                            }
                           }
-                        }
-                      },
-                      trailingComma: .commaToken(),
-                      trailingTrivia: .newline
-                    )
+                        },
+                        trailingComma: .commaToken(),
+                        trailingTrivia: .newline
+                      )
+                    }
                   }
 
                   // MARK: - Tags

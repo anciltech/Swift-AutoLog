@@ -29,6 +29,10 @@ that keep the benchmark focused on real formatting cost instead of avoidable
 bookkeeping: route and visible-tag filtering are cached on `AutoLogEvent`,
 single-parameter calls skip dictionary sorting, and async detection uses direct
 string checks instead of regex matching on every emit.
+That single-parameter path now reaches back into event construction too: the
+macro emits a dedicated `singleParameterLabel` / `singleParameterValue` pair
+for one-argument functions, and `AutoLogEvent` stores that case without first
+building a `[String: Any]` dictionary.
 Outside the synthetic benchmark logger, `AutoLogLogger` now also resolves
 output profiles in one pass and reuses the first console render as the rolling
 failure-context snapshot, which removes an extra formatter call from the common
@@ -49,10 +53,11 @@ The next hot-path targets worth exploring are:
   `event.parameters` when the active `LogFormat` actually includes
   `.parameters`
 - reduce multi-parameter overhead further by avoiding repeated sorting and
-  reflection-heavy formatting work where possible
-- look at macro-generated event construction for no-tag and route-only cases to
-  see whether `[String: Any]` / `[any Taggable]` setup can be specialized
-  further without hurting readability
+  reflection-heavy formatting work where possible now that the single-parameter
+  fast path no longer builds a dictionary first
+- look at macro-generated tag and route construction for visible-tag and mixed
+  cases to see whether existential array setup can be specialized further
+  without hurting readability
 
 ## Run the benchmark in Xcode
 

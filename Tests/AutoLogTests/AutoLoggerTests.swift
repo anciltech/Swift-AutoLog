@@ -465,6 +465,25 @@ struct AutoLoggerTests {
     #expect(event.functionName == "processPayment")
     #expect(event.hasAsyncEffect)
   }
+
+  @Test
+  func autoLogEvent_usesPrecomputedMetadataWhenProvided() {
+    let event = AutoLogEvent(
+      location: "App/CheckoutViewModel.swift:42:7",
+      declaration: "func processPayment(amount: Decimal) async throws",
+      inferredTypeName: "PrecomputedType",
+      sourceLine: "99",
+      shortLocation: "PrecomputedType:99",
+      functionName: "precomputedProcessPayment",
+      hasAsyncEffect: false
+    )
+
+    #expect(event.inferredTypeName == "PrecomputedType")
+    #expect(event.sourceLine == "99")
+    #expect(event.shortLocation == "PrecomputedType:99")
+    #expect(event.functionName == "precomputedProcessPayment")
+    #expect(!event.hasAsyncEffect)
+  }
 }
 
 extension AutoLoggerTests {

@@ -124,6 +124,12 @@ public struct AutoLogErrorContextEntry: Sendable, Hashable, CustomStringConverti
 // TODO: 23122K - Make this type conform to Sendable and use CustomDebugStringConvertible
 /// A type representing captured metadata from an invoked function.
 public struct AutoLogEvent: CustomStringConvertible, CustomDebugStringConvertible {
+  enum ParameterStorage {
+    case none
+    case single(label: String, value: Any)
+    case many([String: Any])
+  }
+
   /// The logging level associated with the event.
   public let level: (any Levelable)?
 
@@ -154,7 +160,10 @@ public struct AutoLogEvent: CustomStringConvertible, CustomDebugStringConvertibl
 
   /// A set of arguments passed to a function, associated
   /// with their parameter labels.
-  public var parameters: [String: Any]
+  public var parameters: [String: Any] {
+    get { parameterStorage.dictionary }
+    set { parameterStorage = Self.parameterStorage(from: newValue) }
+  }
 
   /// The result of the function.
   public var result: Result<Any, any Error>
@@ -206,6 +215,17 @@ public struct AutoLogEvent: CustomStringConvertible, CustomDebugStringConvertibl
   /// `AutoLogLogger` fills this with a rolling trail of previous log lines immediately before
   /// formatting or forwarding an error event.
   public var errorContext: [AutoLogErrorContextEntry]
+
+  var parameterCount: Int {
+    parameterStorage.count
+  }
+
+  var singleParameter: (label: String, value: Any)? {
+    guard case let .single(label, value) = parameterStorage else { return nil }
+    return (label, value)
+  }
+
+  private var parameterStorage: ParameterStorage
 
   public var description: String {
     """
@@ -263,6 +283,11 @@ public struct AutoLogEvent: CustomStringConvertible, CustomDebugStringConvertibl
     source: (any Sourceable)? = nil,
     location: String,
     declaration: String,
+    inferredTypeName: String? = nil,
+    sourceLine: String? = nil,
+    shortLocation: String? = nil,
+    functionName: String? = nil,
+    hasAsyncEffect: Bool? = nil,
     parameters: [String: Any] = [:],
     result: Result<Any, any Error> = .success(()),
     tags: [any Taggable] = [],
@@ -275,12 +300,55 @@ public struct AutoLogEvent: CustomStringConvertible, CustomDebugStringConvertibl
     self.source = source
     self.location = location
     self.declaration = declaration
-    self.inferredTypeName = Self.extractTypeName(from: location)
-    self.sourceLine = Self.extractLine(from: location)
-    self.shortLocation = Self.shortLocation(from: location)
-    self.functionName = Self.extractFunctionName(from: declaration)
-    self.hasAsyncEffect = Self.hasAsyncEffect(in: declaration)
-    self.parameters = parameters
+    self.inferredTypeName = inferredTypeName ?? Self.extractTypeName(from: location)
+    self.sourceLine = sourceLine ?? Self.extractLine(from: location)
+    self.shortLocation = shortLocation ?? Self.shortLocation(from: location)
+    self.functionName = functionName ?? Self.extractFunctionName(from: declaration)
+    self.hasAsyncEffect = hasAsyncEffect ?? Self.hasAsyncEffect(in: declaration)
+    self.parameterStorage = Self.parameterStorage(from: parameters)
+    self.result = result
+    self.tags = tags
+    self.routes = Set(tags.compactMap { $0 as? AutoLogRoute })
+    self.visibleTags = tags.filter { !($0 is AutoLogRoute) }
+    self.deduplicateWithin = deduplicateWithin
+    self.omissionRules = omissionRules
+    self.duration = nil
+    self.isMeasuredExplicitly = isMeasuredExplicitly
+    self.executionContext = executionContext
+    self.earlyExit = nil
+    self.branchDecisions = []
+    self.errorContext = []
+  }
+
+  public init(
+    level: (any Levelable)? = nil,
+    source: (any Sourceable)? = nil,
+    location: String,
+    declaration: String,
+    inferredTypeName: String? = nil,
+    sourceLine: String? = nil,
+    shortLocation: String? = nil,
+    functionName: String? = nil,
+    hasAsyncEffect: Bool? = nil,
+    singleParameterLabel: String,
+    singleParameterValue: Any,
+    result: Result<Any, any Error> = .success(()),
+    tags: [any Taggable] = [],
+    deduplicateWithin: AutoLogDeduplication? = nil,
+    omissionRules: [AutoLogOmissionRule] = [],
+    isMeasuredExplicitly: Bool = false,
+    executionContext: AutoLogExecutionContext = .capture()
+  ) {
+    self.level = level
+    self.source = source
+    self.location = location
+    self.declaration = declaration
+    self.inferredTypeName = inferredTypeName ?? Self.extractTypeName(from: location)
+    self.sourceLine = sourceLine ?? Self.extractLine(from: location)
+    self.shortLocation = shortLocation ?? Self.shortLocation(from: location)
+    self.functionName = functionName ?? Self.extractFunctionName(from: declaration)
+    self.hasAsyncEffect = hasAsyncEffect ?? Self.hasAsyncEffect(in: declaration)
+    self.parameterStorage = .single(label: singleParameterLabel, value: singleParameterValue)
     self.result = result
     self.tags = tags
     self.routes = Set(tags.compactMap { $0 as? AutoLogRoute })
@@ -391,6 +459,42 @@ public struct AutoLogEvent: CustomStringConvertible, CustomDebugStringConvertibl
       declaration[range.upperBound] == "{"
 
     return hasValidLeadingBoundary && hasValidTrailingBoundary
+  }
+
+  private static func parameterStorage(from parameters: [String: Any]) -> ParameterStorage {
+    switch parameters.count {
+    case 0:
+      return .none
+    case 1:
+      guard let (label, value) = parameters.first else { return .none }
+      return .single(label: label, value: value)
+    default:
+      return .many(parameters)
+    }
+  }
+}
+
+private extension AutoLogEvent.ParameterStorage {
+  var count: Int {
+    switch self {
+    case .none:
+      return 0
+    case .single:
+      return 1
+    case .many(let parameters):
+      return parameters.count
+    }
+  }
+
+  var dictionary: [String: Any] {
+    switch self {
+    case .none:
+      return [:]
+    case .single(let label, let value):
+      return [label: value]
+    case .many(let parameters):
+      return parameters
+    }
   }
 }
 
