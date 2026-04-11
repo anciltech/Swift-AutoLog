@@ -335,6 +335,15 @@ public struct CompactFormatter: AutoLogFormatter {
     configuration: AutoLogConfiguration
   ) -> String {
     let prefix = tracePrefix(for: event, depth: depth)
+    if fmt == .default {
+      return defaultBodyText(
+        for: event,
+        typeName: typeName,
+        depth: depth,
+        configuration: configuration,
+        forcedPrefix: prefix
+      )
+    }
     return bodyText(
       for: event,
       typeName: typeName,
@@ -354,7 +363,16 @@ public struct CompactFormatter: AutoLogFormatter {
     fmt: LogFormat,
     configuration: AutoLogConfiguration
   ) -> String {
-    bodyText(
+    if fmt == .default {
+      return defaultBodyText(
+        for: event,
+        typeName: typeName,
+        depth: depth,
+        configuration: configuration,
+        forcedPrefix: nil
+      )
+    }
+    return bodyText(
       for: event,
       typeName: typeName,
       depth: depth,
@@ -363,6 +381,41 @@ public struct CompactFormatter: AutoLogFormatter {
       configuration: configuration,
       forcedPrefix: nil
     )
+  }
+
+  private func defaultBodyText(
+    for event: AutoLogEvent,
+    typeName: String,
+    depth: Int,
+    configuration: AutoLogConfiguration,
+    forcedPrefix: String?
+  ) -> String {
+    var line = forcedPrefix ?? LogFormat.ArrowStyle.default.arrow(for: depth)
+    let status = emoji(for: event, style: .default)
+
+    if forcedPrefix == nil {
+      line += " "
+    }
+    line += status
+    line += " "
+    line += typeName
+    line += "."
+    line += event.functionName
+    line += "("
+    line += formatParameters(event.parameters)
+    line += ")"
+
+    if event.hasAsyncEffect {
+      line += " async"
+    }
+
+    if case .success(let value) = event.result, type(of: value) != Void.self {
+      line += " → \(value)"
+    } else if case .failure(let error) = event.result {
+      line += " → \(formattedError(error))"
+    }
+
+    return line
   }
 
   private func bodyText(

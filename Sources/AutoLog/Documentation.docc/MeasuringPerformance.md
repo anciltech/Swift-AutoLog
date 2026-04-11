@@ -29,6 +29,11 @@ that keep the benchmark focused on real formatting cost instead of avoidable
 bookkeeping: route and visible-tag filtering are cached on `AutoLogEvent`,
 single-parameter calls skip dictionary sorting, and async detection uses direct
 string checks instead of regex matching on every emit.
+The default compact layout now also uses a dedicated body-rendering fast path
+instead of walking the generic element list for every event, which trims work
+from the benchmark's `Logged without tags`, `Logged with visible tags`, and
+`Logged with mixed tags` scenarios while keeping custom `LogFormat` handling on
+the existing generic path.
 Outside the synthetic benchmark logger, `AutoLogLogger` now also resolves
 output profiles in one pass and reuses the first console render as the rolling
 failure-context snapshot, which removes an extra formatter call from the common
@@ -50,6 +55,9 @@ The next hot-path targets worth exploring are:
   `.parameters`
 - reduce multi-parameter overhead further by avoiding repeated sorting and
   reflection-heavy formatting work where possible
+- look at the remaining generic formatter path for custom `LogFormat` values to
+  see whether some of the default fast-path savings can be reused there without
+  reintroducing per-call setup cost
 - look at macro-generated event construction for no-tag and route-only cases to
   see whether `[String: Any]` / `[any Taggable]` setup can be specialized
   further without hurting readability
