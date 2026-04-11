@@ -24,6 +24,12 @@ formatter and route-filtering decisions while discarding final output. That
 keeps the results stable enough to compare tag profiles and async wrapper cost
 without console I/O dominating the measurement.
 
+The current compact-formatter hot path also includes a few lightweight guards
+that keep the benchmark focused on real formatting cost instead of avoidable
+bookkeeping: route and visible-tag filtering are cached on `AutoLogEvent`,
+single-parameter calls skip dictionary sorting, and async detection uses direct
+string checks instead of regex matching on every emit.
+
 ## Run the benchmark in Xcode
 
 1. Open the `swift-autolog` package in Xcode.

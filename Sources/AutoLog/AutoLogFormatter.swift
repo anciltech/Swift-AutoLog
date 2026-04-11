@@ -53,10 +53,13 @@ public struct CompactFormatter: AutoLogFormatter {
     let depth = profile.depth(for: typeName) ?? 1
     let columnElements = leadingColumnElements(in: fmt.mainLine)
     let inlineElements = Array(fmt.mainLine.dropFirst(columnElements.count))
+    let includesReturnValue = inlineElements.contains(.returnValue)
+    let includesLineNumber = inlineElements.contains(.lineNumber)
+    let visibleTags = event.visibleTags
 
     let mainBody: String
     if let source = event.source, event.declaration == source.description {
-      mainBody = interactionBody(for: event, inlineElements: inlineElements)
+      mainBody = interactionBody(for: event, includesLineNumber: includesLineNumber)
     } else if event.source is SourceContext {
       mainBody = traceBody(
         for: event,
@@ -123,7 +126,7 @@ public struct CompactFormatter: AutoLogFormatter {
     }
 
     if case .failure(let error) = event.result,
-       !inlineElements.contains(.returnValue) {
+       !includesReturnValue {
       lines.append(
         renderRow(
           body: "╰─ \(formattedError(error))",
@@ -134,8 +137,8 @@ public struct CompactFormatter: AutoLogFormatter {
           rowKind: .annotation
         )
       )
-    } else if !event.visibleTags.isEmpty {
-      let tagList = event.visibleTags.map { "\($0)" }.joined(separator: ", ")
+    } else if !visibleTags.isEmpty {
+      let tagList = formatVisibleTags(visibleTags)
       lines.append(
         renderRow(
           body: "╰─ [\(tagList)]",
@@ -173,26 +176,29 @@ public struct CompactFormatter: AutoLogFormatter {
   ) -> String {
     guard !columnElements.isEmpty else { return body }
 
-    let rawColumns = columnElements.map { element in
-      columnText(
+    var hasContent = false
+    var columns: [String] = []
+    columns.reserveCapacity(columnElements.count)
+
+    for element in columnElements {
+      let value = columnText(
         for: element,
         event: event,
         depth: depth,
         configuration: configuration,
         rowKind: rowKind
       )
-    }
-
-    guard rawColumns.contains(where: { !$0.isEmpty }) else { return body }
-
-    let columns = zip(columnElements, rawColumns).map { element, value in
-      return padded(
-        value,
-        width: columnWidth(for: element),
-        alignment: columnAlignment(for: element)
+      hasContent = hasContent || !value.isEmpty
+      columns.append(
+        padded(
+          value,
+          width: columnWidth(for: element),
+          alignment: columnAlignment(for: element)
+        )
       )
     }
 
+    guard hasContent else { return body }
     return columns.joined(separator: " │ ") + " │ " + body
   }
 
@@ -286,7 +292,7 @@ public struct CompactFormatter: AutoLogFormatter {
 
   private func padded(_ text: String, width: Int, alignment: Alignment) -> String {
     guard width > 0 else { return text }
-    let padding = max(0, width - text.count)
+    let padding = max(0, width - emojiAwareWidth(text))
     switch alignment {
     case .leading:
       return text + String(repeating: " ", count: padding)
@@ -295,16 +301,26 @@ public struct CompactFormatter: AutoLogFormatter {
     }
   }
 
+  private func emojiAwareWidth(_ text: String) -> Int {
+    text.reduce(into: 0) { width, char in
+      let scalars = char.unicodeScalars
+      guard let first = scalars.first else { return }
+      let isWide = first.properties.isEmojiPresentation ||
+        (first.properties.isEmoji && scalars.contains { $0.value == 0xFE0F })
+      width += isWide ? 2 : 1
+    }
+  }
+
   // MARK: - Body Rendering
 
   private func interactionBody(
     for event: AutoLogEvent,
-    inlineElements: [LogFormat.Element]
+    includesLineNumber: Bool
   ) -> String {
     guard let source = event.source else { return event.declaration }
     var body = "\(source.emoji) \(source.label ?? source.description)"
     body += " [\(shortLocation(from: event.location))]"
-    if inlineElements.contains(.lineNumber) {
+    if includesLineNumber {
       body += ":\(extractLine(from: event.location))"
     }
     return body
@@ -358,45 +374,62 @@ public struct CompactFormatter: AutoLogFormatter {
     configuration: AutoLogConfiguration,
     forcedPrefix: String?
   ) -> String {
-    struct Segment {
-      let text: String
-      let noLeadingSpace: Bool
-    }
-
     let arrow = fmt.arrowStyle.arrow(for: depth)
     let em = emoji(for: event, style: fmt.statusStyle)
     let funcName = extractFuncName(from: event.declaration)
     let params = formatParameters(event.parameters)
-    let specifiers = effectSpecifiers(from: event.declaration)
+    let hasAsyncSpecifier = hasAsyncEffect(in: event.declaration)
+    var line = ""
+    var isFirstSegment = true
+    var previousElement: LogFormat.Element?
+    var previousWasForcedPrefix = false
 
-    var segments: [Segment] = []
+    func appendSegment(_ text: String, noLeadingSpace: Bool, element: LogFormat.Element? = nil) {
+      guard !text.isEmpty else { return }
+      if !isFirstSegment && !noLeadingSpace {
+        line.append(" ")
+      }
+      line.append(contentsOf: text)
+      isFirstSegment = false
+      previousElement = element
+      previousWasForcedPrefix = element == .depthArrow && forcedPrefix != nil
+    }
 
     for element in inlineElements {
       switch element {
       case .depthArrow:
         let prefix = forcedPrefix ?? arrow
-        segments.append(Segment(text: prefix, noLeadingSpace: false))
+        appendSegment(prefix, noLeadingSpace: false, element: .depthArrow)
       case .statusEmoji:
-        let glueToTrace = forcedPrefix != nil && segments.last?.text == forcedPrefix
-        segments.append(Segment(text: em, noLeadingSpace: glueToTrace))
+        appendSegment(
+          em,
+          noLeadingSpace: previousWasForcedPrefix,
+          element: .statusEmoji
+        )
       case .typeName:
-        segments.append(Segment(text: typeName, noLeadingSpace: false))
+        appendSegment(typeName, noLeadingSpace: false, element: .typeName)
       case .dotSeparator:
-        segments.append(Segment(text: ".", noLeadingSpace: true))
+        appendSegment(".", noLeadingSpace: true, element: .dotSeparator)
       case .functionName:
-        let glue = segments.last?.text == "."
-        segments.append(Segment(text: funcName, noLeadingSpace: glue))
+        appendSegment(
+          funcName,
+          noLeadingSpace: previousElement == .dotSeparator,
+          element: .functionName
+        )
       case .parameters:
-        segments.append(Segment(text: "(\(params))", noLeadingSpace: true))
+        appendSegment("(\(params))", noLeadingSpace: true, element: .parameters)
       case .effectSpecifiers:
-        let trimmed = specifiers.trimmingCharacters(in: .whitespaces)
-        guard !trimmed.isEmpty else { continue }
-        segments.append(Segment(text: trimmed, noLeadingSpace: false))
+        guard hasAsyncSpecifier else { continue }
+        appendSegment("async", noLeadingSpace: false, element: .effectSpecifiers)
       case .returnValue:
         if case .success(let value) = event.result, type(of: value) != Void.self {
-          segments.append(Segment(text: "→ \(value)", noLeadingSpace: false))
+          appendSegment("→ \(value)", noLeadingSpace: false, element: .returnValue)
         } else if case .failure(let error) = event.result {
-          segments.append(Segment(text: "→ \(formattedError(error))", noLeadingSpace: false))
+          appendSegment(
+            "→ \(formattedError(error))",
+            noLeadingSpace: false,
+            element: .returnValue
+          )
         }
       case .timing:
         let timing = timingText(
@@ -406,38 +439,42 @@ public struct CompactFormatter: AutoLogFormatter {
           inline: true
         )
         guard !timing.isEmpty else { continue }
-        segments.append(Segment(text: timing, noLeadingSpace: false))
+        appendSegment(timing, noLeadingSpace: false, element: .timing)
       case .originBadge:
         let badge = originBadge(for: event)
         guard !badge.isEmpty else { continue }
-        segments.append(Segment(text: badge, noLeadingSpace: false))
+        appendSegment(badge, noLeadingSpace: false, element: .originBadge)
       case .threadLabel:
-        segments.append(Segment(text: event.executionContext.threadLabel, noLeadingSpace: false))
+        appendSegment(
+          event.executionContext.threadLabel,
+          noLeadingSpace: false,
+          element: .threadLabel
+        )
       case .threadID:
         guard let threadID = event.executionContext.abbreviatedThreadID else { continue }
-        segments.append(Segment(text: threadID, noLeadingSpace: false))
+        appendSegment(threadID, noLeadingSpace: false, element: .threadID)
       case .taskID:
         guard let taskID = event.executionContext.taskID else { continue }
-        segments.append(Segment(text: taskID, noLeadingSpace: false))
+        appendSegment(taskID, noLeadingSpace: false, element: .taskID)
       case .lineNumber:
-        segments.append(Segment(text: ":\(extractLine(from: event.location))", noLeadingSpace: true))
+        appendSegment(
+          ":\(extractLine(from: event.location))",
+          noLeadingSpace: true,
+          element: .lineNumber
+        )
       case .space:
-        segments.append(Segment(text: " ", noLeadingSpace: true))
+        appendSegment(" ", noLeadingSpace: true, element: .space)
       case .comma:
-        segments.append(Segment(text: ",", noLeadingSpace: true))
+        appendSegment(",", noLeadingSpace: true, element: .comma)
       case .pipe:
-        segments.append(Segment(text: " | ", noLeadingSpace: true))
+        appendSegment(" | ", noLeadingSpace: true, element: .pipe)
       case .slash:
-        segments.append(Segment(text: "/", noLeadingSpace: true))
+        appendSegment("/", noLeadingSpace: true, element: .slash)
       case .newline:
-        segments.append(Segment(text: "\n", noLeadingSpace: true))
+        appendSegment("\n", noLeadingSpace: true, element: .newline)
       }
     }
 
-    var line = ""
-    for (index, segment) in segments.enumerated() {
-      line += (index == 0 || segment.noLeadingSpace) ? segment.text : " \(segment.text)"
-    }
     return line
   }
 
@@ -449,7 +486,20 @@ public struct CompactFormatter: AutoLogFormatter {
     }
 
     guard !event.branchDecisions.isEmpty else { return nil }
-    let branches = event.branchDecisions.map(formatBranchDecision).joined(separator: " -> ")
+    var branches = ""
+    var hasBranch = false
+
+    for decision in event.branchDecisions where
+      decision.kind == .if || decision.kind == .elseif || decision.kind == .guard
+    {
+      if hasBranch {
+        branches += " -> "
+      }
+      branches += formatBranchDecision(decision)
+      hasBranch = true
+    }
+
+    guard hasBranch else { return nil }
     return "branch path: \(branches)"
   }
 
@@ -537,7 +587,10 @@ public struct CompactFormatter: AutoLogFormatter {
   ) -> String {
     let seconds = durationInSeconds(d)
     if configuration.normalizedTiming {
-      return String(format: "%.2fs", seconds < 0.01 ? 0 : seconds)
+      if seconds >= 10 {
+        return String(format: "%.1fs", seconds)
+      }
+      return String(format: "%.3fs", seconds)
     }
 
     let totalNs = durationInNanoseconds(d)
@@ -622,9 +675,16 @@ public struct CompactFormatter: AutoLogFormatter {
   }
 
   private func extractTypeName(from location: String) -> String {
-    let filename = location.split(separator: "/").last.map(String.init) ?? location
-    let stem = filename.components(separatedBy: ".swift").first ?? filename
-    return stem.isEmpty ? "Unknown" : stem
+    let filenameStart = location.lastIndex(of: "/").map { location.index(after: $0) } ?? location.startIndex
+    let filenameWithSuffix = location[filenameStart...]
+    let filenameEnd = filenameWithSuffix.firstIndex(of: ":") ?? filenameWithSuffix.endIndex
+    var filename = filenameWithSuffix[..<filenameEnd]
+
+    if filename.hasSuffix(".swift") {
+      filename = filename.dropLast(6)
+    }
+
+    return filename.isEmpty ? "Unknown" : String(filename)
   }
 
   private func extractLine(from location: String) -> String {
@@ -642,28 +702,59 @@ public struct CompactFormatter: AutoLogFormatter {
   }
 
   private func extractFuncName(from declaration: String) -> String {
-    let afterFunc: String
-    if let range = declaration.range(of: "func ") {
-      afterFunc = String(declaration[range.upperBound...])
-    } else {
-      afterFunc = declaration
-    }
-
-    let withoutGenerics = afterFunc.split(separator: "<").first.map(String.init) ?? afterFunc
-    return withoutGenerics.split(separator: "(").first.map(String.init) ?? withoutGenerics
+    let start = declaration.range(of: "func ")?.upperBound ?? declaration.startIndex
+    let suffix = declaration[start...]
+    let end = suffix.firstIndex(where: { $0 == "<" || $0 == "(" }) ?? suffix.endIndex
+    return String(suffix[..<end])
   }
 
   private func formatParameters(_ parameters: [String: Any]) -> String {
-    guard !parameters.isEmpty else { return "" }
-    return parameters
-      .sorted { $0.key < $1.key }
-      .map { "\($0.key): \(formatParameterValue($0.value))" }
-      .joined(separator: ", ")
+    switch parameters.count {
+    case 0:
+      return ""
+    case 1:
+      guard let (label, value) = parameters.first else { return "" }
+      return "\(label): \(formatParameterValue(value))"
+    default:
+      let sortedParameters = parameters.sorted { $0.key < $1.key }
+      var result = ""
+
+      for (index, parameter) in sortedParameters.enumerated() {
+        if index > 0 {
+          result += ", "
+        }
+        result += "\(parameter.key): \(formatParameterValue(parameter.value))"
+      }
+
+      return result
+    }
   }
 
-  private func effectSpecifiers(from declaration: String) -> String {
-    let isAsync = declaration.range(of: #"\basync\b"#, options: .regularExpression) != nil
-    return isAsync ? " async" : ""
+  private func hasAsyncEffect(in declaration: String) -> Bool {
+    guard let range = declaration.range(of: "async") else { return false }
+
+    let hasValidLeadingBoundary =
+      range.lowerBound == declaration.startIndex ||
+      declaration[declaration.index(before: range.lowerBound)].isWhitespace
+    let hasValidTrailingBoundary =
+      range.upperBound == declaration.endIndex ||
+      declaration[range.upperBound].isWhitespace ||
+      declaration[range.upperBound] == "-" ||
+      declaration[range.upperBound] == "{"
+
+    return hasValidLeadingBoundary && hasValidTrailingBoundary
+  }
+
+  private func formatVisibleTags(_ tags: [any Taggable]) -> String {
+    guard let firstTag = tags.first else { return "" }
+
+    var formatted = String(describing: firstTag)
+    for tag in tags.dropFirst() {
+      formatted += ", "
+      formatted += String(describing: tag)
+    }
+
+    return formatted
   }
 
   private func formatParameterValue(_ value: Any) -> String {

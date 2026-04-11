@@ -401,7 +401,7 @@ func toggleFramePicker(isVisible: Bool) {
 }
 ```
 
-In this case, the final event still carries the normal success result and duration, and now also includes a branch-path annotation such as `if branch condition=isVisible` or `else branch condition=isVisible`.
+In this case, the final event still carries the normal success result and duration, and now also includes a branch-path annotation such as `if branch condition=isVisible`. The formatter keeps the annotation focused on the truthy path that actually advanced execution, while the raw event metadata still retains the structural branch kind.
 
 ### What gets captured automatically
 

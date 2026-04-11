@@ -150,14 +150,10 @@ public struct AutoLogEvent: CustomStringConvertible, CustomDebugStringConvertibl
   /// The sink routes declared for this event via ``Tag(_:)``.
   ///
   /// When empty, the event defaults to the built-in console sink.
-  public var routes: Set<AutoLogRoute> {
-    Set(tags.compactMap { $0 as? AutoLogRoute })
-  }
+  public let routes: Set<AutoLogRoute>
 
   /// User-facing tags after removing routing directives used by the logger.
-  public var visibleTags: [any Taggable] {
-    tags.filter { !($0 is AutoLogRoute) }
-  }
+  public let visibleTags: [any Taggable]
 
   /// The measured execution duration of the function, when timing is enabled.
   /// `nil` when `@Log(measure: false)` suppresses timing at compile time.
@@ -267,6 +263,8 @@ public struct AutoLogEvent: CustomStringConvertible, CustomDebugStringConvertibl
     self.parameters = parameters
     self.result = result
     self.tags = tags
+    self.routes = Set(tags.compactMap { $0 as? AutoLogRoute })
+    self.visibleTags = tags.filter { !($0 is AutoLogRoute) }
     self.deduplicateWithin = deduplicateWithin
     self.omissionRules = omissionRules
     self.duration = nil

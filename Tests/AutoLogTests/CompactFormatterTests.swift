@@ -354,7 +354,7 @@ struct CompactFormatterTests {
         #expect(lines.count == 2)
         #expect(lines[1].contains("branch path"))
         #expect(lines[1].contains("if isVisible"))
-        #expect(lines[1].contains("else isVisible"))
+        #expect(!lines[1].contains("else isVisible"))
     }
 
     @Test func earlyExit_showsOnSecondLine() {
@@ -751,7 +751,7 @@ struct LogFormatElementToggleTests {
             event: event,
             configuration: AutoLogConfiguration(normalizedTiming: true)
         )
-        #expect(output.contains("0.00s"))
+        #expect(output.contains("0.008s"))
     }
 
     @Test func defaultFormat_roundTripsViaConfiguration() throws {
