@@ -366,6 +366,10 @@ public struct CompactFormatter: AutoLogFormatter {
       line += " \(condition)"
     }
 
+    if earlyExit.intent != .unknown {
+      line += " • \(earlyExit.intent.rawValue)"
+    }
+
     if let message = earlyExit.message?.trimmingCharacters(in: .whitespacesAndNewlines),
        !message.isEmpty {
       line += " • \(message)"

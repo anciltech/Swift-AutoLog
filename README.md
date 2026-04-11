@@ -447,7 +447,7 @@ AutoLog.earlyExit(.optimize)
 AutoLog.earlyExit()
 ```
 
-If an explicit `AutoLog.earlyExit(...)` call is present in a branch, Swift AutoLog uses that metadata and does not inject another default early-exit record for the same branch. The compact formatter keeps the optional message, but the visual detail line now focuses on the effective predicate state that led into the exit path.
+If an explicit `AutoLog.earlyExit(...)` call is present in a branch, Swift AutoLog uses that metadata and does not inject another default early-exit record for the same branch. The compact formatter keeps the effective predicate state first, then appends the explicit intent and optional message when present, for example `└── ↘️ hit • optimize • cache hit`. When intent is `.unknown`, it stays hidden.
 
 When a branch does not exit early, Swift AutoLog records the taken path instead:
 

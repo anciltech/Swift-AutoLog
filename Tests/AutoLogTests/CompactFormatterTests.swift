@@ -364,6 +364,7 @@ struct CompactFormatterTests {
         #expect(lines.count == 2)
         #expect(lines[1].contains("↘️"))
         #expect(lines[1].contains("!count > 0"))
+        #expect(lines[1].contains("expected"))
         #expect(lines[1].contains("•"))
         #expect(lines[1].contains("empty list"))
     }
@@ -377,7 +378,20 @@ struct CompactFormatterTests {
         let lines = output.split(separator: "\n", omittingEmptySubsequences: false)
         #expect(lines.count == 2)
         #expect(lines[1].contains("↘️"))
+        #expect(lines[1].contains("optimize"))
         #expect(!lines[1].contains("branch path"))
+    }
+
+    @Test func earlyExit_hidesUnknownIntent() {
+        var event = makeEvent(result: .success(()))
+        event.setEarlyExit(kind: .if, intent: .unknown, condition: "isCached", message: "cache hit")
+
+        let output = CompactFormatter().format(event: event, configuration: configuration)
+        let lines = output.split(separator: "\n", omittingEmptySubsequences: false)
+        #expect(lines.count == 2)
+        #expect(lines[1].contains("↘️ isCached"))
+        #expect(!lines[1].contains("unknown"))
+        #expect(lines[1].contains("cache hit"))
     }
 
     @Test func noTagsNoError_noSecondLine() {

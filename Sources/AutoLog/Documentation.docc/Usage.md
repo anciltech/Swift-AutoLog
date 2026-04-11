@@ -342,7 +342,7 @@ AutoLog.earlyExit(.optimize)
 AutoLog.earlyExit()
 ```
 
-If an explicit `AutoLog.earlyExit(...)` call is present in a branch, the macro uses that metadata and does not inject a second default early-exit record for the same branch. The formatter still includes the optional message, but the visual treatment now prioritizes the effective predicate state that entered the branch.
+If an explicit `AutoLog.earlyExit(...)` call is present in a branch, the macro uses that metadata and does not inject a second default early-exit record for the same branch. The formatter keeps the effective predicate state first, then appends the explicit intent and optional message when present, for example `└── ↘️ hit • optimize • cache hit`. When intent is `.unknown`, it stays hidden.
 
 ### Record non-returning branch choices
 

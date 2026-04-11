@@ -438,6 +438,7 @@ struct CompactFormatterSourceTests {
         #expect(lines.count == 2)
         #expect(lines[1].contains("↘️"))
         #expect(lines[1].contains("isCached"))
+        #expect(lines[1].contains("optimize"))
         #expect(lines[1].contains("cache hit"))
     }
 
