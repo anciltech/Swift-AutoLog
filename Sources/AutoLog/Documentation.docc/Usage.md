@@ -94,6 +94,8 @@ AutoLog.start(
     emitStartEvents: false,
     deduplicateWithin: .seconds(1),
     measureTimingDepths: [2, 3],
+    normalizedTiming: true,
+    failureContextTriggerLimit: 2,
     outputs: [
       AutoLogOutput(
         name: "Console Results",
@@ -102,6 +104,7 @@ AutoLog.start(
         typeNameFilters: ["ViewModel"],
         measureTiming: false,
         errorContextLimit: 10,
+        failureContextTriggerLimit: 2,
         logFormat: LogFormat(
           mainLine: [.depthArrow, .statusEmoji, .typeName, .dotSeparator, .functionName, .returnValue]
         )
@@ -113,6 +116,7 @@ AutoLog.start(
         typeNameFilters: ["ViewModel", "Service"],
         measureTiming: true,
         timingDepths: [2, 3, 4],
+        normalizedTiming: true,
         errorContextLimit: 10,
         logFormat: LogFormat(
           mainLine: [.statusEmoji, .typeName, .dotSeparator, .functionName, .parameters, .timing, .lineNumber]
@@ -186,15 +190,15 @@ Button.log("Save") {
 ```
 
 Every interaction origin gets a compact source-plus-badge prefix such as
-`👆🏼-🧵A1B2C3`. The origin event becomes a trace root, and downstream calls
+`👆🏼-🧵A1B`. The origin event becomes a trace root, and downstream calls
 keep that same prefix while using longer branch lengths to hint at
 architectural depth:
 
 ```text
-👆🏼-🧵A1B2C3 │      │      │ 👆🏼 Save
-👆🏼-🧵A1B2C3 │      │ main │ ├──🔵 PaymentsViewModel.saveTapped()
-👆🏼-🧵A1B2C3 │ 12ms │ bg   │ └──🟢 PaymentService.validate()
-👆🏼-🧵A1B2C3 │ 221ms│ bg   │ └────🔴 PaymentAPI.submit() → declined [PaymentError]
+👆🏼-🧵A1B - 👆🏼 Save [PaymentsView:42]
+👆🏼-🧵A1B │ main │       │ ├──🔵 PaymentsViewModel.saveTapped()
+👆🏼-🧵A1B │ bg   │ 12ms  │ └──🟢 PaymentService.validate()
+👆🏼-🧵A1B │ bg   │ 221ms │ └────🔴 PaymentAPI.submit() → declined [PaymentError]
 ```
 
 Timing keeps the smallest useful unit, so very short work renders as `ns` or

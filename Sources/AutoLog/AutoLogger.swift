@@ -108,9 +108,12 @@ public struct AutoLogBranchDecision: Sendable, Hashable, CustomStringConvertible
 public struct AutoLogErrorContextEntry: Sendable, Hashable, CustomStringConvertible {
   /// A single-line summary of the earlier log entry.
   public let summary: String
+  /// Marks interaction and start entries so failure context can keep the last N triggers.
+  public let isTrigger: Bool
 
-  public init(summary: String) {
+  public init(summary: String, isTrigger: Bool = false) {
     self.summary = summary
+    self.isTrigger = isTrigger
   }
 
   public var description: String {
@@ -367,7 +370,8 @@ public struct AutoLogLogger: AutoLogger {
       let outputConfiguration = configuration.applying(output: output)
       let enrichedEvent = enrichFailureContextIfNeeded(
         for: event,
-        contextLimit: output.errorContextLimit
+        contextLimit: output.errorContextLimit,
+        triggerLimit: output.failureContextTriggerLimit
       )
       let message = formatter.format(event: enrichedEvent, configuration: outputConfiguration)
       if let level = enrichedEvent.level as? OSLogType {
@@ -381,7 +385,8 @@ public struct AutoLogLogger: AutoLogger {
       let outputConfiguration = configuration.applying(output: output)
       let enrichedEvent = enrichFailureContextIfNeeded(
         for: event,
-        contextLimit: output.errorContextLimit
+        contextLimit: output.errorContextLimit,
+        triggerLimit: output.failureContextTriggerLimit
       )
       for sink in sinks where sink.route == output.route {
         sink.emit(event: enrichedEvent, configuration: outputConfiguration)
@@ -420,13 +425,18 @@ public struct AutoLogLogger: AutoLogger {
 
   private func enrichFailureContextIfNeeded(
     for event: AutoLogEvent,
-    contextLimit: Int
+    contextLimit: Int,
+    triggerLimit: Int
   ) -> AutoLogEvent {
     guard case .failure = event.result, contextLimit > 0 else { return event }
 
     var enriched = event
     enriched.errorContext = storage.state.withLock { state in
-      Array(state.recentEntries.suffix(contextLimit))
+      let scopedEntries = recentEntriesWithinTriggerLimit(
+        state.recentEntries,
+        triggerLimit: triggerLimit
+      )
+      return Array(scopedEntries.suffix(contextLimit))
     }
     return enriched
   }
@@ -445,7 +455,23 @@ public struct AutoLogLogger: AutoLogger {
       .map(String.init)?
       .trimmingCharacters(in: .whitespacesAndNewlines)
       ?? ""
-    return AutoLogErrorContextEntry(summary: summary)
+    return AutoLogErrorContextEntry(
+      summary: summary,
+      isTrigger: event.outputEventType == .interaction || event.outputEventType == .start
+    )
+  }
+
+  private func recentEntriesWithinTriggerLimit(
+    _ entries: [AutoLogErrorContextEntry],
+    triggerLimit: Int
+  ) -> [AutoLogErrorContextEntry] {
+    guard triggerLimit > 0 else { return entries }
+
+    let triggerIndexes = entries.indices.filter { entries[$0].isTrigger }
+    guard triggerIndexes.count > triggerLimit else { return entries }
+
+    let startIndex = triggerIndexes[triggerIndexes.count - triggerLimit]
+    return Array(entries[startIndex...])
   }
 
   private func record(_ entry: AutoLogErrorContextEntry, capacity: Int) {

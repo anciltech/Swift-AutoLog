@@ -29,7 +29,7 @@ Timing, duration, ordering, and concurrent interleaving stay visible in the emit
 * **Preserve causality**
 
 Interaction and system sources such as buttons, toggles, text fields, timers, and API triggers can propagate downstream, so a log line still carries the intent that started the chain.
-Each interaction origin also gets a compact source-plus-badge prefix such as `👆🏼-🧵A1B2C3`, making it easier to visually group one button tap or timer tick from another while concurrent work is interleaving.
+Each interaction origin also gets a compact source-plus-badge prefix such as `👆🏼-🧵A1B`, making it easier to visually group one button tap or timer tick from another while concurrent work is interleaving.
 
 * **Annotate all methods within type or extension**
 
@@ -261,6 +261,8 @@ AutoLog.start(
     emitStartEvents: false,
     deduplicateWithin: .seconds(1),
     measureTimingDepths: [2, 3],
+    normalizedTiming: true,
+    failureContextTriggerLimit: 2,
     outputs: [
       AutoLogOutput(
         name: "Console Results",
@@ -269,6 +271,7 @@ AutoLog.start(
         typeNameFilters: ["ViewModel"],
         measureTiming: false,
         errorContextLimit: 10,
+        failureContextTriggerLimit: 2,
         logFormat: LogFormat(
           mainLine: [.depthArrow, .statusEmoji, .typeName, .dotSeparator, .functionName, .returnValue]
         )
@@ -280,6 +283,7 @@ AutoLog.start(
         typeNameFilters: ["ViewModel", "Service"],
         measureTiming: true,
         timingDepths: [2, 3, 4],
+        normalizedTiming: true,
         errorContextLimit: 10,
         logFormat: LogFormat(
           mainLine: [.statusEmoji, .typeName, .dotSeparator, .functionName, .parameters, .timing, .lineNumber]
@@ -352,11 +356,10 @@ Button.log("Save") {
 The interaction event becomes the root of a small trace tree, and downstream work uses longer branch lengths to hint at architectural depth:
 
 ```text
-👆🏼 Save 🧵A1B2C3
-└──🟢 PaymentsViewModel.saveTapped()
-└───🟢 PaymentService.validate()                  ⏱ 12ms
-└────🔴 PaymentAPI.submit()                       ⏱ 221ms
-     └── declined [PaymentError]
+👆🏼-🧵A1B - 👆🏼 Save [PaymentsView:42]
+👆🏼-🧵A1B │ main │       │ ├──🔵 PaymentsViewModel.saveTapped()
+👆🏼-🧵A1B │ bg   │ 12ms  │ └──🟢 PaymentService.validate()
+👆🏼-🧵A1B │ bg   │ 221ms │ └────🔴 PaymentAPI.submit() → declined [PaymentError]
 ```
 
 There is also an async variant:

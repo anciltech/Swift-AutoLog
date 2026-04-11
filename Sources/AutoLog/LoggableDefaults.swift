@@ -21,7 +21,9 @@ public struct AutoLogOutput: Sendable, Codable, Equatable, Identifiable {
   public var typeNameFilters: [String]
   public var measureTiming: Bool
   public var timingDepths: Set<Int>?
+  public var normalizedTiming: Bool
   public var errorContextLimit: Int
+  public var failureContextTriggerLimit: Int
   public var logFormat: LogFormat
 
   public init(
@@ -33,7 +35,9 @@ public struct AutoLogOutput: Sendable, Codable, Equatable, Identifiable {
     typeNameFilters: [String] = [],
     measureTiming: Bool = true,
     timingDepths: Set<Int>? = nil,
+    normalizedTiming: Bool = false,
     errorContextLimit: Int = 5,
+    failureContextTriggerLimit: Int = 0,
     logFormat: LogFormat = .default
   ) {
     self.id = id
@@ -44,7 +48,9 @@ public struct AutoLogOutput: Sendable, Codable, Equatable, Identifiable {
     self.typeNameFilters = typeNameFilters
     self.measureTiming = measureTiming
     self.timingDepths = timingDepths
+    self.normalizedTiming = normalizedTiming
     self.errorContextLimit = max(0, errorContextLimit)
+    self.failureContextTriggerLimit = max(0, failureContextTriggerLimit)
     self.logFormat = logFormat
   }
 
@@ -94,6 +100,13 @@ public struct AutoLogConfiguration: Sendable, Codable, Equatable {
   /// `nil` means show timing for all depths when enabled.
   public var measureTimingDepths: Set<Int>?
 
+  /// Renders measured durations as fixed-width seconds such as `0.00s`.
+  public var normalizedTiming: Bool
+
+  /// Limits failure context to entries emitted since the last N interaction or start triggers.
+  /// `0` means no trigger-based trimming.
+  public var failureContextTriggerLimit: Int
+
   /// The visual layout used by ``CompactFormatter`` when no formatter-local override exists.
   public var logFormat: LogFormat
 
@@ -109,6 +122,8 @@ public struct AutoLogConfiguration: Sendable, Codable, Equatable {
     measureTimingDefault: Bool = true,
     deduplicateWithin: AutoLogDeduplication? = nil,
     measureTimingDepths: Set<Int>? = nil,
+    normalizedTiming: Bool = false,
+    failureContextTriggerLimit: Int = 0,
     logFormat: LogFormat = .default,
     outputs: [AutoLogOutput] = []
   ) {
@@ -116,6 +131,8 @@ public struct AutoLogConfiguration: Sendable, Codable, Equatable {
     self.measureTimingDefault = measureTimingDefault
     self.deduplicateWithin = deduplicateWithin
     self.measureTimingDepths = measureTimingDepths
+    self.normalizedTiming = normalizedTiming
+    self.failureContextTriggerLimit = max(0, failureContextTriggerLimit)
     self.logFormat = logFormat
     self.outputs = outputs
   }
@@ -127,6 +144,8 @@ public struct AutoLogConfiguration: Sendable, Codable, Equatable {
     case measureTimingDefault
     case deduplicateWithin
     case measureTimingDepths
+    case normalizedTiming
+    case failureContextTriggerLimit
     case logFormat
     case outputs
   }
@@ -137,6 +156,8 @@ public struct AutoLogConfiguration: Sendable, Codable, Equatable {
     measureTimingDefault = try container.decodeIfPresent(Bool.self, forKey: .measureTimingDefault) ?? true
     deduplicateWithin = try container.decodeIfPresent(AutoLogDeduplication.self, forKey: .deduplicateWithin)
     measureTimingDepths = try container.decodeIfPresent(Set<Int>.self, forKey: .measureTimingDepths)
+    normalizedTiming = try container.decodeIfPresent(Bool.self, forKey: .normalizedTiming) ?? false
+    failureContextTriggerLimit = max(0, try container.decodeIfPresent(Int.self, forKey: .failureContextTriggerLimit) ?? 0)
     logFormat = try container.decodeIfPresent(LogFormat.self, forKey: .logFormat) ?? .default
     outputs = try container.decodeIfPresent([AutoLogOutput].self, forKey: .outputs) ?? []
   }
@@ -147,6 +168,8 @@ public struct AutoLogConfiguration: Sendable, Codable, Equatable {
     try container.encode(measureTimingDefault, forKey: .measureTimingDefault)
     try container.encodeIfPresent(deduplicateWithin, forKey: .deduplicateWithin)
     try container.encodeIfPresent(measureTimingDepths, forKey: .measureTimingDepths)
+    try container.encode(normalizedTiming, forKey: .normalizedTiming)
+    try container.encode(failureContextTriggerLimit, forKey: .failureContextTriggerLimit)
     try container.encode(logFormat, forKey: .logFormat)
     try container.encode(outputs, forKey: .outputs)
   }
@@ -159,7 +182,9 @@ public struct AutoLogConfiguration: Sendable, Codable, Equatable {
           route: .console,
           measureTiming: measureTimingDefault,
           timingDepths: measureTimingDepths,
+          normalizedTiming: normalizedTiming,
           errorContextLimit: 5,
+          failureContextTriggerLimit: failureContextTriggerLimit,
           logFormat: logFormat
         )
       ]
@@ -172,6 +197,8 @@ public struct AutoLogConfiguration: Sendable, Codable, Equatable {
     var copy = self
     copy.measureTimingDefault = output.measureTiming
     copy.measureTimingDepths = output.timingDepths
+    copy.normalizedTiming = output.normalizedTiming
+    copy.failureContextTriggerLimit = output.failureContextTriggerLimit
     copy.logFormat = output.logFormat
     copy.outputs = [output]
     return copy

@@ -357,12 +357,12 @@ public struct LogFormat: Sendable, Codable, Equatable {
   ///
   /// Produces lines such as:
   /// ```
-  /// 👆🏼-🚀A1B2C3 │ 12ms │ main │ --> 🟢 MyViewModel.fetchData(userId: 42) async → User(1)
+  /// 👆🏼-🚀A1B │ main │ 0.01s │ --> 🟢 MyViewModel.fetchData(userId: 42) async → User(1)
   /// ```
   public static let `default` = LogFormat(mainLine: [
     .originBadge,
-    .timing,
     .threadLabel,
+    .timing,
     .depthArrow,
     .statusEmoji,
     .typeName,

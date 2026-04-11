@@ -77,16 +77,13 @@ public struct CompactFormatter: AutoLogFormatter {
       )
     }
 
-    var lines = [
-      renderRow(
-        body: mainBody,
-        event: event,
-        depth: depth,
-        columnElements: columnElements,
-        configuration: configuration,
-        rowKind: .main
-      )
-    ]
+    var lines = [renderMainRow(
+      body: mainBody,
+      event: event,
+      depth: depth,
+      columnElements: columnElements,
+      configuration: configuration
+    )]
 
     if let detail = detailAnnotation(for: event) {
       lines.append(
@@ -199,6 +196,31 @@ public struct CompactFormatter: AutoLogFormatter {
     return columns.joined(separator: " │ ") + " │ " + body
   }
 
+  private func renderMainRow(
+    body: String,
+    event: AutoLogEvent,
+    depth: Int,
+    columnElements: [LogFormat.Element],
+    configuration: AutoLogConfiguration
+  ) -> String {
+    if isInteractionEvent(event) {
+      let badge = originBadge(for: event)
+      if badge.isEmpty {
+        return body
+      }
+      return "\(badge) - \(body)"
+    }
+
+    return renderRow(
+      body: body,
+      event: event,
+      depth: depth,
+      columnElements: columnElements,
+      configuration: configuration,
+      rowKind: .main
+    )
+  }
+
   private func leadingColumnElements(in elements: [LogFormat.Element]) -> [LogFormat.Element] {
     var columns: [LogFormat.Element] = []
 
@@ -244,8 +266,8 @@ public struct CompactFormatter: AutoLogFormatter {
 
   private func columnWidth(for element: LogFormat.Element) -> Int {
     switch element {
-    case .originBadge: return 11
-    case .timing: return 6
+    case .originBadge: return 9
+    case .timing: return 7
     case .threadLabel: return 4
     case .threadID: return 6
     case .taskID: return 8
@@ -281,6 +303,7 @@ public struct CompactFormatter: AutoLogFormatter {
   ) -> String {
     guard let source = event.source else { return event.declaration }
     var body = "\(source.emoji) \(source.label ?? source.description)"
+    body += " [\(shortLocation(from: event.location))]"
     if inlineElements.contains(.lineNumber) {
       body += ":\(extractLine(from: event.location))"
     }
@@ -426,7 +449,7 @@ public struct CompactFormatter: AutoLogFormatter {
     }
 
     guard !event.branchDecisions.isEmpty else { return nil }
-    let branches = event.branchDecisions.map(\.description).joined(separator: " -> ")
+    let branches = event.branchDecisions.map(formatBranchDecision).joined(separator: " -> ")
     return "branch path: \(branches)"
   }
 
@@ -438,7 +461,8 @@ public struct CompactFormatter: AutoLogFormatter {
 
   private func originBadge(for event: AutoLogEvent) -> String {
     if let source = event.source as? SourceContext {
-      return "\(source.emoji)-\(source.traceBadge)"
+      let shortBadge = source.interactionID.prefix(3)
+      return "\(source.emoji)-\(source.flowMarker)\(shortBadge)"
     }
 
     return ""
@@ -494,7 +518,7 @@ public struct CompactFormatter: AutoLogFormatter {
     let depthOk = configuration.measureTimingDepths.map { $0.contains(depth) } ?? true
     guard (globalOn && depthOk) || event.isMeasuredExplicitly else { return "" }
 
-    let formatted = formatDuration(duration)
+    let formatted = formatDuration(duration, configuration: configuration)
     return inline ? "⏱ \(formatted)" : formatted
   }
 
@@ -507,9 +531,16 @@ public struct CompactFormatter: AutoLogFormatter {
     !isStartEvent(event)
   }
 
-  private func formatDuration(_ d: Duration) -> String {
-    let totalNs = d.components.seconds * 1_000_000_000
-      + d.components.attoseconds / 1_000_000_000
+  private func formatDuration(
+    _ d: Duration,
+    configuration: AutoLogConfiguration
+  ) -> String {
+    let seconds = durationInSeconds(d)
+    if configuration.normalizedTiming {
+      return String(format: "%.2fs", seconds < 0.01 ? 0 : seconds)
+    }
+
+    let totalNs = durationInNanoseconds(d)
     switch totalNs {
     case ..<1_000:
       return "\(totalNs)ns"
@@ -518,8 +549,18 @@ public struct CompactFormatter: AutoLogFormatter {
     case ..<1_000_000_000:
       return formatDurationComponent(Double(totalNs) / 1_000_000, unit: "ms")
     default:
-      return formatDurationComponent(Double(totalNs) / 1_000_000_000, unit: "s")
+      return formatDurationComponent(seconds, unit: "s")
     }
+  }
+
+  private func durationInNanoseconds(_ d: Duration) -> Int64 {
+    let totalNs = d.components.seconds * 1_000_000_000
+      + d.components.attoseconds / 1_000_000_000
+    return totalNs
+  }
+
+  private func durationInSeconds(_ d: Duration) -> Double {
+    Double(durationInNanoseconds(d)) / 1_000_000_000
   }
 
   private func formatDurationComponent(_ value: Double, unit: String) -> String {
@@ -551,6 +592,35 @@ public struct CompactFormatter: AutoLogFormatter {
     return line
   }
 
+  private func formatBranchDecision(_ decision: AutoLogBranchDecision) -> String {
+    let kind: String
+    switch decision.kind {
+    case .guard:
+      kind = "guard"
+    case .if:
+      kind = "if"
+    case .elseif:
+      kind = "else if"
+    case .else:
+      kind = "else"
+    }
+
+    guard let condition = decision.condition?.trimmingCharacters(in: .whitespacesAndNewlines),
+          !condition.isEmpty else {
+      return kind
+    }
+
+    return "\(kind) \(compactBranchCondition(condition))"
+  }
+
+  private func compactBranchCondition(_ condition: String) -> String {
+    let trimmed = condition.trimmingCharacters(in: .whitespacesAndNewlines)
+    if trimmed.hasPrefix("let ") {
+      return String(trimmed.dropFirst(4))
+    }
+    return trimmed
+  }
+
   private func extractTypeName(from location: String) -> String {
     let filename = location.split(separator: "/").last.map(String.init) ?? location
     let stem = filename.components(separatedBy: ".swift").first ?? filename
@@ -561,6 +631,14 @@ public struct CompactFormatter: AutoLogFormatter {
     let parts = location.split(separator: ":", maxSplits: 3, omittingEmptySubsequences: false)
     let candidates = parts.dropFirst().prefix(2)
     return candidates.first(where: { Int($0) != nil }).map(String.init) ?? "?"
+  }
+
+  private func shortLocation(from location: String) -> String {
+    let segments = location.split(separator: ":")
+    let file = segments.first.map { String($0.split(separator: "/").last ?? Substring($0)) } ?? location
+    let stem = file.replacingOccurrences(of: ".swift", with: "")
+    let line = segments.dropFirst().first.map(String.init) ?? "?"
+    return "\(stem):\(line)"
   }
 
   private func extractFuncName(from declaration: String) -> String {

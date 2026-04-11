@@ -353,8 +353,8 @@ struct CompactFormatterTests {
         let lines = output.split(separator: "\n", omittingEmptySubsequences: false)
         #expect(lines.count == 2)
         #expect(lines[1].contains("branch path"))
-        #expect(lines[1].contains("if branch condition=isVisible"))
-        #expect(lines[1].contains("else branch condition=isVisible"))
+        #expect(lines[1].contains("if isVisible"))
+        #expect(lines[1].contains("else isVisible"))
     }
 
     @Test func earlyExit_showsOnSecondLine() {
@@ -741,6 +741,17 @@ struct LogFormatElementToggleTests {
         let output = formatter.format(event: event, configuration: configuration)
         #expect(output.contains("2s"))
         #expect(!output.contains("⏱"))
+    }
+
+    @Test func timing_canNormalizeToFixedWidthSeconds() {
+        let formatter = CompactFormatter(profile: .mvvm)
+        var event = makeEvent()
+        event.duration = .milliseconds(8)
+        let output = formatter.format(
+            event: event,
+            configuration: AutoLogConfiguration(normalizedTiming: true)
+        )
+        #expect(output.contains("0.00s"))
     }
 
     @Test func defaultFormat_roundTripsViaConfiguration() throws {

@@ -226,6 +226,28 @@ public enum AutoLog {
     )
   }
 
+  /// Runs `operation` with the supplied source context without emitting a new interaction event.
+  @discardableResult
+  public static func withSourceContext<T>(
+    _ context: SourceContext?,
+    operation: () throws -> T
+  ) rethrows -> T {
+    try $current.withValue(context) {
+      try operation()
+    }
+  }
+
+  /// Async variant of ``withSourceContext(_:operation:)``.
+  @discardableResult
+  public static func withSourceContext<T>(
+    _ context: SourceContext?,
+    operation: () async throws -> T
+  ) async rethrows -> T {
+    try await $current.withValue(context) {
+      try await operation()
+    }
+  }
+
   // MARK: - Interaction source activation
 
   /// Emits a standalone interaction event and runs the operation

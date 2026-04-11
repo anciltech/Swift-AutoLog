@@ -293,6 +293,81 @@ struct AutoLoggerTests {
   }
 
   @Test
+  func outputProfiles_canScopeFailureContextToRecentTriggers() {
+    let sink = MockEventSink(route: .splunk)
+    let logger = AutoLogLogger(formatter: CompactFormatter(), sinks: [sink], errorContextLimit: 10)
+    let configuration = AutoLogConfiguration(
+      outputs: [
+        AutoLogOutput(
+          name: "Splunk Errors",
+          route: .splunk,
+          eventTypes: [.interaction, .start, .failure],
+          errorContextLimit: 10,
+          failureContextTriggerLimit: 2
+        )
+      ]
+    )
+
+    let olderInteraction = AutoLogInteraction.button("Old")
+    logger.emit(
+      event: AutoLogEvent(
+        source: olderInteraction,
+        location: "App/AsyncExamplesView.swift:10:1",
+        declaration: olderInteraction.description,
+        tags: [AutoLogRoute.splunk]
+      ),
+      configuration: configuration
+    )
+
+    logger.emit(
+      event: AutoLogEvent(
+        level: LogLevel.start,
+        location: "App/AsyncExamplesViewModel.swift:11:1",
+        declaration: "func olderFlow() async",
+        tags: [AutoLogRoute.splunk]
+      ),
+      configuration: configuration
+    )
+
+    let recentInteraction = AutoLogInteraction.button("Recent")
+    logger.emit(
+      event: AutoLogEvent(
+        source: recentInteraction,
+        location: "App/AsyncExamplesView.swift:20:1",
+        declaration: recentInteraction.description,
+        tags: [AutoLogRoute.splunk]
+      ),
+      configuration: configuration
+    )
+
+    logger.emit(
+      event: AutoLogEvent(
+        level: LogLevel.start,
+        location: "App/AsyncExamplesViewModel.swift:21:1",
+        declaration: "func recentFlow() async",
+        tags: [AutoLogRoute.splunk]
+      ),
+      configuration: configuration
+    )
+
+    logger.emit(
+      event: AutoLogEvent(
+        location: "App/AsyncExamplesViewModel.swift:22:1",
+        declaration: "func fail() async throws",
+        result: .failure(Failure.mock),
+        tags: [AutoLogRoute.splunk]
+      ),
+      configuration: configuration
+    )
+
+    let summaries = sink.events.last?.errorContext.map(\.summary) ?? []
+    #expect(summaries.count == 2)
+    #expect(summaries.allSatisfy { !$0.contains("olderFlow") && !$0.contains("Old") })
+    #expect(summaries.contains { $0.contains("Recent") })
+    #expect(summaries.contains { $0.contains("recentFlow") })
+  }
+
+  @Test
   func outputProfileMatching_sharesConsoleRouteAndTypeFilterRules() {
     let output = AutoLogOutput(
       name: "Console ViewModel Success",

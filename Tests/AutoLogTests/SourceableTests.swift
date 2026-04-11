@@ -318,7 +318,7 @@ struct CompactFormatterSourceTests {
             declaration: "button(\"Deposit\")"
         )
         let output = CompactFormatter().format(event: event, configuration: configuration)
-        #expect(output == "👆🏼 Deposit")
+        #expect(output == "👆🏼 Deposit [ContentView:30]")
     }
 
     @Test func interactionEvent_usesDepthArrow() {
@@ -328,7 +328,7 @@ struct CompactFormatterSourceTests {
             declaration: "toggle(\"Dark Mode\")"
         )
         let output = CompactFormatter(profile: .mvvm).format(event: event, configuration: configuration)
-        #expect(output == "🔀 Dark Mode")
+        #expect(output == "🔀 Dark Mode [MyViewModel:15]")
     }
 
     @Test func downstreamFunction_showsStatusEmoji_noSourceEmoji() {
@@ -374,8 +374,8 @@ struct CompactFormatterSourceTests {
             declaration: "button(\"Deposit\")"
         )
         let output = CompactFormatter().format(event: event, configuration: configuration)
-        #expect(output.contains("👆🏼-🧵A1B2C3"))
-        #expect(output.hasSuffix("👆🏼 Deposit"))
+        #expect(output.contains("👆🏼-🧵A1B"))
+        #expect(output.hasSuffix("👆🏼 Deposit [ContentView:30]"))
     }
 
     @Test func failureTrace_usesLongerBranchAndInlineError() {
@@ -459,6 +459,6 @@ struct CompactFormatterSourceTests {
         let lines = output.split(separator: "\n", omittingEmptySubsequences: false)
         #expect(lines.count == 2)
         #expect(lines[1].contains("branch path"))
-        #expect(lines[1].contains("if branch condition=isOn"))
+        #expect(lines[1].contains("if isOn"))
     }
 }
