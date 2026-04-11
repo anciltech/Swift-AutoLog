@@ -37,6 +37,9 @@ console path without changing the emitted first line.
 name, source line, short location, function name, and async presence so the
 formatter and output-profile matching do not keep re-splitting the same
 `location` and `declaration` strings within a single emit.
+`AutoLogOutput` now also trims and drops empty type-name filters at
+construction and decode time so `matches(_:)` can reuse the normalized list
+without doing extra cleanup work on every emit.
 
 ## Current performance TODOs
 
@@ -47,9 +50,6 @@ The next hot-path targets worth exploring are:
   `.parameters`
 - reduce multi-parameter overhead further by avoiding repeated sorting and
   reflection-heavy formatting work where possible
-- move `AutoLogOutput.typeNameFilters` normalization out of `matches(_:)` and
-  into configuration-update time so emit-time routing does less trimming and
-  filtering work
 - look at macro-generated event construction for no-tag and route-only cases to
   see whether `[String: Any]` / `[any Taggable]` setup can be specialized
   further without hurting readability

@@ -412,6 +412,22 @@ struct AutoLoggerTests {
   }
 
   @Test
+  func outputProfileMatching_normalizesTypeFiltersBeforeEmitTime() throws {
+    let output = AutoLogOutput(
+      name: "Console ViewModel Success",
+      route: .console,
+      eventTypes: [.success],
+      typeNameFilters: ["  viewmodel  ", "", " service "]
+    )
+
+    #expect(output.typeNameFilters == ["viewmodel", "service"])
+
+    let data = try JSONEncoder().encode(output)
+    let decoded = try JSONDecoder().decode(AutoLogOutput.self, from: data)
+    #expect(decoded.typeNameFilters == ["viewmodel", "service"])
+  }
+
+  @Test
   func autoLogEvent_outputEventTypeReflectsInteractionStartAndFailureCases() {
     let interactionSource = AutoLogInteraction.button("Pay")
     let interaction = AutoLogEvent(

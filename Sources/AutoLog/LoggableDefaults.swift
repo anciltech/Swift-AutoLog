@@ -45,7 +45,7 @@ public struct AutoLogOutput: Sendable, Codable, Equatable, Identifiable {
     self.route = route
     self.isEnabled = isEnabled
     self.eventTypes = eventTypes
-    self.typeNameFilters = typeNameFilters
+    self.typeNameFilters = Self.normalizedTypeNameFilters(typeNameFilters)
     self.measureTiming = measureTiming
     self.timingDepths = timingDepths
     self.normalizedTiming = normalizedTiming
@@ -56,6 +56,59 @@ public struct AutoLogOutput: Sendable, Codable, Equatable, Identifiable {
 
   public static let `default` = AutoLogOutput(name: "Console")
 
+  private enum CodingKeys: String, CodingKey {
+    case id
+    case name
+    case route
+    case isEnabled
+    case eventTypes
+    case typeNameFilters
+    case measureTiming
+    case timingDepths
+    case normalizedTiming
+    case errorContextLimit
+    case failureContextTriggerLimit
+    case logFormat
+  }
+
+  public init(from decoder: Decoder) throws {
+    let container = try decoder.container(keyedBy: CodingKeys.self)
+    id = try container.decode(String.self, forKey: .id)
+    name = try container.decode(String.self, forKey: .name)
+    route = try container.decodeIfPresent(AutoLogRoute.self, forKey: .route) ?? .console
+    isEnabled = try container.decodeIfPresent(Bool.self, forKey: .isEnabled) ?? true
+    eventTypes = try container.decodeIfPresent(Set<AutoLogOutputEventType>.self, forKey: .eventTypes)
+      ?? Set(AutoLogOutputEventType.allCases)
+    typeNameFilters = Self.normalizedTypeNameFilters(
+      try container.decodeIfPresent([String].self, forKey: .typeNameFilters) ?? []
+    )
+    measureTiming = try container.decodeIfPresent(Bool.self, forKey: .measureTiming) ?? true
+    timingDepths = try container.decodeIfPresent(Set<Int>.self, forKey: .timingDepths)
+    normalizedTiming = try container.decodeIfPresent(Bool.self, forKey: .normalizedTiming) ?? false
+    errorContextLimit = max(0, try container.decodeIfPresent(Int.self, forKey: .errorContextLimit) ?? 5)
+    failureContextTriggerLimit = max(
+      0,
+      try container.decodeIfPresent(Int.self, forKey: .failureContextTriggerLimit) ?? 0
+    )
+    logFormat = try container.decodeIfPresent(LogFormat.self, forKey: .logFormat) ?? .default
+  }
+
+  public func encode(to encoder: Encoder) throws {
+    var container = encoder.container(keyedBy: CodingKeys.self)
+    try container.encode(id, forKey: .id)
+    try container.encode(name, forKey: .name)
+    try container.encode(route, forKey: .route)
+    try container.encode(isEnabled, forKey: .isEnabled)
+    try container.encode(eventTypes, forKey: .eventTypes)
+    try container.encode(typeNameFilters, forKey: .typeNameFilters)
+    try container.encode(measureTiming, forKey: .measureTiming)
+    try container.encodeIfPresent(timingDepths, forKey: .timingDepths)
+    try container.encode(normalizedTiming, forKey: .normalizedTiming)
+    try container.encode(errorContextLimit, forKey: .errorContextLimit)
+    try container.encode(failureContextTriggerLimit, forKey: .failureContextTriggerLimit)
+    try container.encode(logFormat, forKey: .logFormat)
+  }
+
   /// Returns `true` when this output profile should receive the supplied event.
   ///
   /// Routing, enabled state, event kind, and type-name filters all use the same
@@ -65,12 +118,9 @@ public struct AutoLogOutput: Sendable, Codable, Equatable, Identifiable {
     guard routeMatches(eventRoutes: event.routes) else { return false }
     guard eventTypes.contains(event.outputEventType) else { return false }
 
-    let filters = typeNameFilters
-      .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-      .filter { !$0.isEmpty }
-    guard !filters.isEmpty else { return true }
+    guard !typeNameFilters.isEmpty else { return true }
 
-    return filters.contains { token in
+    return typeNameFilters.contains { token in
       event.inferredTypeName.localizedCaseInsensitiveContains(token)
     }
   }
@@ -81,6 +131,12 @@ public struct AutoLogOutput: Sendable, Codable, Equatable, Identifiable {
     }
 
     return eventRoutes.contains(route)
+  }
+
+  private static func normalizedTypeNameFilters(_ filters: [String]) -> [String] {
+    filters
+      .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+      .filter { !$0.isEmpty }
   }
 }
 
