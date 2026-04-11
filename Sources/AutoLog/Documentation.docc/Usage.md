@@ -134,6 +134,10 @@ choose its own `LogFormat`, exclude start events, filter type names, and attach
 its own amount of recent failure context. When that `LogFormat` includes
 `.lineNumber`, the `:42` suffix applies to both standard compact lines and the
 interaction trace-tree lines rendered under a source badge.
+The companion settings preview uses the same `AutoLogOutput.matches(_:)`
+helper as the runtime logger, so route matching, event-kind filtering, and
+case-insensitive type-name filters stay aligned while you tune an output
+profile.
 Likewise, `.timing` is now controlled entirely by the `mainLine` element list:
 keep it to render elapsed durations, or remove it when a destination should log
 the same events without inline timing text.

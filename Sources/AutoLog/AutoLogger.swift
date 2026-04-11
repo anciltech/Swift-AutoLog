@@ -349,9 +349,7 @@ public struct AutoLogLogger: AutoLogger {
   /// - ``OSLogType.info`` for successful function executions.
   /// - ``OSLogType.error`` for functions that throw errors.
   public func emit(event: AutoLogEvent, configuration: AutoLogConfiguration) {
-    let outputs = configuration.effectiveOutputs.filter { output in
-      outputMatchesEvent(output, event: event)
-    }
+    let outputs = configuration.effectiveOutputs.filter { $0.matches(event) }
     let preferredContextConfiguration = configuration.applying(
       output: outputs.first(where: { $0.route == .console }) ?? configuration.effectiveOutputs.first ?? .default
     )
@@ -448,55 +446,6 @@ public struct AutoLogLogger: AutoLogger {
         state.recentEntries.removeFirst(state.recentEntries.count - capacity)
       }
     }
-  }
-
-  private func outputMatchesEvent(_ output: AutoLogOutput, event: AutoLogEvent) -> Bool {
-    guard output.isEnabled else { return false }
-    guard routeMatches(output.route, eventRoutes: event.routes) else { return false }
-    guard output.eventTypes.contains(eventType(for: event)) else { return false }
-
-    let filters = output.typeNameFilters
-      .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-      .filter { !$0.isEmpty }
-    guard !filters.isEmpty else { return true }
-
-    let typeName = extractTypeName(from: event.location)
-    return filters.contains { token in
-      typeName.localizedCaseInsensitiveContains(token)
-    }
-  }
-
-  private func routeMatches(
-    _ route: AutoLogRoute,
-    eventRoutes: Set<AutoLogRoute>
-  ) -> Bool {
-    if route == .console {
-      return eventRoutes.isEmpty || eventRoutes.contains(.console)
-    }
-
-    return eventRoutes.contains(route)
-  }
-
-  private func eventType(for event: AutoLogEvent) -> AutoLogOutputEventType {
-    if let source = event.source, event.declaration == source.description {
-      return .interaction
-    }
-
-    if let level = event.level as? LogLevel, level == .start {
-      return .start
-    }
-
-    if case .failure = event.result {
-      return .failure
-    }
-
-    return .success
-  }
-
-  private func extractTypeName(from location: String) -> String {
-    let filename = location.split(separator: "/").last.map(String.init) ?? location
-    let stem = filename.components(separatedBy: ".swift").first ?? filename
-    return stem.isEmpty ? "Unknown" : stem
   }
 }
 

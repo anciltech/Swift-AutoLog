@@ -12,7 +12,7 @@ struct LivePreviewView: View {
       VStack(alignment: .leading, spacing: 2) {
         Text("Live Preview")
           .font(.headline)
-        Text("Shows only the sample events that pass the selected output's filters")
+        Text("Shows only the sample events that pass the selected output's shared runtime filters")
           .font(.caption)
           .foregroundStyle(.secondary)
       }
@@ -178,48 +178,7 @@ struct LivePreviewView: View {
   }
 
   private func matches(_ event: AutoLogEvent) -> Bool {
-    guard output.isEnabled else { return false }
-    guard routeMatches(event) else { return false }
-    guard output.eventTypes.contains(eventType(for: event)) else { return false }
-
-    let filters = output.typeNameFilters
-      .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-      .filter { !$0.isEmpty }
-    guard !filters.isEmpty else { return true }
-
-    let typeName = extractTypeName(from: event.location)
-    return filters.contains { typeName.localizedCaseInsensitiveContains($0) }
-  }
-
-  private func routeMatches(_ event: AutoLogEvent) -> Bool {
-    let routes = event.routes
-    if output.route == .console {
-      return routes.isEmpty || routes.contains(.console)
-    }
-
-    return routes.contains(output.route)
-  }
-
-  private func eventType(for event: AutoLogEvent) -> AutoLogOutputEventType {
-    if let source = event.source, event.declaration == source.description {
-      return .interaction
-    }
-
-    if let level = event.level as? LogLevel, level == .start {
-      return .start
-    }
-
-    if case .failure = event.result {
-      return .failure
-    }
-
-    return .success
-  }
-
-  private func extractTypeName(from location: String) -> String {
-    let filename = location.split(separator: "/").last.map(String.init) ?? location
-    let stem = filename.components(separatedBy: ".swift").first ?? filename
-    return stem.isEmpty ? "Unknown" : stem
+    output.matches(event)
   }
 
   private var summaryText: String {

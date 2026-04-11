@@ -299,6 +299,11 @@ When `outputs` is present, each output profile can decide:
 * how many recent log summaries are attached when a failure is emitted
 * the exact `LogFormat` layout for that destination
 
+The companion settings preview now uses the same `AutoLogOutput.matches(_:)`
+rules as `AutoLogLogger`, so route matching, event-kind filtering, and
+case-insensitive type-name filters stay aligned between the sample preview and
+real emitted output.
+
 You can still provide a custom logger and advanced store settings when needed:
 
 ```swift

@@ -291,6 +291,59 @@ struct AutoLoggerTests {
 
     #expect(sink.events.last?.errorContext.count == 3)
   }
+
+  @Test
+  func outputProfileMatching_sharesConsoleRouteAndTypeFilterRules() {
+    let output = AutoLogOutput(
+      name: "Console ViewModel Success",
+      route: .console,
+      eventTypes: [.success],
+      typeNameFilters: ["viewmodel"]
+    )
+
+    let matchingEvent = AutoLogEvent(
+      location: "App/CheckoutViewModel.swift:13:1",
+      declaration: "func processPayment() async"
+    )
+    let routedAwayEvent = AutoLogEvent(
+      location: "App/CheckoutViewModel.swift:14:1",
+      declaration: "func processPayment() async",
+      tags: [AutoLogRoute.firebase]
+    )
+    let filteredEvent = AutoLogEvent(
+      location: "App/CheckoutRepository.swift:15:1",
+      declaration: "func processPayment() async"
+    )
+
+    #expect(output.matches(matchingEvent))
+    #expect(!output.matches(routedAwayEvent))
+    #expect(!output.matches(filteredEvent))
+  }
+
+  @Test
+  func autoLogEvent_outputEventTypeReflectsInteractionStartAndFailureCases() {
+    let interactionSource = AutoLogInteraction.button("Pay")
+    let interaction = AutoLogEvent(
+      source: interactionSource,
+      location: "App/CheckoutView.swift:10:1",
+      declaration: interactionSource.description
+    )
+    let start = AutoLogEvent(
+      level: LogLevel.start,
+      location: "App/CheckoutViewModel.swift:11:1",
+      declaration: "func processPayment() async"
+    )
+    let failure = AutoLogEvent(
+      location: "App/CheckoutViewModel.swift:12:1",
+      declaration: "func processPayment() async throws",
+      result: .failure(Failure.mock)
+    )
+
+    #expect(interaction.outputEventType == .interaction)
+    #expect(start.outputEventType == .start)
+    #expect(failure.outputEventType == .failure)
+    #expect(failure.inferredTypeName == "CheckoutViewModel")
+  }
 }
 
 extension AutoLoggerTests {

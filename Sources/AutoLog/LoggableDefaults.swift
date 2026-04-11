@@ -49,6 +49,33 @@ public struct AutoLogOutput: Sendable, Codable, Equatable, Identifiable {
   }
 
   public static let `default` = AutoLogOutput(name: "Console")
+
+  /// Returns `true` when this output profile should receive the supplied event.
+  ///
+  /// Routing, enabled state, event kind, and type-name filters all use the same
+  /// rules as the runtime logger and the settings live preview.
+  public func matches(_ event: AutoLogEvent) -> Bool {
+    guard isEnabled else { return false }
+    guard routeMatches(eventRoutes: event.routes) else { return false }
+    guard eventTypes.contains(event.outputEventType) else { return false }
+
+    let filters = typeNameFilters
+      .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+      .filter { !$0.isEmpty }
+    guard !filters.isEmpty else { return true }
+
+    return filters.contains { token in
+      event.inferredTypeName.localizedCaseInsensitiveContains(token)
+    }
+  }
+
+  private func routeMatches(eventRoutes: Set<AutoLogRoute>) -> Bool {
+    if route == .console {
+      return eventRoutes.isEmpty || eventRoutes.contains(.console)
+    }
+
+    return eventRoutes.contains(route)
+  }
 }
 
 /// Live-tunable logging behavior shared across app processes.
@@ -152,6 +179,34 @@ public struct AutoLogConfiguration: Sendable, Codable, Equatable {
 
   public var maxErrorContextLimit: Int {
     max(effectiveOutputs.map(\.errorContextLimit).max() ?? 0, 5)
+  }
+}
+
+extension AutoLogEvent {
+  /// The event kind used by output-profile routing and filtering.
+  public var outputEventType: AutoLogOutputEventType {
+    if let source, declaration == source.description {
+      return .interaction
+    }
+
+    if let level = level as? LogLevel, level == .start {
+      return .start
+    }
+
+    if case .failure = result {
+      return .failure
+    }
+
+    return .success
+  }
+
+  /// Best-effort type name derived from the source location.
+  ///
+  /// Output profiles use this for simple text filtering such as `ViewModel`.
+  public var inferredTypeName: String {
+    let filename = location.split(separator: "/").last.map(String.init) ?? location
+    let stem = filename.components(separatedBy: ".swift").first ?? filename
+    return stem.isEmpty ? "Unknown" : stem
   }
 }
 
