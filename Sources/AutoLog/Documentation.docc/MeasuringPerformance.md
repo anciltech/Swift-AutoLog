@@ -29,9 +29,6 @@ that keep the benchmark focused on real formatting cost instead of avoidable
 bookkeeping: route and visible-tag filtering are cached on `AutoLogEvent`,
 single-parameter calls skip dictionary sorting, and async detection uses direct
 string checks instead of regex matching on every emit.
-Execution-context capture is also demand-driven now: the runtime always records
-the cheap `threadLabel`, but it only computes `threadID` and `taskID` when one
-of the active output formats actually includes those fields.
 
 ## Run the benchmark in Xcode
 

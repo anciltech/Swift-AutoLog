@@ -238,48 +238,6 @@ struct AutoLogRuntimeTests {
     ])
     #expect((logger.events.first?.deduplicateWithin) == .seconds(1))
   }
-
-  @Test
-  func emitIfEnabled_capturesOnlyThreadLabelForDefaultFormat() {
-    let logger = MockLogger()
-    let event = AutoLogEvent(
-      location: "App/Feature.swift:1:1",
-      declaration: "func refresh()"
-    )
-
-    logger.emitIfEnabled(
-      event: event,
-      configuration: .default,
-      deduplicator: AutoLogDeduplicator()
-    )
-
-    let captured = logger.events.last
-    #expect(captured?.executionContext.threadLabel != "")
-    #expect(captured?.executionContext.threadID == nil)
-    #expect(captured?.executionContext.taskID == nil)
-  }
-
-  @Test
-  func emitIfEnabled_capturesDetailedExecutionContextWhenFormatRequestsIt() {
-    let logger = MockLogger()
-    let configuration = AutoLogConfiguration(
-      logFormat: LogFormat(mainLine: [.threadID, .taskID, .statusEmoji, .functionName])
-    )
-    let event = AutoLogEvent(
-      location: "App/Feature.swift:1:1",
-      declaration: "func refresh()"
-    )
-
-    logger.emitIfEnabled(
-      event: event,
-      configuration: configuration,
-      deduplicator: AutoLogDeduplicator()
-    )
-
-    let captured = logger.events.last
-    #expect(captured?.executionContext.threadID != nil)
-    #expect(captured?.executionContext.taskID != nil)
-  }
 }
 
 private struct SnapshotFixture {
