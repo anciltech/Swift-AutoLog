@@ -374,10 +374,11 @@ struct CompactFormatterSourceTests {
             declaration: "button(\"Deposit\")"
         )
         let output = CompactFormatter().format(event: event, configuration: configuration)
-        #expect(output == "👆🏼 Deposit 🧵A1B2C3")
+        #expect(output.contains("👆🏼-🧵A1B2C3"))
+        #expect(output.hasSuffix("👆🏼 Deposit"))
     }
 
-    @Test func failureTrace_usesLongerBranchAndNestedErrorLine() {
+    @Test func failureTrace_usesLongerBranchAndInlineError() {
         struct PaymentError: Error {}
         let ctx = SourceContext(
             source: InteractionSource.button("Save"),
@@ -396,8 +397,7 @@ struct CompactFormatterSourceTests {
         let lines = output.split(separator: "\n", omittingEmptySubsequences: false)
         #expect(lines[0].contains("└─────🔴"))
         #expect(lines[0].contains("PaymentAPI.submit() async"))
-        #expect(lines[1].contains("└──"))
-        #expect(lines[1].contains("PaymentError"))
+        #expect(lines[0].contains("PaymentError"))
     }
 
     @Test func successTrace_usesTerminalBranchPrefix() {

@@ -29,7 +29,7 @@ Timing, duration, ordering, and concurrent interleaving stay visible in the emit
 * **Preserve causality**
 
 Interaction and system sources such as buttons, toggles, text fields, timers, and API triggers can propagate downstream, so a log line still carries the intent that started the chain.
-Each interaction origin also gets a short flow badge such as `🧵A1B2C3`, making it easier to visually group one button tap or timer tick from another while concurrent work is interleaving.
+Each interaction origin also gets a compact source-plus-badge prefix such as `👆🏼-🧵A1B2C3`, making it easier to visually group one button tap or timer tick from another while concurrent work is interleaving.
 
 * **Annotate all methods within type or extension**
 

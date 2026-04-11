@@ -91,25 +91,29 @@ struct LivePreviewView: View {
     makeEvent(
       location: "App/CheckoutView.swift:30:5",
       declaration: "button(\"Pay\")",
-      source: AutoLogInteraction.button("Pay"),
+      source: previewContext,
       result: .success(())
     )
   }
 
   private var startEvent: AutoLogEvent {
-    AutoLogEvent(
+    var event = AutoLogEvent(
       level: LogLevel.start,
+      source: previewContext,
       location: "App/CheckoutViewModel.swift:32:5",
       declaration: "func processPayment(amount: Decimal) async",
       parameters: ["amount": "49.99"],
       tags: [output.route]
     )
+    event.executionContext = AutoLogExecutionContext(threadLabel: "main", threadID: 0x1001, taskID: "T:MAIN")
+    return event
   }
 
   private var successEvent: AutoLogEvent {
     var event = makeEvent(
       location: "App/CheckoutViewModel.swift:33:5",
       declaration: "func processPayment(amount: Decimal) async",
+      source: previewContext,
       parameters: ["amount": "49.99"],
       result: .success("receipt-42"),
       tags: [output.route]
@@ -126,6 +130,7 @@ struct LivePreviewView: View {
     var event = makeEvent(
       location: "App/CheckoutViewModel.swift:34:5",
       declaration: "func processPayment(amount: Decimal) async throws",
+      source: previewContext,
       parameters: ["amount": "49.99"],
       result: .failure(PaymentError()),
       tags: [output.route]
@@ -138,8 +143,18 @@ struct LivePreviewView: View {
     makeEvent(
       location: "App/AuthViewModel.swift:12:5",
       declaration: "func syncSession() async",
+      source: previewContext,
       result: .success("ok"),
       tags: [AutoLogRoute.firebase]
+    )
+  }
+
+  private var previewContext: SourceContext {
+    SourceContext(
+      source: AutoLogInteraction.button("Pay"),
+      location: "App/CheckoutView.swift:30:5",
+      interactionID: "3AC150",
+      flowMarker: "🚀"
     )
   }
 
@@ -160,6 +175,7 @@ struct LivePreviewView: View {
       tags: tags
     )
     event.duration = .milliseconds(12)
+    event.executionContext = AutoLogExecutionContext(threadLabel: "bg", threadID: 0x4AF2, taskID: "T:8C10")
     return event
   }
 
@@ -168,10 +184,10 @@ struct LivePreviewView: View {
 
     var enriched = event
     enriched.errorContext = [
-      AutoLogErrorContextEntry(summary: "👆🏼 Pay 🧵A1B2C3"),
-      AutoLogErrorContextEntry(summary: "├──🔵 CheckoutViewModel.processPayment(amount: 49.99) async"),
-      AutoLogErrorContextEntry(summary: "└──🟢 CheckoutRepository.prepareCharge(amount: 49.99)"),
-      AutoLogErrorContextEntry(summary: "└──🟢 PaymentGateway.authorize(amount: 49.99) async"),
+      AutoLogErrorContextEntry(summary: "👆🏼-🚀3AC150 │        │      │ 👆🏼 Pay"),
+      AutoLogErrorContextEntry(summary: "👆🏼-🚀3AC150 │        │ main │ ├──🔵 CheckoutViewModel.processPayment(amount: 49.99) async"),
+      AutoLogErrorContextEntry(summary: "👆🏼-🚀3AC150 │    8ms │ bg   │ └──🟢 CheckoutRepository.prepareCharge(amount: 49.99)"),
+      AutoLogErrorContextEntry(summary: "👆🏼-🚀3AC150 │   24ms │ bg   │ └──🟢 PaymentGateway.authorize(amount: 49.99) async → approved"),
     ]
     enriched.errorContext = Array(enriched.errorContext.suffix(output.errorContextLimit))
     return enriched

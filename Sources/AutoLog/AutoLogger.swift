@@ -160,6 +160,9 @@ public struct AutoLogEvent: CustomStringConvertible, CustomDebugStringConvertibl
   /// `nil` when `@Log(measure: false)` suppresses timing at compile time.
   public var duration: Duration?
 
+  /// Execution-context metadata captured at the point the event is emitted.
+  public var executionContext: AutoLogExecutionContext
+
   /// `true` when the function was explicitly annotated with `@Log(measure: true)`,
   /// allowing the formatter to show timing even when the global default is off.
   public var isMeasuredExplicitly: Bool
@@ -202,6 +205,7 @@ public struct AutoLogEvent: CustomStringConvertible, CustomDebugStringConvertibl
     errorContext: \(errorContext)
     tags: \(tags)
     routes: \(Array(routes).sorted { $0.rawValue < $1.rawValue })
+    executionContext: \(executionContext)
     deduplicateWithin: \(String(describing: deduplicateWithin))
     omissionRules: \(omissionRules)
     """
@@ -221,6 +225,7 @@ public struct AutoLogEvent: CustomStringConvertible, CustomDebugStringConvertibl
     tags: \(tags)
     routes: \(Array(routes).sorted { $0.rawValue < $1.rawValue })
     duration: \(duration.map { String(describing: $0) } ?? "nil")
+    executionContext: \(executionContext)
     deduplicateWithin: \(String(describing: deduplicateWithin))
     omissionRules: \(omissionRules)
     """
@@ -249,7 +254,8 @@ public struct AutoLogEvent: CustomStringConvertible, CustomDebugStringConvertibl
     tags: [any Taggable] = [],
     deduplicateWithin: AutoLogDeduplication? = nil,
     omissionRules: [AutoLogOmissionRule] = [],
-    isMeasuredExplicitly: Bool = false
+    isMeasuredExplicitly: Bool = false,
+    executionContext: AutoLogExecutionContext = .capture()
   ) {
     self.level = level
     self.source = source
@@ -262,6 +268,7 @@ public struct AutoLogEvent: CustomStringConvertible, CustomDebugStringConvertibl
     self.omissionRules = omissionRules
     self.duration = nil
     self.isMeasuredExplicitly = isMeasuredExplicitly
+    self.executionContext = executionContext
     self.earlyExit = nil
     self.branchDecisions = []
     self.errorContext = []
@@ -279,7 +286,8 @@ public struct AutoLogEvent: CustomStringConvertible, CustomDebugStringConvertibl
       result: .success(()),
       tags: tags,
       deduplicateWithin: deduplicateWithin,
-      omissionRules: omissionRules
+      omissionRules: omissionRules,
+      executionContext: executionContext
     )
   }
 
@@ -432,8 +440,11 @@ public struct AutoLogLogger: AutoLogger {
       configuration: configuration
     )
     let summary = message
-      .replacingOccurrences(of: "\n", with: " | ")
+      .split(separator: "\n", maxSplits: 1, omittingEmptySubsequences: false)
+      .first
+      .map(String.init)?
       .trimmingCharacters(in: .whitespacesAndNewlines)
+      ?? ""
     return AutoLogErrorContextEntry(summary: summary)
   }
 
@@ -456,8 +467,10 @@ extension AutoLogger {
     configuration: AutoLogConfiguration,
     deduplicator: AutoLogDeduplicator
   ) {
-    guard deduplicator.shouldEmit(event: event, configuration: configuration) else { return }
-    emit(event: event, configuration: configuration)
+    var enrichedEvent = event
+    enrichedEvent.executionContext = .capture()
+    guard deduplicator.shouldEmit(event: enrichedEvent, configuration: configuration) else { return }
+    emit(event: enrichedEvent, configuration: configuration)
   }
 
   /// Emits a start event (🔵) for the given event when enabled by configuration.

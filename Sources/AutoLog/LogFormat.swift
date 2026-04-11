@@ -80,6 +80,26 @@ public struct LogFormat: Sendable, Codable, Equatable {
     /// Example: `⏱ 38ms`
     case timing
 
+    /// The propagated source emoji plus interaction badge for the current flow.
+    ///
+    /// Example: `👆🏼-🚀A1B2C3`
+    case originBadge
+
+    /// The coarse execution context of the current event.
+    ///
+    /// Example: `main` or `bg`
+    case threadLabel
+
+    /// A compact raw thread identifier.
+    ///
+    /// Example: `#4AF2`
+    case threadID
+
+    /// A compact task identifier derived from the current Swift task.
+    ///
+    /// Example: `T:8C10`
+    case taskID
+
     /// The source-file line number, glued directly to the preceding element.
     ///
     /// Example: `:42`
@@ -126,6 +146,17 @@ public struct LogFormat: Sendable, Codable, Equatable {
       }
     }
 
+    /// `true` for elements that render as fixed-width metadata columns when
+    /// placed at the start of ``LogFormat/mainLine``.
+    public var isColumnCandidate: Bool {
+      switch self {
+      case .originBadge, .timing, .threadLabel, .threadID, .taskID:
+        return true
+      default:
+        return false
+      }
+    }
+
     // MARK: - Display metadata
 
     /// A short human-readable label for use in settings UIs.
@@ -139,6 +170,10 @@ public struct LogFormat: Sendable, Codable, Equatable {
       case .effectSpecifiers: return "Async"
       case .returnValue:      return "Return"
       case .timing:           return "Timing"
+      case .originBadge:      return "Origin"
+      case .threadLabel:      return "Thread"
+      case .threadID:         return "Thread ID"
+      case .taskID:           return "Task"
       case .lineNumber:       return "Line"
       case .dotSeparator:     return "·"
       case .space:            return "Space"
@@ -159,7 +194,11 @@ public struct LogFormat: Sendable, Codable, Equatable {
       case .parameters:    return "(key: value, ...) call-site arguments"
       case .effectSpecifiers: return "async keyword when function is async"
       case .returnValue:   return "→ value on successful non-Void return"
-      case .timing:        return "⏱ 38ms execution duration"
+      case .timing:        return "12ms duration column or inline ⏱ 12ms timing token"
+      case .originBadge:   return "Source emoji plus flow badge, e.g. 👆🏼-🚀A1B2C3"
+      case .threadLabel:   return "main or bg execution context"
+      case .threadID:      return "Compact raw thread identifier such as #4AF2"
+      case .taskID:        return "Compact current Swift task identifier such as T:8C10"
       case .lineNumber:    return ":42 source line, glued to previous token"
       case .dotSeparator:  return "Glues two tokens — no spaces around it"
       case .space:         return "A literal space character"
@@ -180,7 +219,11 @@ public struct LogFormat: Sendable, Codable, Equatable {
       case .parameters:    return "(userId: 42)"
       case .effectSpecifiers: return "async"
       case .returnValue:   return "→ User(1)"
-      case .timing:        return "⏱ 12ms"
+      case .timing:        return "12ms"
+      case .originBadge:   return "👆🏼-🚀A1B2C3"
+      case .threadLabel:   return "main"
+      case .threadID:      return "#4AF2"
+      case .taskID:        return "T:8C10"
       case .lineNumber:    return ":38"
       case .dotSeparator:  return "·"
       case .space:         return "␣"
@@ -301,9 +344,12 @@ public struct LogFormat: Sendable, Codable, Equatable {
   ///
   /// Produces lines such as:
   /// ```
-  /// --> 🟢 MyViewModel.fetchData(userId: 42) async → User(1) ⏱ 12ms
+  /// 👆🏼-🚀A1B2C3 │ 12ms │ main │ --> 🟢 MyViewModel.fetchData(userId: 42) async → User(1)
   /// ```
   public static let `default` = LogFormat(mainLine: [
+    .originBadge,
+    .timing,
+    .threadLabel,
     .depthArrow,
     .statusEmoji,
     .typeName,

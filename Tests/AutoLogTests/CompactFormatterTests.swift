@@ -30,7 +30,9 @@ struct CompactFormatterTests {
         let formatter = CompactFormatter()
         // Default profile is MVVM; a ViewModel type should get depth-2 arrow
         let event = makeEvent(location: "App/MyViewModel.swift:1:1")
-        #expect(formatter.format(event: event, configuration: configuration).hasPrefix("-->"))
+        let output = formatter.format(event: event, configuration: configuration)
+        #expect(output.contains("│ bg"))
+        #expect(output.contains("-->"))
     }
 
     // MARK: - Emoji
@@ -93,14 +95,14 @@ struct CompactFormatterTests {
 
     @Test func viewModel_getsDoubleArrow() {
         let event = makeEvent(location: "App/MyViewModel.swift:1:1")
-        #expect(CompactFormatter(profile: .mvvm).format(event: event, configuration: configuration).hasPrefix("-->"))
+        #expect(CompactFormatter(profile: .mvvm).format(event: event, configuration: configuration).contains("-->"))
     }
 
     @Test func view_getsSingleArrow() {
         let event = makeEvent(location: "App/ContentView.swift:1:1")
         let output = CompactFormatter(profile: .mvvm).format(event: event, configuration: configuration)
-        #expect(output.hasPrefix("->"))
-        #expect(!output.hasPrefix("-->"))
+        #expect(output.contains("->"))
+        #expect(!output.contains("-->"))
     }
 
     @Test func lineNumberElement_appendsSourceLineSuffix() {
@@ -288,15 +290,14 @@ struct CompactFormatterTests {
 
     // MARK: - Second line
 
-    @Test func failure_showsErrorOnSecondLine() {
+    @Test func failure_showsErrorInlineOnMainLine() {
         enum NetworkError: Error { case notFound }
         let event = makeEvent(result: .failure(NetworkError.notFound))
         let output = CompactFormatter().format(event: event, configuration: configuration)
         let lines = output.split(separator: "\n", omittingEmptySubsequences: false)
-        #expect(lines.count == 2)
-        #expect(lines[1].contains("↳"))
-        #expect(lines[1].contains("notFound"))
-        #expect(lines[1].contains("NetworkError"))
+        #expect(lines.count == 1)
+        #expect(lines[0].contains("notFound"))
+        #expect(lines[0].contains("NetworkError"))
     }
 
     @Test func failure_showsRecentContextAboveError() {
@@ -311,10 +312,11 @@ struct CompactFormatterTests {
         let lines = output.split(separator: "\n", omittingEmptySubsequences: false)
 
         #expect(lines.count == 5)
-        #expect(lines[1].contains("recent context"))
+        #expect(lines[0].contains("notFound"))
+        #expect(lines[1].contains("context"))
         #expect(lines[2].contains("Run [AsyncExamplesView:42]"))
         #expect(lines[3].contains("processPayment() async"))
-        #expect(lines[4].contains("notFound"))
+        #expect(lines[4].contains("─"))
     }
 
     @Test func tags_shownOnSecondLine() {
@@ -325,7 +327,7 @@ struct CompactFormatterTests {
         let output = CompactFormatter().format(event: event, configuration: configuration)
         let lines = output.split(separator: "\n", omittingEmptySubsequences: false)
         #expect(lines.count == 2)
-        #expect(lines[1].contains("↳"))
+        #expect(lines[1].contains("╰─"))
         #expect(lines[1].contains("update"))
         #expect(lines[1].contains("user"))
     }
@@ -637,7 +639,8 @@ struct LogFormatElementToggleTests {
         let formatter = CompactFormatter(profile: .mvvm, format: format)
         let event = makeTraceEvent(location: "App/MyViewModel.swift:42:5")
         let output = formatter.format(event: event, configuration: configuration)
-        #expect(output.contains("fetchData(id: 42) async → traced-result:42"))
+        #expect(output.contains(":42"))
+        #expect(output.contains("fetchData(id: 42) async → traced-result"))
     }
 
     @Test func parameters_suppressedWhenElementRemoved() {

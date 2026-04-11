@@ -178,16 +178,16 @@ Button.log("Save") {
 }
 ```
 
-Every interaction origin gets a short flow badge such as `🧵A1B2C3`. The
-origin event becomes a trace root, and downstream calls use longer branch
-lengths to hint at architectural depth:
+Every interaction origin gets a compact source-plus-badge prefix such as
+`👆🏼-🧵A1B2C3`. The origin event becomes a trace root, and downstream calls
+keep that same prefix while using longer branch lengths to hint at
+architectural depth:
 
 ```text
-👆🏼 Save 🧵A1B2C3
-└──🟢 PaymentsViewModel.saveTapped()
-└───🟢 PaymentService.validate()                  ⏱ 12ms
-└────🔴 PaymentAPI.submit()                       ⏱ 221ms
-     └── declined [PaymentError]
+👆🏼-🧵A1B2C3 │      │      │ 👆🏼 Save
+👆🏼-🧵A1B2C3 │      │ main │ ├──🔵 PaymentsViewModel.saveTapped()
+👆🏼-🧵A1B2C3 │ 12ms │ bg   │ └──🟢 PaymentService.validate()
+👆🏼-🧵A1B2C3 │ 221ms│ bg   │ └────🔴 PaymentAPI.submit() → declined [PaymentError]
 ```
 
 Timing keeps the smallest useful unit, so very short work renders as `ns` or
