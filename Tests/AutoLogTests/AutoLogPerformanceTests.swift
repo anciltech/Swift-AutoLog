@@ -7,8 +7,8 @@ final class AutoLogPerformanceTests: XCTestCase {
     emitStartEvents: false,
     measureTimingDefault: false
   )
-  private static let iterations = 20_000
-  private static let taskGroupIterations = 2_000
+  fileprivate static let iterations = 20_000
+  fileprivate static let taskGroupIterations = 2_000
   private static let recordedScenarios = LockedScenarios()
 
   override class func tearDown() {
@@ -327,6 +327,26 @@ private struct ScenarioMeasurement {
   let relativeStandardDeviation: Double
 }
 
+private enum ScenarioFamily {
+  case sync
+  case taskGroup
+
+  var label: String {
+    switch self {
+    case .sync:
+      "sync"
+    case .taskGroup:
+      "task-group"
+    }
+  }
+}
+
+private struct ScenarioDescriptor {
+  let family: ScenarioFamily
+  let iterations: Int
+  let addedWork: String
+}
+
 private final class LockedScenarios: @unchecked Sendable {
   private let lock = NSLock()
   private var measurements: [ScenarioMeasurement] = []
@@ -343,104 +363,198 @@ private final class LockedScenarios: @unchecked Sendable {
     measurements.removeAll(keepingCapacity: true)
     lock.unlock()
 
-    guard
-      let baseline = snapshot.first(where: { $0.name == "Baseline" }),
-      !snapshot.isEmpty
-    else {
+    guard !snapshot.isEmpty else {
       return
     }
 
-    let rows = snapshot.map { measurement in
-      ComparisonRow(
+    var baselines: [ScenarioFamily: Double] = [:]
+    for measurement in snapshot where Self.isBaseline(measurement.name) {
+      let descriptor = Self.descriptor(for: measurement.name)
+      baselines[descriptor.family] = measurement.average
+    }
+
+    let rows: [ComparisonRow] = snapshot.compactMap { measurement in
+      let descriptor = Self.descriptor(for: measurement.name)
+      guard let baselineAverage = baselines[descriptor.family] else { return nil }
+
+      let addedTime = measurement.average - baselineAverage
+
+      return ComparisonRow(
         scenario: measurement.name,
+        family: descriptor.family.label,
         average: measurement.average,
+        addedTime: addedTime,
+        slowdown: measurement.average / baselineAverage,
+        perIterationOverhead: addedTime / Double(descriptor.iterations),
         relativeStandardDeviation: measurement.relativeStandardDeviation,
-        slowdown: measurement.average / baseline.average
+        addedWork: descriptor.addedWork
       )
     }
 
-    let scenarioWidth = max(
-      "Scenario".count,
-      rows.map(\.scenario.count).max() ?? 0
-    )
+    let scenarioWidth = max("Scenario".count, rows.map { $0.scenario.count }.max() ?? 0)
+    let familyWidth = max("Family".count, rows.map { $0.family.count }.max() ?? 0)
 
-    let averageValues = rows.map {
-      Self.formattedSeconds($0.average)
-    }
-    let averageWidth = max(
-      "Average".count,
-      averageValues.map(\.count).max() ?? 0
-    )
+    let averageValues = rows.map { Self.formattedSeconds($0.average) }
+    let averageWidth = max("Average".count, averageValues.map { $0.count }.max() ?? 0)
 
-    let slowdownValues = rows.map {
-      Self.formattedMultiplier($0.slowdown)
-    }
-    let slowdownWidth = max(
-      "Vs baseline".count,
-      slowdownValues.map(\.count).max() ?? 0
-    )
+    let addedValues = rows.map { Self.formattedSignedSeconds($0.addedTime) }
+    let addedWidth = max("Added".count, addedValues.map { $0.count }.max() ?? 0)
 
-    let deviationValues = rows.map {
-      Self.formattedPercent($0.relativeStandardDeviation)
-    }
-    let deviationWidth = max(
-      "RSD".count,
-      deviationValues.map(\.count).max() ?? 0
-    )
+    let slowdownValues = rows.map { Self.formattedMultiplier($0.slowdown) }
+    let slowdownWidth = max("Vs family base".count, slowdownValues.map { $0.count }.max() ?? 0)
+
+    let perIterationValues = rows.map { Self.formattedPerIteration($0.perIterationOverhead) }
+    let perIterationWidth = max("Overhead/call".count, perIterationValues.map { $0.count }.max() ?? 0)
+
+    let deviationValues = rows.map { Self.formattedPercent($0.relativeStandardDeviation) }
+    let deviationWidth = max("RSD".count, deviationValues.map { $0.count }.max() ?? 0)
+
+    let addedWorkWidth = max("What adds time".count, rows.map { $0.addedWork.count }.max() ?? 0)
 
     print("")
     print("AutoLog performance comparison")
+    print("RSD = relative standard deviation; lower means the timings were more stable across measured runs.")
+    print("Added and Overhead/call are measured against the matching family baseline (`sync` or `task-group`).")
     print(
       Self.formattedRow(
         scenario: "Scenario",
+        family: "Family",
         average: "Average",
-        slowdown: "Vs baseline",
+        added: "Added",
+        slowdown: "Vs family base",
+        perIteration: "Overhead/call",
         deviation: "RSD",
+        addedWork: "What adds time",
         scenarioWidth: scenarioWidth,
+        familyWidth: familyWidth,
         averageWidth: averageWidth,
+        addedWidth: addedWidth,
         slowdownWidth: slowdownWidth,
-        deviationWidth: deviationWidth
+        perIterationWidth: perIterationWidth,
+        deviationWidth: deviationWidth,
+        addedWorkWidth: addedWorkWidth
       )
     )
     print(
-      "\(String(repeating: "-", count: scenarioWidth))-\(String(repeating: "-", count: 3 + averageWidth))-\(String(repeating: "-", count: 3 + slowdownWidth))-\(String(repeating: "-", count: 3 + deviationWidth))"
+      "\(String(repeating: "-", count: scenarioWidth))-\(String(repeating: "-", count: 3 + familyWidth))-\(String(repeating: "-", count: 3 + averageWidth))-\(String(repeating: "-", count: 3 + addedWidth))-\(String(repeating: "-", count: 3 + slowdownWidth))-\(String(repeating: "-", count: 3 + perIterationWidth))-\(String(repeating: "-", count: 3 + deviationWidth))-\(String(repeating: "-", count: 3 + addedWorkWidth))"
     )
 
     for (index, row) in rows.enumerated() {
       print(
         Self.formattedRow(
           scenario: row.scenario,
+          family: row.family,
           average: averageValues[index],
+          added: addedValues[index],
           slowdown: slowdownValues[index],
+          perIteration: perIterationValues[index],
           deviation: deviationValues[index],
+          addedWork: row.addedWork,
           scenarioWidth: scenarioWidth,
+          familyWidth: familyWidth,
           averageWidth: averageWidth,
+          addedWidth: addedWidth,
           slowdownWidth: slowdownWidth,
-          deviationWidth: deviationWidth
+          perIterationWidth: perIterationWidth,
+          deviationWidth: deviationWidth,
+          addedWorkWidth: addedWorkWidth
         )
       )
     }
   }
 
+  private static func descriptor(for scenario: String) -> ScenarioDescriptor {
+    switch scenario {
+    case "Baseline":
+      ScenarioDescriptor(
+        family: .sync,
+        iterations: AutoLogPerformanceTests.iterations,
+        addedWork: "Reference body with guard, if/else, do/catch only"
+      )
+    case "Logged without tags":
+      ScenarioDescriptor(
+        family: .sync,
+        iterations: AutoLogPerformanceTests.iterations,
+        addedWork: "Macro wrapper, AutoLogEvent capture, formatter path"
+      )
+    case "Logged with visible tags":
+      ScenarioDescriptor(
+        family: .sync,
+        iterations: AutoLogPerformanceTests.iterations,
+        addedWork: "Logged path plus visible tag capture and tag-line formatting"
+      )
+    case "Logged with routing tags":
+      ScenarioDescriptor(
+        family: .sync,
+        iterations: AutoLogPerformanceTests.iterations,
+        addedWork: "Logged path plus route filtering and sink dispatch checks"
+      )
+    case "Logged with mixed tags":
+      ScenarioDescriptor(
+        family: .sync,
+        iterations: AutoLogPerformanceTests.iterations,
+        addedWork: "Formatter work, visible tags, route checks, and sink traversal"
+      )
+    case "Baseline task group":
+      ScenarioDescriptor(
+        family: .taskGroup,
+        iterations: AutoLogPerformanceTests.taskGroupIterations,
+        addedWork: "Reference async body with TaskGroup scheduling and result aggregation"
+      )
+    case "Logged task group":
+      ScenarioDescriptor(
+        family: .taskGroup,
+        iterations: AutoLogPerformanceTests.taskGroupIterations,
+        addedWork: "TaskGroup baseline plus macro wrapper, event capture, formatting, and routing"
+      )
+    default:
+      ScenarioDescriptor(
+        family: .sync,
+        iterations: AutoLogPerformanceTests.iterations,
+        addedWork: "Unclassified benchmark work"
+      )
+    }
+  }
+
+  private static func isBaseline(_ scenario: String) -> Bool {
+    scenario == "Baseline" || scenario == "Baseline task group"
+  }
+
   private static func formattedRow(
     scenario: String,
+    family: String,
     average: String,
+    added: String,
     slowdown: String,
+    perIteration: String,
     deviation: String,
+    addedWork: String,
     scenarioWidth: Int,
+    familyWidth: Int,
     averageWidth: Int,
+    addedWidth: Int,
     slowdownWidth: Int,
-    deviationWidth: Int
+    perIterationWidth: Int,
+    deviationWidth: Int,
+    addedWorkWidth: Int
   ) -> String {
-    "\(scenario.rightPadded(to: scenarioWidth)) | \(average.leftPadded(to: averageWidth)) | \(slowdown.leftPadded(to: slowdownWidth)) | \(deviation.leftPadded(to: deviationWidth))"
+    "\(scenario.rightPadded(to: scenarioWidth)) | \(family.rightPadded(to: familyWidth)) | \(average.leftPadded(to: averageWidth)) | \(added.leftPadded(to: addedWidth)) | \(slowdown.leftPadded(to: slowdownWidth)) | \(perIteration.leftPadded(to: perIterationWidth)) | \(deviation.leftPadded(to: deviationWidth)) | \(addedWork.rightPadded(to: addedWorkWidth))"
   }
 
   private static func formattedSeconds(_ value: Double) -> String {
     String(format: "%.3fs", value)
   }
 
+  private static func formattedSignedSeconds(_ value: Double) -> String {
+    String(format: "%+.3fs", value)
+  }
+
   private static func formattedMultiplier(_ value: Double) -> String {
     String(format: "%.1fx", value)
+  }
+
+  private static func formattedPerIteration(_ value: Double) -> String {
+    String(format: "%+.2fµs", value * 1_000_000)
   }
 
   private static func formattedPercent(_ value: Double) -> String {
@@ -467,9 +581,13 @@ private final class AsyncResultBox<Value>: @unchecked Sendable {
 
 private struct ComparisonRow {
   let scenario: String
+  let family: String
   let average: Double
-  let relativeStandardDeviation: Double
+  let addedTime: Double
   let slowdown: Double
+  let perIterationOverhead: Double
+  let relativeStandardDeviation: Double
+  let addedWork: String
 }
 
 private extension Array where Element == Double {

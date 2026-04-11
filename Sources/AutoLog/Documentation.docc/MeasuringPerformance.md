@@ -30,8 +30,9 @@ without console I/O dominating the measurement.
 2. Run the `AutoLogPerformanceTests` test case from the Test navigator.
 3. Compare the per-test wall-clock metrics across the five scenarios.
 4. Check the end of the suite output for a summary table that lists each
-   scenario's average runtime, relative standard deviation, and slowdown
-   versus the plain baseline.
+   scenario's average runtime, absolute added time, per-call overhead, `RSD`
+   (relative standard deviation), and a short note describing what work is
+   responsible for the extra cost in that scenario.
 
 Because each test uses the same loop count, logger configuration, and function
 body, the relative deltas are the signal to focus on rather than any absolute
@@ -46,7 +47,10 @@ swift test \
 ```
 
 The suite prints the same comparison table at the end of the run, which makes
-it easier to copy a single summary into notes or pull requests.
+it easier to copy a single summary into notes or pull requests. The table uses
+family-specific baselines, so sync scenarios are compared against the plain
+sync body and `TaskGroup` scenarios are compared against the plain async
+`TaskGroup` body rather than against each other.
 
 ## Profile the benchmark with Instruments
 
