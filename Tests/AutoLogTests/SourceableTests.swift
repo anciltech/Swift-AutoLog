@@ -436,8 +436,8 @@ struct CompactFormatterSourceTests {
         let output = CompactFormatter().format(event: event, configuration: configuration)
         let lines = output.split(separator: "\n", omittingEmptySubsequences: false)
         #expect(lines.count == 2)
-        #expect(lines[1].contains("↪️"))
-        #expect(lines[1].contains("⚡"))
+        #expect(lines[1].contains("↘️"))
+        #expect(lines[1].contains("isCached"))
         #expect(lines[1].contains("cache hit"))
     }
 

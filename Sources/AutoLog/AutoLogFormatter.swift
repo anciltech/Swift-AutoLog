@@ -359,41 +359,19 @@ public struct CompactFormatter: AutoLogFormatter {
   }
 
   private func formatEarlyExitAnnotation(_ earlyExit: AutoLogEarlyExit) -> String {
-    var parts = ["↪️", earlyExit.kind.rawValue]
+    var line = "↘️"
 
     if let condition = earlyExit.condition?.trimmingCharacters(in: .whitespacesAndNewlines),
        !condition.isEmpty {
-      parts.append("?")
-      parts.append(condition)
-    }
-
-    if let intentBadge = earlyExitIntentBadge(for: earlyExit.intent) {
-      parts.append(intentBadge)
+      line += " \(condition)"
     }
 
     if let message = earlyExit.message?.trimmingCharacters(in: .whitespacesAndNewlines),
        !message.isEmpty {
-      parts.append(message)
+      line += " • \(message)"
     }
 
-    return parts.joined(separator: " ")
-  }
-
-  private func earlyExitIntentBadge(
-    for intent: AutoLogEarlyExit.Intent
-  ) -> String? {
-    switch intent {
-    case .unknown:
-      return nil
-    case .optimize:
-      return "⚡"
-    case .expected:
-      return "✅"
-    case .validation:
-      return "🛂"
-    case .cancellation:
-      return "🛑"
-    }
+    return line
   }
 
   private func extractTypeName(from location: String) -> String {

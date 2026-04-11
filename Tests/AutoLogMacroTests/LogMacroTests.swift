@@ -420,7 +420,7 @@ struct LogMacroTests {
         let __logStart = ContinuousClock.now
         func _deleteActiveLayout(collection: LayoutCollection) -> Bool {
           guard collection.layouts.count > 1 else {
-            event.earlyExit = AutoLogEarlyExit(kind: AutoLogEarlyExit.Kind.guard, intent: .unknown, condition: "collection.layouts.count > 1", message: nil)
+            event.earlyExit = AutoLogEarlyExit(kind: AutoLogEarlyExit.Kind.guard, intent: .unknown, condition: "!(collection.layouts.count > 1)", message: nil)
             return false
           }
 
@@ -468,7 +468,7 @@ struct LogMacroTests {
         let __logStart = ContinuousClock.now
         func _refresh(sessionToken: String?) {
           guard let sessionToken else {
-            event.earlyExit = AutoLogEarlyExit(kind: AutoLogEarlyExit.Kind.guard, intent: .unknown, condition: "let sessionToken", message: nil)
+            event.earlyExit = AutoLogEarlyExit(kind: AutoLogEarlyExit.Kind.guard, intent: .unknown, condition: "!(let sessionToken)", message: nil)
             return
           }
 
@@ -664,7 +664,7 @@ struct LogMacroTests {
         let __logStart = ContinuousClock.now
         func _deleteActiveLayout(collection: LayoutCollection) -> Bool {
           guard collection.layouts.count > 1 else {
-            event.earlyExit = AutoLogEarlyExit(kind: AutoLogEarlyExit.Kind.guard, intent: .unknown, condition: "collection.layouts.count > 1", message: "unknown")
+            event.earlyExit = AutoLogEarlyExit(kind: AutoLogEarlyExit.Kind.guard, intent: .unknown, condition: "!(collection.layouts.count > 1)", message: "unknown")
                 return false
           }
 
@@ -1057,7 +1057,7 @@ struct LogMacroTests {
             throw NSError(domain: com.foo.test, code: .zero)
           } else {
             event.recordBranchDecision(kind: AutoLogEarlyExit.Kind.else, condition: "Bool.random()")
-            event.earlyExit = AutoLogEarlyExit(kind: AutoLogEarlyExit.Kind.else, intent: .unknown, condition: "Bool.random()", message: nil)
+            event.earlyExit = AutoLogEarlyExit(kind: AutoLogEarlyExit.Kind.else, intent: .unknown, condition: "!Bool.random()", message: nil)
             return .zero
           }
         }
@@ -1169,7 +1169,7 @@ struct LogMacroTests {
             throw NSError(domain: com.foo.test, code: .zero)
           } else {
             event.recordBranchDecision(kind: AutoLogEarlyExit.Kind.else, condition: "Bool.random()")
-            event.earlyExit = AutoLogEarlyExit(kind: AutoLogEarlyExit.Kind.else, intent: .unknown, condition: "Bool.random()", message: nil)
+            event.earlyExit = AutoLogEarlyExit(kind: AutoLogEarlyExit.Kind.else, intent: .unknown, condition: "!Bool.random()", message: nil)
             return (value, "\(content): \(value)")
           }
         }

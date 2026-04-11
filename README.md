@@ -418,7 +418,7 @@ func deleteActiveLayout(from collection: LayoutCollection) -> Bool {
 }
 ```
 
-This records that the function exited early from a `guard` branch and still preserves the final `.success(false)` result. In the compact formatter, the detail line now stays short and visual, for example `└── ↪️ guard ? collection.layouts.count > 1`.
+This records that the function exited early from a `guard` branch and still preserves the final `.success(false)` result. In the compact formatter, the detail line now shows the effective entered-state instead of the branch keyword, for example `└── ↘️ !(collection.layouts.count > 1)`.
 
 If the early exit is intentional and you want to explain why, annotate it explicitly:
 
@@ -447,7 +447,7 @@ AutoLog.earlyExit(.optimize)
 AutoLog.earlyExit()
 ```
 
-If an explicit `AutoLog.earlyExit(...)` call is present in a branch, Swift AutoLog uses that metadata and does not inject another default early-exit record for the same branch. Intent is rendered as a small badge in the compact detail line, such as `⚡` for optimize, `✅` for expected, `🛂` for validation, and `🛑` for cancellation.
+If an explicit `AutoLog.earlyExit(...)` call is present in a branch, Swift AutoLog uses that metadata and does not inject another default early-exit record for the same branch. The compact formatter keeps the optional message, but the visual detail line now focuses on the effective predicate state that led into the exit path.
 
 When a branch does not exit early, Swift AutoLog records the taken path instead:
 

@@ -15,7 +15,8 @@ struct EarlyExitContext {
   }
 
   let kind: Kind
-  let condition: String?
+  let branchCondition: String?
+  let effectiveCondition: String?
 }
 
 extension AutoLogMacro {
@@ -769,9 +770,11 @@ extension AutoLogMacro {
     }
 
     if var guardStmt = statement.as(GuardStmtSyntax.self) {
+      let guardCondition = guardStmt.conditions.trimmedDescription
       let guardFailureContext = EarlyExitContext(
         kind: .guard,
-        condition: guardStmt.conditions.trimmedDescription
+        branchCondition: guardCondition,
+        effectiveCondition: negateConditionString(guardCondition)
       )
       guardStmt.body.statements = CodeBlockItemListSyntax(
         rewriteStatements(
@@ -815,7 +818,8 @@ extension AutoLogMacro {
     _ expression: ExprSyntax,
     yieldCaptureIndex: inout Int,
     earlyExitContext: EarlyExitContext? = nil,
-    isElseIfBranch: Bool = false
+    isElseIfBranch: Bool = false,
+    priorFalseConditions: [String] = []
   ) -> ExprSyntax {
     if var closure = expression.as(ClosureExprSyntax.self) {
       closure.statements = CodeBlockItemListSyntax(
@@ -876,13 +880,16 @@ extension AutoLogMacro {
 
     if var ifExpr = expression.as(IfExprSyntax.self) {
       let condition = ifExpr.conditions.trimmedDescription
+      let failedCondition = negateConditionString(condition)
+      let enteredConditions = priorFalseConditions + [condition]
       ifExpr.body.statements = CodeBlockItemListSyntax(
         rewriteConditionalBranchStatements(
           Array(ifExpr.body.statements),
           yieldCaptureIndex: &yieldCaptureIndex,
           earlyExitContext: EarlyExitContext(
             kind: isElseIfBranch ? .elseif : .if,
-            condition: condition
+            branchCondition: condition,
+            effectiveCondition: joinedConditionString(enteredConditions)
           )
         )
       )
@@ -896,7 +903,8 @@ extension AutoLogMacro {
               yieldCaptureIndex: &yieldCaptureIndex,
               earlyExitContext: EarlyExitContext(
                 kind: .else,
-                condition: condition
+                branchCondition: condition,
+                effectiveCondition: joinedConditionString(priorFalseConditions + [failedCondition])
               )
             )
           )
@@ -907,7 +915,8 @@ extension AutoLogMacro {
             ExprSyntax(nestedIf),
             yieldCaptureIndex: &yieldCaptureIndex,
             earlyExitContext: earlyExitContext,
-            isElseIfBranch: true
+            isElseIfBranch: true,
+            priorFalseConditions: priorFalseConditions + [failedCondition]
           )
           if let nestedIfExpr = rewrittenNested.as(IfExprSyntax.self) {
             ifExpr.elseBody = .ifExpr(nestedIfExpr)
@@ -1050,7 +1059,7 @@ extension AutoLogMacro {
       ?? (explicitArguments.shouldDefaultMessageToUnknown
         ? ExprSyntax(StringLiteralExprSyntax(content: "unknown"))
         : ExprSyntax(NilLiteralExprSyntax(nilKeyword: .keyword(.nil))))
-    let conditionExpression: ExprSyntax = context.condition.map {
+    let conditionExpression: ExprSyntax = context.effectiveCondition.map {
       ExprSyntax(StringLiteralExprSyntax(content: $0))
     } ?? ExprSyntax(NilLiteralExprSyntax(nilKeyword: .keyword(.nil)))
 
@@ -1101,7 +1110,7 @@ extension AutoLogMacro {
   static func captureBranchDecision(
     _ context: EarlyExitContext
   ) -> CodeBlockItemSyntax {
-    let conditionExpression: ExprSyntax = context.condition.map {
+    let conditionExpression: ExprSyntax = context.branchCondition.map {
       ExprSyntax(StringLiteralExprSyntax(content: $0))
     } ?? ExprSyntax(NilLiteralExprSyntax(nilKeyword: .keyword(.nil)))
 
@@ -1155,6 +1164,48 @@ extension AutoLogMacro {
         name: .identifier(kindName)
       )
     )
+  }
+
+  static func joinedConditionString(_ conditions: [String]) -> String? {
+    let normalized = conditions
+      .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+      .filter { !$0.isEmpty }
+
+    guard !normalized.isEmpty else { return nil }
+    return normalized.joined(separator: ", ")
+  }
+
+  static func negateConditionString(_ condition: String) -> String {
+    let trimmed = condition.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard !trimmed.isEmpty else { return "!" }
+
+    if let inverted = unwrapNegatedCondition(trimmed) {
+      return inverted
+    }
+
+    if shouldWrapNegatedCondition(trimmed) {
+      return "!(\(trimmed))"
+    }
+
+    return "!\(trimmed)"
+  }
+
+  static func unwrapNegatedCondition(_ condition: String) -> String? {
+    guard condition.hasPrefix("!") else { return nil }
+
+    let remainder = String(condition.dropFirst()).trimmingCharacters(in: .whitespacesAndNewlines)
+    guard !remainder.isEmpty else { return nil }
+
+    if remainder.hasPrefix("("), remainder.hasSuffix(")") {
+      let inner = remainder.dropFirst().dropLast().trimmingCharacters(in: .whitespacesAndNewlines)
+      return inner.isEmpty ? nil : inner
+    }
+
+    return remainder
+  }
+
+  static func shouldWrapNegatedCondition(_ condition: String) -> Bool {
+    condition.contains(" ") || condition.contains("&&") || condition.contains("||")
   }
 
   static func explicitEarlyExitCall(in statement: StmtSyntax) -> FunctionCallExprSyntax? {
