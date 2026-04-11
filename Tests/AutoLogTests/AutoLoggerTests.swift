@@ -435,6 +435,20 @@ struct AutoLoggerTests {
     #expect(failure.outputEventType == .failure)
     #expect(failure.inferredTypeName == "CheckoutViewModel")
   }
+
+  @Test
+  func autoLogEvent_cachesDerivedLocationAndDeclarationMetadata() {
+    let event = AutoLogEvent(
+      location: "App/CheckoutViewModel.swift:42:7",
+      declaration: "func processPayment(amount: Decimal) async throws"
+    )
+
+    #expect(event.inferredTypeName == "CheckoutViewModel")
+    #expect(event.sourceLine == "42")
+    #expect(event.shortLocation == "CheckoutViewModel:42")
+    #expect(event.functionName == "processPayment")
+    #expect(event.hasAsyncEffect)
+  }
 }
 
 extension AutoLoggerTests {

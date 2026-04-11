@@ -227,14 +227,6 @@ extension AutoLogEvent {
     return .success
   }
 
-  /// Best-effort type name derived from the source location.
-  ///
-  /// Output profiles use this for simple text filtering such as `ViewModel`.
-  public var inferredTypeName: String {
-    let filename = location.split(separator: "/").last.map(String.init) ?? location
-    let stem = filename.components(separatedBy: ".swift").first ?? filename
-    return stem.isEmpty ? "Unknown" : stem
-  }
 }
 
 /// A process-local runtime snapshot used by the logging hot path.

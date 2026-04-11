@@ -137,6 +137,21 @@ public struct AutoLogEvent: CustomStringConvertible, CustomDebugStringConvertibl
   /// type, excluding parameters and body.
   public let declaration: String
 
+  /// Best-effort type name derived from the source location.
+  public let inferredTypeName: String
+
+  /// Best-effort source line derived from `location`.
+  public let sourceLine: String
+
+  /// A compact `TypeName:Line` location summary for interaction rows.
+  public let shortLocation: String
+
+  /// Best-effort function name derived from the declaration string.
+  public let functionName: String
+
+  /// `true` when the declaration includes an `async` effect specifier.
+  public let hasAsyncEffect: Bool
+
   /// A set of arguments passed to a function, associated
   /// with their parameter labels.
   public var parameters: [String: Any]
@@ -260,6 +275,11 @@ public struct AutoLogEvent: CustomStringConvertible, CustomDebugStringConvertibl
     self.source = source
     self.location = location
     self.declaration = declaration
+    self.inferredTypeName = Self.extractTypeName(from: location)
+    self.sourceLine = Self.extractLine(from: location)
+    self.shortLocation = Self.shortLocation(from: location)
+    self.functionName = Self.extractFunctionName(from: declaration)
+    self.hasAsyncEffect = Self.hasAsyncEffect(in: declaration)
     self.parameters = parameters
     self.result = result
     self.tags = tags
@@ -322,6 +342,55 @@ public struct AutoLogEvent: CustomStringConvertible, CustomDebugStringConvertibl
     var copy = self
     copy.errorContext = []
     return copy
+  }
+
+  private static func extractTypeName(from location: String) -> String {
+    let filenameStart = location.lastIndex(of: "/").map { location.index(after: $0) } ?? location.startIndex
+    let filenameWithSuffix = location[filenameStart...]
+    let filenameEnd = filenameWithSuffix.firstIndex(of: ":") ?? filenameWithSuffix.endIndex
+    var filename = filenameWithSuffix[..<filenameEnd]
+
+    if filename.hasSuffix(".swift") {
+      filename = filename.dropLast(6)
+    }
+
+    return filename.isEmpty ? "Unknown" : String(filename)
+  }
+
+  private static func extractLine(from location: String) -> String {
+    let parts = location.split(separator: ":", maxSplits: 3, omittingEmptySubsequences: false)
+    let candidates = parts.dropFirst().prefix(2)
+    return candidates.first(where: { Int($0) != nil }).map(String.init) ?? "?"
+  }
+
+  private static func shortLocation(from location: String) -> String {
+    let segments = location.split(separator: ":")
+    let file = segments.first.map { String($0.split(separator: "/").last ?? Substring($0)) } ?? location
+    let stem = file.replacingOccurrences(of: ".swift", with: "")
+    let line = segments.dropFirst().first.map(String.init) ?? "?"
+    return "\(stem):\(line)"
+  }
+
+  private static func extractFunctionName(from declaration: String) -> String {
+    let start = declaration.range(of: "func ")?.upperBound ?? declaration.startIndex
+    let suffix = declaration[start...]
+    let end = suffix.firstIndex(where: { $0 == "<" || $0 == "(" }) ?? suffix.endIndex
+    return String(suffix[..<end])
+  }
+
+  private static func hasAsyncEffect(in declaration: String) -> Bool {
+    guard let range = declaration.range(of: "async") else { return false }
+
+    let hasValidLeadingBoundary =
+      range.lowerBound == declaration.startIndex ||
+      declaration[declaration.index(before: range.lowerBound)].isWhitespace
+    let hasValidTrailingBoundary =
+      range.upperBound == declaration.endIndex ||
+      declaration[range.upperBound].isWhitespace ||
+      declaration[range.upperBound] == "-" ||
+      declaration[range.upperBound] == "{"
+
+    return hasValidLeadingBoundary && hasValidTrailingBoundary
   }
 }
 

@@ -33,6 +33,26 @@ Outside the synthetic benchmark logger, `AutoLogLogger` now also resolves
 output profiles in one pass and reuses the first console render as the rolling
 failure-context snapshot, which removes an extra formatter call from the common
 console path without changing the emitted first line.
+`AutoLogEvent` now also caches parsed call-site metadata such as inferred type
+name, source line, short location, function name, and async presence so the
+formatter and output-profile matching do not keep re-splitting the same
+`location` and `declaration` strings within a single emit.
+
+## Current performance TODOs
+
+The next hot-path targets worth exploring are:
+
+- make parameter rendering lazy so `CompactFormatter` only formats
+  `event.parameters` when the active `LogFormat` actually includes
+  `.parameters`
+- reduce multi-parameter overhead further by avoiding repeated sorting and
+  reflection-heavy formatting work where possible
+- move `AutoLogOutput.typeNameFilters` normalization out of `matches(_:)` and
+  into configuration-update time so emit-time routing does less trimming and
+  filtering work
+- look at macro-generated event construction for no-tag and route-only cases to
+  see whether `[String: Any]` / `[any Taggable]` setup can be specialized
+  further without hurting readability
 
 ## Run the benchmark in Xcode
 

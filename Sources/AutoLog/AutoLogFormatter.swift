@@ -48,7 +48,7 @@ public struct CompactFormatter: AutoLogFormatter {
     event: AutoLogEvent,
     configuration: AutoLogConfiguration
   ) -> String {
-    let typeName = extractTypeName(from: event.location)
+    let typeName = event.inferredTypeName
     let fmt = format ?? configuration.logFormat
     let depth = profile.depth(for: typeName) ?? 1
     let columnElements = leadingColumnElements(in: fmt.mainLine)
@@ -319,9 +319,9 @@ public struct CompactFormatter: AutoLogFormatter {
   ) -> String {
     guard let source = event.source else { return event.declaration }
     var body = "\(source.emoji) \(source.label ?? source.description)"
-    body += " [\(shortLocation(from: event.location))]"
+    body += " [\(event.shortLocation)]"
     if includesLineNumber {
-      body += ":\(extractLine(from: event.location))"
+      body += ":\(event.sourceLine)"
     }
     return body
   }
@@ -376,9 +376,9 @@ public struct CompactFormatter: AutoLogFormatter {
   ) -> String {
     let arrow = fmt.arrowStyle.arrow(for: depth)
     let em = emoji(for: event, style: fmt.statusStyle)
-    let funcName = extractFuncName(from: event.declaration)
+    let funcName = event.functionName
     let params = formatParameters(event.parameters)
-    let hasAsyncSpecifier = hasAsyncEffect(in: event.declaration)
+    let hasAsyncSpecifier = event.hasAsyncEffect
     var line = ""
     var isFirstSegment = true
     var previousElement: LogFormat.Element?
@@ -458,7 +458,7 @@ public struct CompactFormatter: AutoLogFormatter {
         appendSegment(taskID, noLeadingSpace: false, element: .taskID)
       case .lineNumber:
         appendSegment(
-          ":\(extractLine(from: event.location))",
+          ":\(event.sourceLine)",
           noLeadingSpace: true,
           element: .lineNumber
         )
@@ -674,40 +674,6 @@ public struct CompactFormatter: AutoLogFormatter {
     return trimmed
   }
 
-  private func extractTypeName(from location: String) -> String {
-    let filenameStart = location.lastIndex(of: "/").map { location.index(after: $0) } ?? location.startIndex
-    let filenameWithSuffix = location[filenameStart...]
-    let filenameEnd = filenameWithSuffix.firstIndex(of: ":") ?? filenameWithSuffix.endIndex
-    var filename = filenameWithSuffix[..<filenameEnd]
-
-    if filename.hasSuffix(".swift") {
-      filename = filename.dropLast(6)
-    }
-
-    return filename.isEmpty ? "Unknown" : String(filename)
-  }
-
-  private func extractLine(from location: String) -> String {
-    let parts = location.split(separator: ":", maxSplits: 3, omittingEmptySubsequences: false)
-    let candidates = parts.dropFirst().prefix(2)
-    return candidates.first(where: { Int($0) != nil }).map(String.init) ?? "?"
-  }
-
-  private func shortLocation(from location: String) -> String {
-    let segments = location.split(separator: ":")
-    let file = segments.first.map { String($0.split(separator: "/").last ?? Substring($0)) } ?? location
-    let stem = file.replacingOccurrences(of: ".swift", with: "")
-    let line = segments.dropFirst().first.map(String.init) ?? "?"
-    return "\(stem):\(line)"
-  }
-
-  private func extractFuncName(from declaration: String) -> String {
-    let start = declaration.range(of: "func ")?.upperBound ?? declaration.startIndex
-    let suffix = declaration[start...]
-    let end = suffix.firstIndex(where: { $0 == "<" || $0 == "(" }) ?? suffix.endIndex
-    return String(suffix[..<end])
-  }
-
   private func formatParameters(_ parameters: [String: Any]) -> String {
     switch parameters.count {
     case 0:
@@ -728,21 +694,6 @@ public struct CompactFormatter: AutoLogFormatter {
 
       return result
     }
-  }
-
-  private func hasAsyncEffect(in declaration: String) -> Bool {
-    guard let range = declaration.range(of: "async") else { return false }
-
-    let hasValidLeadingBoundary =
-      range.lowerBound == declaration.startIndex ||
-      declaration[declaration.index(before: range.lowerBound)].isWhitespace
-    let hasValidTrailingBoundary =
-      range.upperBound == declaration.endIndex ||
-      declaration[range.upperBound].isWhitespace ||
-      declaration[range.upperBound] == "-" ||
-      declaration[range.upperBound] == "{"
-
-    return hasValidLeadingBoundary && hasValidTrailingBoundary
   }
 
   private func formatVisibleTags(_ tags: [any Taggable]) -> String {
