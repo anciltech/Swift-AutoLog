@@ -20,10 +20,21 @@ public struct AutoLogExecutionContext: Sendable, Equatable, Codable, CustomStrin
   }
 
   public static func capture() -> Self {
+    capture(needsThreadID: true, needsTaskID: true)
+  }
+
+  public static func minimalCurrent() -> Self {
+    AutoLogExecutionContext(threadLabel: Thread.isMainThread ? "main" : "bg")
+  }
+
+  public static func capture(
+    needsThreadID: Bool,
+    needsTaskID: Bool
+  ) -> Self {
     AutoLogExecutionContext(
       threadLabel: Thread.isMainThread ? "main" : "bg",
-      threadID: currentThreadID(),
-      taskID: currentTaskID()
+      threadID: needsThreadID ? currentThreadID() : nil,
+      taskID: needsTaskID ? currentTaskID() : nil
     )
   }
 
@@ -47,14 +58,12 @@ public struct AutoLogExecutionContext: Sendable, Equatable, Codable, CustomStrin
     withUnsafeCurrentTask { task in
       guard let task else { return nil }
       let description = String(describing: task)
-      guard let range = description.range(
-        of: #"0x[0-9A-Fa-f]+"#,
-        options: .regularExpression
-      ) else {
+      guard let prefixRange = description.range(of: "0x") else {
         return "T:current"
       }
 
-      let hex = description[range].dropFirst(2)
+      let hex = description[prefixRange.upperBound...].prefix { $0.isHexDigit }
+      guard !hex.isEmpty else { return "T:current" }
       return "T:\(String(hex.suffix(4)).uppercased())"
     }
   }

@@ -254,7 +254,7 @@ public struct AutoLogEvent: CustomStringConvertible, CustomDebugStringConvertibl
     deduplicateWithin: AutoLogDeduplication? = nil,
     omissionRules: [AutoLogOmissionRule] = [],
     isMeasuredExplicitly: Bool = false,
-    executionContext: AutoLogExecutionContext = .capture()
+    executionContext: AutoLogExecutionContext = .minimalCurrent()
   ) {
     self.level = level
     self.source = source
@@ -485,6 +485,16 @@ public struct AutoLogLogger: AutoLogger {
 }
 
 extension AutoLogger {
+  private func captureExecutionContext(
+    for configuration: AutoLogConfiguration
+  ) -> AutoLogExecutionContext {
+    let requirements = configuration.executionContextRequirements
+    return .capture(
+      needsThreadID: requirements.needsThreadID,
+      needsTaskID: requirements.needsTaskID
+    )
+  }
+
   /// Emits an event only when it is not suppressed by deduplication settings.
   public func emitIfEnabled(
     event: AutoLogEvent,
@@ -492,7 +502,7 @@ extension AutoLogger {
     deduplicator: AutoLogDeduplicator
   ) {
     var enrichedEvent = event
-    enrichedEvent.executionContext = .capture()
+    enrichedEvent.executionContext = captureExecutionContext(for: configuration)
     guard deduplicator.shouldEmit(event: enrichedEvent, configuration: configuration) else { return }
     emit(event: enrichedEvent, configuration: configuration)
   }

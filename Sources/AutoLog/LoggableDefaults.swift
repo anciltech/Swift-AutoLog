@@ -86,6 +86,11 @@ public struct AutoLogOutput: Sendable, Codable, Equatable, Identifiable {
 
 /// Live-tunable logging behavior shared across app processes.
 public struct AutoLogConfiguration: Sendable, Codable, Equatable {
+  struct ExecutionContextRequirements: Sendable, Equatable {
+    var needsThreadID: Bool
+    var needsTaskID: Bool
+  }
+
   /// Whether the macro should emit a 🔵 start event before a function executes.
   public var emitStartEvents: Bool
 
@@ -206,6 +211,14 @@ public struct AutoLogConfiguration: Sendable, Codable, Equatable {
 
   public var maxErrorContextLimit: Int {
     max(effectiveOutputs.map(\.errorContextLimit).max() ?? 0, 5)
+  }
+
+  var executionContextRequirements: ExecutionContextRequirements {
+    let formats = effectiveOutputs.map(\.logFormat)
+    return ExecutionContextRequirements(
+      needsThreadID: formats.contains { $0.mainLine.contains(.threadID) },
+      needsTaskID: formats.contains { $0.mainLine.contains(.taskID) }
+    )
   }
 }
 
