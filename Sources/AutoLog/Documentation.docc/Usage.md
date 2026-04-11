@@ -138,6 +138,10 @@ The companion settings preview uses the same `AutoLogOutput.matches(_:)`
 helper as the runtime logger, so route matching, event-kind filtering, and
 case-insensitive type-name filters stay aligned while you tune an output
 profile.
+If you want to embed that editor directly in an iOS or macOS app, the package
+also ships `AutoLogSettingsUI` with `AutoLogOutputSettingsView`, which reuses
+the same output-profile model, live preview, and code-snippet generation as the
+standalone `AutoLogSettings` companion app.
 Likewise, `.timing` is now controlled entirely by the `mainLine` element list:
 keep it to render elapsed durations, or remove it when a destination should log
 the same events without inline timing text.

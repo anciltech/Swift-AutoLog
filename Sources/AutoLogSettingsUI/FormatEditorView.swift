@@ -1,6 +1,11 @@
 import SwiftUI
 import AutoLog
 import UniformTypeIdentifiers
+#if canImport(AppKit)
+import AppKit
+#elseif canImport(UIKit)
+import UIKit
+#endif
 
 // MARK: - Payload helpers
 
@@ -93,8 +98,7 @@ struct FormatEditorView: View {
         .buttonStyle(.bordered)
       Spacer()
       Button {
-        NSPasteboard.general.clearContents()
-        NSPasteboard.general.setString(viewModel.codeSnippet, forType: .string)
+        copyCodeSnippet()
       } label: {
         Label("Copy Code", systemImage: "doc.on.doc")
       }
@@ -205,7 +209,7 @@ struct FormatEditorView: View {
                   set: { viewModel.toggleSelectedOutputEventType(eventType, isOn: $0) }
                 )
               )
-              .toggleStyle(.checkbox)
+              .modifier(EventTypeToggleStyle())
             }
           }
 
@@ -582,5 +586,24 @@ struct FormatEditorView: View {
       }
     }
     return true
+  }
+
+  private func copyCodeSnippet() {
+    #if canImport(AppKit)
+    NSPasteboard.general.clearContents()
+    NSPasteboard.general.setString(viewModel.codeSnippet, forType: .string)
+    #elseif canImport(UIKit)
+    UIPasteboard.general.string = viewModel.codeSnippet
+    #endif
+  }
+}
+
+private struct EventTypeToggleStyle: ViewModifier {
+  func body(content: Content) -> some View {
+    #if os(macOS)
+    content.toggleStyle(.checkbox)
+    #else
+    content
+    #endif
   }
 }

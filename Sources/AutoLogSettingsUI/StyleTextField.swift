@@ -1,5 +1,7 @@
 import SwiftUI
+#if canImport(AppKit)
 import AppKit
+#endif
 
 /// A text field for short style values (arrow characters, status emoji).
 ///
@@ -18,7 +20,24 @@ import AppKit
 /// away) writes to the binding and triggers an `@Observable` re-render.
 /// Writing mid-edit causes SwiftUI to call `updateNSView` and snap the
 /// displayed text back to the pre-edit value before the operation finishes.
-struct StyleTextField: NSViewRepresentable {
+struct StyleTextField: View {
+  @Binding var text: String
+
+  var body: some View {
+    #if canImport(AppKit)
+    MacStyleTextField(text: $text)
+    #else
+    TextField("", text: $text)
+      .textFieldStyle(.roundedBorder)
+      .font(.system(.body, design: .monospaced))
+      .autocorrectionDisabled()
+      .textInputAutocapitalization(.never)
+    #endif
+  }
+}
+
+#if canImport(AppKit)
+private struct MacStyleTextField: NSViewRepresentable {
   @Binding var text: String
 
   func makeNSView(context: Context) -> NSTextField {
@@ -76,3 +95,4 @@ struct StyleTextField: NSViewRepresentable {
     }
   }
 }
+#endif

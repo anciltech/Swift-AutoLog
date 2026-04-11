@@ -1,4 +1,5 @@
 import SwiftUI
+import AutoLogSettingsUI
 
 // NSApp (NSApplication!) is nil during App.init() — NSApplication.shared is
 // only created after SwiftUI's @main entry point constructs the App struct.
@@ -20,7 +21,7 @@ struct AutoLogSettingsApp: App {
 
   var body: some Scene {
     Window("AutoLog Format Settings", id: "main") {
-      ContentView()
+      AutoLogOutputSettingsView()
     }
     .windowResizability(.contentSize)
     .defaultSize(width: 760, height: 540)
