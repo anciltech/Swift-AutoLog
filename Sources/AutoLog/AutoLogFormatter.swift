@@ -17,7 +17,7 @@ public protocol AutoLogFormatter: Sendable {
 ///
 /// ### Function result events (🟢 success, 🔴 failure)
 /// ```
-/// ├───🟢 AsyncExamplesViewModel.fetchPreferences(userId: 42) async → Prefs(dark, en) ⏱ 38ms
+/// └───🟢 AsyncExamplesViewModel.fetchPreferences(userId: 42) async → Prefs(dark, en) ⏱ 38ms
 ///
 /// └────🔴 AsyncExamplesViewModel.fetchUser(id: 99) async
 ///      ├── recent context:
@@ -325,8 +325,7 @@ public struct CompactFormatter: AutoLogFormatter {
   }
 
   private func isTerminalTraceEvent(_ event: AutoLogEvent) -> Bool {
-    if case .failure = event.result { return true }
-    return false
+    !isStartEvent(event)
   }
 
   private func formatDuration(_ d: Duration) -> String {

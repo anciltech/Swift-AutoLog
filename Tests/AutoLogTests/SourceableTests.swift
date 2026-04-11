@@ -356,7 +356,7 @@ struct CompactFormatterSourceTests {
             result: .success(())
         )
         let output = CompactFormatter().format(event: event, configuration: configuration)
-        #expect(output.contains("├──🟢"))
+        #expect(output.contains("└──🟢"))
         #expect(output.contains("MyViewModel.deposit()"))
         #expect(!output.contains("↖"))
     }
@@ -398,6 +398,26 @@ struct CompactFormatterSourceTests {
         #expect(lines[0].contains("PaymentAPI.submit() async"))
         #expect(lines[1].contains("└──"))
         #expect(lines[1].contains("PaymentError"))
+    }
+
+    @Test func successTrace_usesTerminalBranchPrefix() {
+        let ctx = SourceContext(
+            source: InteractionSource.button("Save"),
+            location: "App/ContentView.swift:30:5",
+            interactionID: "A1B2C3",
+            flowMarker: "🧵"
+        )
+        let event = makeEvent(
+            source: ctx,
+            location: "App/PaymentService.swift:30:5",
+            declaration: "func validate() async -> Bool",
+            result: .success(true)
+        )
+
+        let output = CompactFormatter(profile: .cleanArchitecture).format(event: event, configuration: configuration)
+        let lines = output.split(separator: "\n", omittingEmptySubsequences: false)
+        #expect(lines[0].contains("└──🟢"))
+        #expect(lines[0].contains("PaymentService.validate() async → true"))
     }
 
     @Test func traceEvent_earlyExit_showsOnSecondLine() {

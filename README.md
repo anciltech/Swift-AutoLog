@@ -348,8 +348,8 @@ The interaction event becomes the root of a small trace tree, and downstream wor
 
 ```text
 👆🏼 Save 🧵A1B2C3
-├──🟢 PaymentsViewModel.saveTapped()
-├───🟢 PaymentService.validate()                  ⏱ 12ms
+└──🟢 PaymentsViewModel.saveTapped()
+└───🟢 PaymentService.validate()                  ⏱ 12ms
 └────🔴 PaymentAPI.submit()                       ⏱ 221ms
      └── declined [PaymentError]
 ```

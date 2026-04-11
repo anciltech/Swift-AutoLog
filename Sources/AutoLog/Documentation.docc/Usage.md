@@ -180,8 +180,8 @@ lengths to hint at architectural depth:
 
 ```text
 👆🏼 Save 🧵A1B2C3
-├──🟢 PaymentsViewModel.saveTapped()
-├───🟢 PaymentService.validate()                  ⏱ 12ms
+└──🟢 PaymentsViewModel.saveTapped()
+└───🟢 PaymentService.validate()                  ⏱ 12ms
 └────🔴 PaymentAPI.submit()                       ⏱ 221ms
      └── declined [PaymentError]
 ```
