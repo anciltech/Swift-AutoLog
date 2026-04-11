@@ -242,6 +242,32 @@ AutoLogInteraction.button("Save").log {
 }
 ```
 
+For child tasks inside `withTaskGroup`, wrap the closure body in
+`AutoLog.logTask(...)` so each child emits its own traced operation:
+
+```swift
+let results = await withTaskGroup(of: String.self) { group in
+  for name in ["Alpha", "Beta", "Gamma"] {
+    group.addTask {
+      await AutoLog.logTask("TaskGroup child \(name)") {
+        try? await Task.sleep(for: .milliseconds(200))
+        return "\(name): done"
+      }
+    }
+  }
+
+  var collected: [String] = []
+  for await result in group {
+    collected.append(result)
+  }
+  return collected
+}
+```
+
+Those child-task logs inherit the current interaction context, so a
+`Button.log("Run All")` tap still shows the same trace badge across the parent
+function and each task-group child.
+
 ## Live runtime configuration
 
 Swift AutoLog keeps a process-local runtime snapshot behind synchronized storage, so

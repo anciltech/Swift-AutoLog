@@ -171,6 +171,35 @@ struct InteractionManager {
 AutoLog compares the emitted event metadata and suppresses repeated identical
 entries inside the configured time window.
 
+## Log TaskGroup children explicitly
+
+`@Log` and `@AutoLog` instrument function boundaries, but `withTaskGroup` child
+closures are still just closures. When you want each child to emit its own
+start/completion pair, wrap the closure body in ``AutoLog/logTask(_:level:fileID:line:column:operation:)``:
+
+```swift
+let results = await withTaskGroup(of: String.self) { group in
+  for name in ["Alpha", "Beta", "Gamma"] {
+    group.addTask {
+      await AutoLog.logTask("TaskGroup child \(name)") {
+        try? await Task.sleep(for: .milliseconds(200))
+        return "\(name): done"
+      }
+    }
+  }
+
+  var collected: [String] = []
+  for await result in group {
+    collected.append(result)
+  }
+  return collected
+}
+```
+
+Because `AutoLog.logTask(...)` reads the same TaskLocal source context as
+macro-generated logs, child tasks keep the interaction badge from the parent
+button tap or surrounding `AutoLog.run(...)` scope.
+
 If you want to quantify the overhead of those emitted events, including how
 different tag mixes change the hot path, run the dedicated
 <doc:MeasuringPerformance> benchmark suite. It compares a plain function against

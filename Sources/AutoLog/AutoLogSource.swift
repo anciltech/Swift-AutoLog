@@ -306,6 +306,65 @@ public enum AutoLog {
     }
   }
 
+  // MARK: - Child task logging
+
+  /// Emits a start/completion pair around arbitrary async work.
+  ///
+  /// This is useful for `Task { ... }`, `withTaskGroup`, or other child-task
+  /// closures that cannot be directly annotated with `@Log` but should still
+  /// appear as separate traced operations.
+  ///
+  /// The current `AutoLogSource.current` TaskLocal is preserved, so task-group
+  /// children still inherit the interaction badge that triggered the parent
+  /// workflow.
+  @discardableResult
+  public static func logTask<T>(
+    _ declaration: String,
+    level: (any Levelable)? = nil,
+    fileID: String = #fileID,
+    line: Int = #line,
+    column: Int = #column,
+    operation: () async throws -> T
+  ) async rethrows -> T {
+    let runtime = runtimeSnapshot()
+    let autoLogger: any AutoLogger = runtime.logger
+    var event = AutoLogEvent(
+      level: level,
+      source: current,
+      location: "\(fileID):\(line):\(column)",
+      declaration: declaration,
+      parameters: [:],
+      tags: []
+    )
+    autoLogger.emitStart(
+      event: event,
+      configuration: runtime.configuration,
+      deduplicator: runtime.deduplicator
+    )
+    let start = ContinuousClock.now
+
+    do {
+      let result = try await operation()
+      event.result = .success(result)
+      event.duration = ContinuousClock.now - start
+      autoLogger.emitIfEnabled(
+        event: event,
+        configuration: runtime.configuration,
+        deduplicator: runtime.deduplicator
+      )
+      return result
+    } catch {
+      event.result = .failure(error)
+      event.duration = ContinuousClock.now - start
+      autoLogger.emitIfEnabled(
+        event: event,
+        configuration: runtime.configuration,
+        deduplicator: runtime.deduplicator
+      )
+      throw error
+    }
+  }
+
   // MARK: - Manual inline logging
 
   /// Emits a manual log entry with the given level and message.

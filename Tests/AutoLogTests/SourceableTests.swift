@@ -251,6 +251,57 @@ struct AutoLogSourceTests {
             #expect(result == "data")
         }
     }
+
+    @Test func logTask_emitsStartAndCompletionAroundAsyncOperation() async {
+        let mock = MockLogger()
+        await withMockRuntime(logger: mock) {
+            let result = await AutoLog.logTask("TaskGroup child Alpha") {
+                "Alpha: done"
+            }
+            #expect(result == "Alpha: done")
+        }
+
+        #expect(mock.events.count == 2)
+        #expect(mock.events.first?.level as? LogLevel == .start)
+        #expect(mock.events.last?.declaration == "TaskGroup child Alpha")
+        #expect(mock.events.last?.duration != nil)
+        if let result = mock.events.last?.result {
+            guard case .success = result else {
+                Issue.record("Expected task log result to be successful")
+                return
+            }
+        } else {
+            Issue.record("Expected a completion event for the logged task")
+        }
+    }
+
+    @Test func logTask_preservesSourceContextInsideTaskGroupChild() async {
+        let mock = MockLogger()
+        await withMockRuntime(logger: mock) {
+            await AutoLogSource.run(InteractionSource.button("Run All")) {
+                let results = await withTaskGroup(of: String.self) { group in
+                    group.addTask {
+                        await AutoLog.logTask("TaskGroup child Alpha") {
+                            "Alpha: done"
+                        }
+                    }
+
+                    var collected: [String] = []
+                    for await result in group {
+                        collected.append(result)
+                    }
+                    return collected
+                }
+
+                #expect(results == ["Alpha: done"])
+            }
+        }
+
+        #expect(mock.events.count == 3)
+        #expect(mock.events[1].source?.emoji == "👆🏼")
+        #expect(mock.events[2].source?.emoji == "👆🏼")
+        #expect(mock.events[2].declaration == "TaskGroup child Alpha")
+    }
 }
 
 // MARK: - CompactFormatter Source Tests
