@@ -1480,14 +1480,17 @@ struct LogMacroTests {
       """#
     } expansion: {
       """
+      @Tag("example")
+      @Tag(.commonTag)
       func ping() {
         let runtime = AutoLog.runtimeSnapshot()
         let autoLogger: any AutoLogger = runtime.logger
         var event = AutoLogEvent(
           source: AutoLogSource.current,
 
-          location: "TestModule/Test.swift:3:1",
+          location: "TestModule/Test.swift:1:1",
           declaration: "func ping()",
+          parameters: [:],
           tags: ["example", .commonTag]
         )
         autoLogger.emitStart(event: event, configuration: runtime.configuration, deduplicator: runtime.deduplicator)
