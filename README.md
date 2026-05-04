@@ -499,7 +499,9 @@ annotates the final function event with a handled-error count. The outer functio
 still finish successfully, but the recovered failure no longer disappears into a single
 green result row. Those catch-site events still flow through the normal
 `emitIfEnabled(...)` path, so duplicate suppression and omission rules apply in the
-same way they do for function-result events.
+same way they do for function-result events. When failure context is attached, the
+formatter now lists the most recent precursor first so the issue reads top-down as
+"problem, immediate lead-up, earlier lead-up, origin."
 
 ## Sink routing
 

@@ -22,9 +22,10 @@ public protocol AutoLogFormatter: Sendable {
 /// 👆🏼-🧵A1B2C3 │ 38ms │   bg │ └──🟢 AsyncExamplesViewModel.fetchPreferences(userId: 42) async → Prefs(dark, en)
 ///
 /// 👆🏼-🧵A1B2C3 │ 221ms│   bg │ └──🔴 AsyncExamplesViewModel.fetchUser(id: 99) async → notFound [NetworkError]
-/// 👆🏼-🧵A1B2C3 │      │      │ ╭─ Actions leading up to issue
+/// 👆🏼-🧵A1B2C3 │      │      │ ╰─ Recovered in catch block; AsyncExamplesViewModel.fetchUser() continued
+/// ──────────── Actions leading up to issue (closest first) ────────────
 /// 👆🏼-🧵A1B2C3 │  12ms│ main │ └──🟢 AsyncExamplesViewModel.loadUser(id: 99) async
-/// 👆🏼-🧵A1B2C3 │      │      │ ╰─ End issue context
+/// ──────────── Start of interaction chain ────────────
 /// ```
 ///
 /// ### Customising the layout
@@ -102,27 +103,9 @@ public struct CompactFormatter: AutoLogFormatter {
     }
 
     if case .failure = event.result, !event.errorContext.isEmpty {
-      lines.append(
-        renderRow(
-          body: "╭─ Actions leading up to issue",
-          event: event,
-          depth: depth,
-          columnElements: columnElements,
-          configuration: configuration,
-          rowKind: .annotation
-        )
-      )
-      lines.append(contentsOf: event.errorContext.map(\.summary))
-      lines.append(
-        renderRow(
-          body: "╰─ End issue context",
-          event: event,
-          depth: depth,
-          columnElements: columnElements,
-          configuration: configuration,
-          rowKind: .annotation
-        )
-      )
+      lines.append(sectionDivider("Actions leading up to issue (closest first)"))
+      lines.append(contentsOf: event.errorContext.reversed().map(\.summary))
+      lines.append(sectionDivider("Start of interaction chain"))
     }
 
     if case .failure(let error) = event.result,
@@ -535,7 +518,7 @@ public struct CompactFormatter: AutoLogFormatter {
 
   private func detailAnnotation(for event: AutoLogEvent) -> String? {
     if let handledError = event.handledError {
-      return handledError.message
+      return handledErrorAnnotation(for: event, handledError: handledError)
     }
 
     var details: [String] = []
@@ -562,8 +545,7 @@ public struct CompactFormatter: AutoLogFormatter {
     }
 
     if event.handledErrorCount > 0 {
-      let label = event.handledErrorCount == 1 ? "handled error" : "handled errors"
-      details.append("\(label): \(event.handledErrorCount)")
+      details.append(handledErrorSummary(for: event))
     }
 
     guard !details.isEmpty else { return nil }
@@ -574,6 +556,31 @@ public struct CompactFormatter: AutoLogFormatter {
     let errorType = String(describing: type(of: error))
     let description = String(describing: error)
     return "\(description) [\(errorType)]"
+  }
+
+  private func handledErrorAnnotation(
+    for event: AutoLogEvent,
+    handledError: AutoLogHandledError
+  ) -> String {
+    if handledError.message != AutoLogHandledError.defaultMessage {
+      return handledError.message
+    }
+
+    return "Recovered in catch block; \(event.inferredTypeName).\(event.functionName)() continued"
+  }
+
+  private func handledErrorSummary(for event: AutoLogEvent) -> String {
+    let issueLabel = event.handledErrorCount == 1 ? "issue" : "issues"
+
+    if case .success = event.result {
+      return "Completed after recovering from \(event.handledErrorCount) \(issueLabel)"
+    }
+
+    return "Encountered \(event.handledErrorCount) recovered \(issueLabel) before final failure"
+  }
+
+  private func sectionDivider(_ title: String) -> String {
+    "──────────── \(title) ────────────"
   }
 
   private func originBadge(for event: AutoLogEvent) -> String {

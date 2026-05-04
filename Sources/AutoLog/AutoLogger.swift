@@ -106,10 +106,12 @@ public struct AutoLogBranchDecision: Sendable, Hashable, CustomStringConvertible
 
 /// Structured metadata describing a locally handled error inside a logged function.
 public struct AutoLogHandledError: Sendable, Hashable, CustomStringConvertible {
+  public static let defaultMessage = "caught and handled locally"
+
   /// Human-readable context for the handled catch site.
   public let message: String
 
-  public init(message: String = "caught and handled locally") {
+  public init(message: String = Self.defaultMessage) {
     self.message = message
   }
 
@@ -365,7 +367,7 @@ public struct AutoLogEvent: CustomStringConvertible, CustomDebugStringConvertibl
   }
 
   public mutating func recordHandledError(
-    message: String = "caught and handled locally"
+    message: String = AutoLogHandledError.defaultMessage
   ) {
     _ = message
     handledErrorCount += 1
@@ -374,7 +376,7 @@ public struct AutoLogEvent: CustomStringConvertible, CustomDebugStringConvertibl
   public func asHandledErrorEvent(
     _ error: (any Error)? = nil,
     location: String,
-    message: String = "caught and handled locally"
+    message: String = AutoLogHandledError.defaultMessage
   ) -> AutoLogEvent {
     var event = AutoLogEvent(
       level: LogLevel.warning,

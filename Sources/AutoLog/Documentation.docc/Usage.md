@@ -426,6 +426,9 @@ You will see the caught error at the catch site, and the final function event wi
 also include a handled-error annotation so the control-flow story stays honest.
 Those catch-site rows still go through the same `emitIfEnabled(...)` path as every
 other AutoLog event, so omission rules and duplicate suppression remain consistent.
+When failure context is available, the formatter now shows the warning first and
+then walks backward through the lead-up in closest-first order, so the first
+context line under the issue is the most recent action that preceded it.
 
 ### What gets captured automatically
 

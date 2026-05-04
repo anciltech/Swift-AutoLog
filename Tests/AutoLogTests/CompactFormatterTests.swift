@@ -64,7 +64,8 @@ struct CompactFormatterTests {
         #expect(lines.count == 2)
         #expect(lines[0].contains(" 🟡 "))
         #expect(lines[0].contains("project() async"))
-        #expect(lines[1].contains("caught and handled locally"))
+        #expect(lines[1].contains("Recovered in catch block"))
+        #expect(lines[1].contains("AppState.project() continued"))
     }
 
     @Test func osLogError_emitsRed() {
@@ -333,9 +334,10 @@ struct CompactFormatterTests {
         #expect(lines.count == 5)
         #expect(lines[0].contains("notFound"))
         #expect(lines[1].contains("Actions leading up to issue"))
-        #expect(lines[2].contains("Run [AsyncExamplesView:42]"))
-        #expect(lines[3].contains("processPayment() async"))
-        #expect(lines[4].contains("End issue context"))
+        #expect(lines[1].contains("closest first"))
+        #expect(lines[2].contains("processPayment() async"))
+        #expect(lines[3].contains("Run [AsyncExamplesView:42]"))
+        #expect(lines[4].contains("Start of interaction chain"))
     }
 
     @Test func tags_shownOnSecondLine() {
@@ -384,7 +386,7 @@ struct CompactFormatterTests {
         let lines = output.split(separator: "\n", omittingEmptySubsequences: false)
 
         #expect(lines.count == 2)
-        #expect(lines[1].contains("handled error: 1"))
+        #expect(lines[1].contains("Completed after recovering from 1 issue"))
     }
 
     @Test func earlyExit_showsOnSecondLine() {
