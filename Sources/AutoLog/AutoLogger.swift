@@ -104,6 +104,20 @@ public struct AutoLogBranchDecision: Sendable, Hashable, CustomStringConvertible
   }
 }
 
+/// Structured metadata describing a locally handled error inside a logged function.
+public struct AutoLogHandledError: Sendable, Hashable, CustomStringConvertible {
+  /// Human-readable context for the handled catch site.
+  public let message: String
+
+  public init(message: String = "caught and handled locally") {
+    self.message = message
+  }
+
+  public var description: String {
+    message
+  }
+}
+
 /// A previously emitted log line retained as context for a later failure.
 public struct AutoLogErrorContextEntry: Sendable, Hashable, CustomStringConvertible {
   /// A single-line summary of the earlier log entry.
@@ -207,6 +221,12 @@ public struct AutoLogEvent: CustomStringConvertible, CustomDebugStringConvertibl
   /// formatting or forwarding an error event.
   public var errorContext: [AutoLogErrorContextEntry]
 
+  /// Marks this event as a handled-error site emitted from within a `catch` block.
+  public var handledError: AutoLogHandledError?
+
+  /// The number of locally handled errors observed while the enclosing function continued.
+  public var handledErrorCount: Int
+
   public var description: String {
     """
     source: \(source.map { String(describing: $0) } ?? "nil")
@@ -216,6 +236,8 @@ public struct AutoLogEvent: CustomStringConvertible, CustomDebugStringConvertibl
     result: \(result)
     earlyExit: \(String(describing: earlyExit))
     branchDecisions: \(branchDecisions)
+    handledError: \(String(describing: handledError))
+    handledErrorCount: \(handledErrorCount)
     errorContext: \(errorContext)
     tags: \(tags)
     routes: \(Array(routes).sorted { $0.rawValue < $1.rawValue })
@@ -235,6 +257,8 @@ public struct AutoLogEvent: CustomStringConvertible, CustomDebugStringConvertibl
     result: \(result)
     earlyExit: \(String(describing: earlyExit))
     branchDecisions: \(branchDecisions)
+    handledError: \(String(describing: handledError))
+    handledErrorCount: \(handledErrorCount)
     errorContext: \(errorContext)
     tags: \(tags)
     routes: \(Array(routes).sorted { $0.rawValue < $1.rawValue })
@@ -293,6 +317,8 @@ public struct AutoLogEvent: CustomStringConvertible, CustomDebugStringConvertibl
     self.earlyExit = nil
     self.branchDecisions = []
     self.errorContext = []
+    self.handledError = nil
+    self.handledErrorCount = 0
   }
 
   /// A copy of this event representing the function's start, with `.start` level
@@ -336,6 +362,34 @@ public struct AutoLogEvent: CustomStringConvertible, CustomDebugStringConvertibl
         condition: condition
       )
     )
+  }
+
+  public mutating func recordHandledError(
+    message: String = "caught and handled locally"
+  ) {
+    _ = message
+    handledErrorCount += 1
+  }
+
+  public func asHandledErrorEvent(
+    _ error: (any Error)? = nil,
+    location: String,
+    message: String = "caught and handled locally"
+  ) -> AutoLogEvent {
+    var event = AutoLogEvent(
+      level: LogLevel.warning,
+      source: source,
+      location: location,
+      declaration: declaration,
+      parameters: parameters,
+      result: error.map { .failure($0) } ?? .success(()),
+      tags: tags,
+      deduplicateWithin: deduplicateWithin,
+      omissionRules: omissionRules
+    )
+    event.handledError = AutoLogHandledError(message: message)
+    event.handledErrorCount = 1
+    return event
   }
 
   public func withoutErrorContext() -> Self {

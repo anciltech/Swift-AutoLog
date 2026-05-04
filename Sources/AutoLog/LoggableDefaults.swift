@@ -276,6 +276,10 @@ extension AutoLogEvent {
       return .start
     }
 
+    if handledError != nil {
+      return .failure
+    }
+
     if case .failure = result {
       return .failure
     }

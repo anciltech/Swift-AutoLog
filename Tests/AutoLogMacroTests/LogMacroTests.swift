@@ -389,6 +389,51 @@ struct LogMacroTests {
   }
 
   @Test
+  func functionWithHandledCatch_emitsInlineHandledErrorEvent() throws {
+    assertMacro {
+      #"""
+      @Log
+      func project() {
+        do {
+          try performMirrorProjection()
+        } catch {
+          projectionStatus = "Error: \(error.localizedDescription)"
+        }
+      }
+      """#
+    } expansion: {
+      """
+      func project() {
+        let runtime = AutoLog.runtimeSnapshot()
+        let autoLogger: any AutoLogger = runtime.logger
+        var event = AutoLogEvent(
+          source: AutoLogSource.current,
+
+          location: "TestModule/Test.swift:1:1",
+          declaration: "func project()",
+          parameters: [:],
+          tags: []
+        )
+        autoLogger.emitStart(event: event, configuration: runtime.configuration, deduplicator: runtime.deduplicator)
+        let __logStart = ContinuousClock.now
+        func _project() {
+          do {
+            try performMirrorProjection()
+          } catch {
+            event.recordHandledError()
+            AutoLogSource.handledError(error, from: event, runtime: runtime)
+                projectionStatus = "Error: \\(error.localizedDescription)"
+          }
+        }
+        let _ = _project()
+        event.duration = ContinuousClock.now - __logStart
+        autoLogger.emitIfEnabled(event: event, configuration: runtime.configuration, deduplicator: runtime.deduplicator)
+      }
+      """
+    }
+  }
+
+  @Test
   func boolFunction_logsGuardEarlyReturn() throws {
     assertMacro {
       #"""

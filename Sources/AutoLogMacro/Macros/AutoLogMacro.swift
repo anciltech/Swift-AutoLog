@@ -638,6 +638,74 @@ extension AutoLogMacro {
     )
   }
 
+  static func recordHandledError() -> CodeBlockItemSyntax {
+    CodeBlockItemSyntax(
+      FunctionCallExprSyntax(
+        calledExpression: MemberAccessExprSyntax(
+          base: DeclReferenceExprSyntax(baseName: .predefined(.event)),
+          period: .periodToken(),
+          name: .identifier("recordHandledError")
+        ),
+        leftParen: .leftParenToken(),
+        arguments: LabeledExprListSyntax(),
+        rightParen: .rightParenToken()
+      )
+    )
+  }
+
+  static func emitHandledError(
+    includesImplicitErrorBinding: Bool
+  ) -> CodeBlockItemSyntax {
+    let calledExpression = MemberAccessExprSyntax(
+      base: DeclReferenceExprSyntax(baseName: .predefined(.AutoLogSource)),
+      period: .periodToken(),
+      name: .identifier("handledError")
+    )
+
+    let arguments = if includesImplicitErrorBinding {
+      LabeledExprListSyntax {
+        LabeledExprSyntax(
+          expression: DeclReferenceExprSyntax(baseName: .predefined(.error)),
+          trailingComma: .commaToken()
+        )
+        LabeledExprSyntax(
+          label: .identifier("from"),
+          colon: .colonToken(),
+          expression: DeclReferenceExprSyntax(baseName: .predefined(.event)),
+          trailingComma: .commaToken()
+        )
+        LabeledExprSyntax(
+          label: .identifier("runtime"),
+          colon: .colonToken(),
+          expression: DeclReferenceExprSyntax(baseName: .identifier("runtime"))
+        )
+      }
+    } else {
+      LabeledExprListSyntax {
+        LabeledExprSyntax(
+          label: .identifier("from"),
+          colon: .colonToken(),
+          expression: DeclReferenceExprSyntax(baseName: .predefined(.event)),
+          trailingComma: .commaToken()
+        )
+        LabeledExprSyntax(
+          label: .identifier("runtime"),
+          colon: .colonToken(),
+          expression: DeclReferenceExprSyntax(baseName: .identifier("runtime"))
+        )
+      }
+    }
+
+    return CodeBlockItemSyntax(
+      FunctionCallExprSyntax(
+        calledExpression: calledExpression,
+        leftParen: .leftParenToken(),
+        arguments: arguments,
+        rightParen: .rightParenToken()
+      )
+    )
+  }
+
   static func instrumentedBody(
     of function: FunctionSyntax
   ) -> [CodeBlockItemSyntax] {
@@ -798,12 +866,15 @@ extension AutoLogMacro {
       var catchClauses = doStmt.catchClauses
       for index in catchClauses.indices {
         var clause = catchClauses[index]
+        let rewrittenStatements = rewriteStatements(
+          Array(clause.body.statements),
+          yieldCaptureIndex: &yieldCaptureIndex,
+          earlyExitContext: earlyExitContext
+        )
+        let includesImplicitErrorBinding = clause.catchItems.isEmpty
         clause.body.statements = CodeBlockItemListSyntax(
-          rewriteStatements(
-            Array(clause.body.statements),
-            yieldCaptureIndex: &yieldCaptureIndex,
-            earlyExitContext: earlyExitContext
-          )
+          [recordHandledError(), emitHandledError(includesImplicitErrorBinding: includesImplicitErrorBinding)]
+            + rewrittenStatements
         )
         catchClauses[index] = clause
       }

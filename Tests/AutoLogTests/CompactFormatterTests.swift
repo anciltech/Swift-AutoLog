@@ -48,6 +48,25 @@ struct CompactFormatterTests {
         #expect(CompactFormatter().format(event: event, configuration: configuration).contains(" 🔴 "))
     }
 
+    @Test func handledErrorEvent_emitsYellowWithCatchAnnotation() {
+        struct E: Error {}
+        let parent = makeEvent(
+            location: "App/AppState.swift:430:5",
+            declaration: "func project() async"
+        )
+        let event = parent.asHandledErrorEvent(
+            E(),
+            location: "App/AppState.swift:436:9"
+        )
+        let output = CompactFormatter().format(event: event, configuration: configuration)
+        let lines = output.split(separator: "\n", omittingEmptySubsequences: false)
+
+        #expect(lines.count == 2)
+        #expect(lines[0].contains(" 🟡 "))
+        #expect(lines[0].contains("project() async"))
+        #expect(lines[1].contains("caught and handled locally"))
+    }
+
     @Test func osLogError_emitsRed() {
         let event = makeEvent(level: OSLogType.error, result: .success(()))
         #expect(CompactFormatter().format(event: event, configuration: configuration).contains(" 🔴 "))
@@ -355,6 +374,17 @@ struct CompactFormatterTests {
         #expect(lines[1].contains("branch path"))
         #expect(lines[1].contains("if isVisible"))
         #expect(!lines[1].contains("else isVisible"))
+    }
+
+    @Test func handledErrorCount_showsOnParentSuccessEvent() {
+        var event = makeEvent(result: .success(()))
+        event.recordHandledError()
+
+        let output = CompactFormatter().format(event: event, configuration: configuration)
+        let lines = output.split(separator: "\n", omittingEmptySubsequences: false)
+
+        #expect(lines.count == 2)
+        #expect(lines[1].contains("handled error: 1"))
     }
 
     @Test func earlyExit_showsOnSecondLine() {

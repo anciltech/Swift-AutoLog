@@ -450,6 +450,46 @@ public enum AutoLog {
     emit(.failure, message, fileID: fileID, line: line)
   }
 
+  /// Emits a warning-level event for a locally handled error inside a logged function.
+  ///
+  /// The outer function can still complete successfully. This inline event keeps the
+  /// catch site visible without forcing app code to emit a manual failure log.
+  public static func handledError(
+    _ error: any Error,
+    from parentEvent: AutoLogEvent,
+    runtime: AutoLogRuntime,
+    fileID: String = #fileID,
+    line: Int = #line,
+    column: Int = #column
+  ) {
+    runtime.logger.emitIfEnabled(
+      event: parentEvent.asHandledErrorEvent(
+        error,
+        location: "\(fileID):\(line):\(column)"
+      ),
+      configuration: runtime.configuration,
+      deduplicator: runtime.deduplicator
+    )
+  }
+
+  /// Fallback handled-error event for patterned `catch` clauses where the original
+  /// caught value is not trivially available as an `Error` identifier.
+  public static func handledError(
+    from parentEvent: AutoLogEvent,
+    runtime: AutoLogRuntime,
+    fileID: String = #fileID,
+    line: Int = #line,
+    column: Int = #column
+  ) {
+    runtime.logger.emitIfEnabled(
+      event: parentEvent.asHandledErrorEvent(
+        location: "\(fileID):\(line):\(column)"
+      ),
+      configuration: runtime.configuration,
+      deduplicator: runtime.deduplicator
+    )
+  }
+
   /// Marks the enclosing branch as an intentional early-exit path in an instrumented `@Log` function.
   ///
   /// Use this immediately before `return`, `throw`, `break`, or `continue` when the

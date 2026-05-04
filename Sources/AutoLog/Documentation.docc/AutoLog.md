@@ -28,6 +28,13 @@ that function is already running.
 
 AutoLog can record when a function exits early from `guard`, `if`, `else if`, or `else` branches, and it can also preserve non-returning `if` / `else if` / `else` branch choices that later fall through to the normal function completion path. Final result, error, and timing information remain intact, and you can still add explicit intent such as optimization or expected control flow.
 
+* **Treat handled catches as first-class events**
+
+When a logged function catches an error locally and continues, AutoLog now emits a
+warning-level inline event at the `catch` site and keeps a handled-error count on the
+parent function event. That preserves the fact that a real failure happened without
+misreporting the whole function as thrown.
+
 * **Trace interaction flow across the system**
 
 Interaction sources such as button taps, toggles, timers, and API callbacks propagate through `AutoLog.current`, and each origin receives a short emoji-tagged flow badge so the resulting chain stays easy to follow even when multiple interactions overlap.

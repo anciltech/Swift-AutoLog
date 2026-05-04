@@ -493,6 +493,12 @@ func toggleFramePicker(isVisible: Bool) {
 
 That emitted event keeps the normal success result and timing, and adds branch-path metadata such as `if branch condition=isVisible` or `else branch condition=isVisible`.
 
+Handled `catch` blocks now stay visible too. When a logged function recovers from a
+local `do` / `catch`, AutoLog emits a warning-level inline event at the catch site and
+annotates the final function event with a handled-error count. The outer function can
+still finish successfully, but the recovered failure no longer disappears into a single
+green result row.
+
 ## Sink routing
 
 By default, every event stays on the built-in console sink. Once you tag a function with one or more route names, only those sinks receive the event.

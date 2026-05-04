@@ -534,26 +534,40 @@ public struct CompactFormatter: AutoLogFormatter {
   // MARK: - Details
 
   private func detailAnnotation(for event: AutoLogEvent) -> String? {
+    if let handledError = event.handledError {
+      return handledError.message
+    }
+
+    var details: [String] = []
+
     if let earlyExit = event.earlyExit {
-      return formatEarlyExitAnnotation(earlyExit)
-    }
+      details.append(formatEarlyExitAnnotation(earlyExit))
+    } else if !event.branchDecisions.isEmpty {
+      var branches = ""
+      var hasBranch = false
 
-    guard !event.branchDecisions.isEmpty else { return nil }
-    var branches = ""
-    var hasBranch = false
-
-    for decision in event.branchDecisions where
-      decision.kind == .if || decision.kind == .elseif || decision.kind == .guard
-    {
-      if hasBranch {
-        branches += " -> "
+      for decision in event.branchDecisions where
+        decision.kind == .if || decision.kind == .elseif || decision.kind == .guard
+      {
+        if hasBranch {
+          branches += " -> "
+        }
+        branches += formatBranchDecision(decision)
+        hasBranch = true
       }
-      branches += formatBranchDecision(decision)
-      hasBranch = true
+
+      if hasBranch {
+        details.append("branch path: \(branches)")
+      }
     }
 
-    guard hasBranch else { return nil }
-    return "branch path: \(branches)"
+    if event.handledErrorCount > 0 {
+      let label = event.handledErrorCount == 1 ? "handled error" : "handled errors"
+      details.append("\(label): \(event.handledErrorCount)")
+    }
+
+    guard !details.isEmpty else { return nil }
+    return details.joined(separator: " • ")
   }
 
   private func formattedError(_ error: any Error) -> String {

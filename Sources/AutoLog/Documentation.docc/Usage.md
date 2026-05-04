@@ -403,6 +403,28 @@ func toggleFramePicker(isVisible: Bool) {
 
 In this case, the final event still carries the normal success result and duration, and now also includes a branch-path annotation such as `if branch condition=isVisible`. The formatter keeps the annotation focused on the truthy path that actually advanced execution, while the raw event metadata still retains the structural branch kind.
 
+### Handled catches still emit a visible event
+
+AutoLog now also treats local `do` / `catch` recovery as first-class logging data.
+When a logged function catches an error and continues, the parent event keeps its real
+success or failure semantics, but the catch site emits a separate warning-level inline
+event and the parent records how many handled catches occurred.
+
+```swift
+@AutoLog
+func project() async {
+  do {
+    try await performMirrorProjection()
+  } catch {
+    projectionStatus = "Error: \(error.localizedDescription)"
+  }
+}
+```
+
+That means a recovered failure no longer collapses into a single green success row.
+You will see the caught error at the catch site, and the final function event will
+also include a handled-error annotation so the control-flow story stays honest.
+
 ### What gets captured automatically
 
 For each early exit or recorded branch path, AutoLog captures:
@@ -410,6 +432,7 @@ For each early exit or recorded branch path, AutoLog captures:
 * the branch kind (`guard`, `if`, `elseif`, or `else`)
 * the evaluated branch condition, when available
 * the explicit intent and message, when you provide them
+* handled-error warning events emitted from local `catch` blocks
 * the final function result or thrown error through the normal `event.result`
 * the function duration, just like any other completion path
 
