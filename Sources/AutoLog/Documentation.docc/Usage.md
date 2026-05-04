@@ -426,10 +426,11 @@ You will see the caught error at the catch site, and the final function event wi
 also include a handled-error annotation so the control-flow story stays honest.
 Those catch-site rows still go through the same `emitIfEnabled(...)` path as every
 other AutoLog event, so omission rules and duplicate suppression remain consistent.
-When failure context is available, the formatter now separates that trail with a
-plain divider headed by `Actions leading up to Error 💥`, while handled-success
-rows keep their recovered-issue count inline on the main green line instead of
-adding another explanatory row underneath.
+When failure context is available, the formatter now separates that trail with
+`˄` / `˅` dividers, inserts a `💥 Error in Type.function()` marker after the
+context list, shows `[1 error handled here]` on the yellow handled-error row,
+and keeps the green success row compact with a trailing summary like
+`| 1 error handled internally`.
 
 ### What gets captured automatically
 

@@ -500,9 +500,10 @@ still finish successfully, but the recovered failure no longer disappears into a
 green result row. Those catch-site events still flow through the normal
 `emitIfEnabled(...)` path, so duplicate suppression and omission rules apply in the
 same way they do for function-result events. When failure context is attached, the
-formatter now separates that trail with a distinct `Actions leading up to Error 💥`
-divider, and recovered-success rows keep a compact inline badge such as
-`[1 error handled here]` on the main green line.
+formatter now separates that trail with `˄` / `˅` dividers, adds an explicit
+`💥 Error in Type.function()` marker, places a `[1 error handled here]` badge on the
+yellow handled-error row, and keeps recovered-success rows compact with a trailing
+summary such as `| 1 error handled internally`.
 
 ## Sink routing
 

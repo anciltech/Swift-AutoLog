@@ -21,11 +21,13 @@ public protocol AutoLogFormatter: Sendable {
 /// ```
 /// 👆🏼-🧵A1B2C3 │ 38ms │   bg │ └──🟢 AsyncExamplesViewModel.fetchPreferences(userId: 42) async → Prefs(dark, en)
 ///
-/// 👆🏼-🧵A1B2C3 │ 221ms│   bg │ └──🔴 AsyncExamplesViewModel.fetchUser(id: 99) async → notFound [NetworkError]
+/// 👆🏼-🧵A1B2C3 │ 221ms│   bg │ └──🔴 AsyncExamplesViewModel.fetchUser(id: 99) async → notFound [NetworkError] [1 error handled here]
 /// 👆🏼-🧵A1B2C3 │      │      │ ╰─ Recovered in catch block; AsyncExamplesViewModel.fetchUser() continued
-/// ───────────── Actions leading up to Error 💥 ──────────────
+/// ˄˄˄˄˄˄˄˄˄˄˄˄ Actions leading up to Error 💥 ˄˄˄˄˄˄˄˄˄˄˄˄
 /// 👆🏼-🧵A1B2C3 │  12ms│ main │ └──🟢 AsyncExamplesViewModel.loadUser(id: 99) async
-/// ──────────────── End Error Context ─────────────────
+/// 💥 Error in AsyncExamplesViewModel.fetchUser()
+/// ˅˅˅˅˅˅˅˅˅˅˅˅˅˅˅˅ End Error Context ˅˅˅˅˅˅˅˅˅˅˅˅˅˅˅˅
+/// 👆🏼-🧵A1B2C3 │ 222ms│   bg │ └──🟢 AsyncExamplesViewModel.fetchUser(id: 99) async | 1 error handled internally
 /// ```
 ///
 /// ### Customising the layout
@@ -103,9 +105,10 @@ public struct CompactFormatter: AutoLogFormatter {
     }
 
     if case .failure = event.result, !event.errorContext.isEmpty {
-      lines.append(sectionDivider("Actions leading up to Error 💥"))
+      lines.append(sectionDivider("Actions leading up to Error 💥", fill: "˄"))
       lines.append(contentsOf: event.errorContext.map(\.summary))
-      lines.append(sectionDivider("End Error Context"))
+      lines.append("💥 Error in \(event.inferredTypeName).\(event.functionName)()")
+      lines.append(sectionDivider("End Error Context", fill: "˅"))
     }
 
     if case .failure(let error) = event.result,
@@ -402,6 +405,10 @@ public struct CompactFormatter: AutoLogFormatter {
       line += " \(handledErrorBadge)"
     }
 
+    if let handledErrorSummary = handledErrorSummary(for: event) {
+      line += " | \(handledErrorSummary)"
+    }
+
     return line
   }
 
@@ -519,6 +526,10 @@ public struct CompactFormatter: AutoLogFormatter {
       appendSegment(handledErrorBadge, noLeadingSpace: false)
     }
 
+    if let handledErrorSummary = handledErrorSummary(for: event) {
+      appendSegment("| \(handledErrorSummary)", noLeadingSpace: false)
+    }
+
     return line
   }
 
@@ -574,18 +585,24 @@ public struct CompactFormatter: AutoLogFormatter {
   }
 
   private func handledErrorBadge(for event: AutoLogEvent) -> String? {
-    guard event.handledErrorCount > 0 else { return nil }
+    guard event.handledError != nil, event.handledErrorCount > 0 else { return nil }
     let label = event.handledErrorCount == 1 ? "error" : "errors"
     return "[\(event.handledErrorCount) \(label) handled here]"
   }
 
-  private func sectionDivider(_ title: String) -> String {
+  private func handledErrorSummary(for event: AutoLogEvent) -> String? {
+    guard event.handledError == nil, event.handledErrorCount > 0 else { return nil }
+    let label = event.handledErrorCount == 1 ? "error" : "errors"
+    return "\(event.handledErrorCount) \(label) handled internally"
+  }
+
+  private func sectionDivider(_ title: String, fill: Character) -> String {
     let totalWidth = 58
     let content = " \(title) "
     let sideWidth = max(8, (totalWidth - content.count) / 2)
-    let left = String(repeating: "─", count: sideWidth)
+    let left = String(repeating: String(fill), count: sideWidth)
     let rightCount = max(8, totalWidth - content.count - sideWidth)
-    let right = String(repeating: "─", count: rightCount)
+    let right = String(repeating: String(fill), count: rightCount)
     return left + content + right
   }
 

@@ -331,13 +331,17 @@ struct CompactFormatterTests {
         let output = CompactFormatter().format(event: event, configuration: configuration)
         let lines = output.split(separator: "\n", omittingEmptySubsequences: false)
 
-        #expect(lines.count == 5)
+        #expect(lines.count == 6)
         #expect(lines[0].contains("notFound"))
         #expect(lines[1].contains("Actions leading up to Error"))
         #expect(lines[1].contains("💥"))
+        #expect(lines[1].contains("˄"))
         #expect(lines[2].contains("Run [AsyncExamplesView:42]"))
         #expect(lines[3].contains("processPayment() async"))
-        #expect(lines[4].contains("End Error Context"))
+        #expect(lines[4].contains("💥 Error in"))
+        #expect(lines[4].contains("doSomething()"))
+        #expect(lines[5].contains("End Error Context"))
+        #expect(lines[5].contains("˅"))
     }
 
     @Test func tags_shownOnSecondLine() {
@@ -383,8 +387,20 @@ struct CompactFormatterTests {
         event.recordHandledError()
 
         let output = CompactFormatter().format(event: event, configuration: configuration)
-        #expect(output.contains("[1 error handled here]"))
+        #expect(output.contains("| 1 error handled internally"))
+        #expect(!output.contains("[1 error handled here]"))
         #expect(!output.contains("Completed after recovering"))
+    }
+
+    @Test func handledErrorEvent_showsBadgeOnWarningRow() {
+        enum ProjectionError: Error { case denied }
+        var event = makeEvent(result: .failure(ProjectionError.denied))
+        event.handledError = AutoLogHandledError(message: AutoLogHandledError.defaultMessage)
+        event.recordHandledError()
+
+        let output = CompactFormatter().format(event: event, configuration: configuration)
+        #expect(output.contains("[1 error handled here]"))
+        #expect(!output.contains("| 1 error handled internally"))
     }
 
     @Test func earlyExit_showsOnSecondLine() {
