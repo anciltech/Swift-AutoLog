@@ -332,10 +332,10 @@ struct CompactFormatterTests {
 
         #expect(lines.count == 5)
         #expect(lines[0].contains("notFound"))
-        #expect(lines[1].contains("context"))
+        #expect(lines[1].contains("Actions leading up to issue"))
         #expect(lines[2].contains("Run [AsyncExamplesView:42]"))
         #expect(lines[3].contains("processPayment() async"))
-        #expect(lines[4].contains("─"))
+        #expect(lines[4].contains("End issue context"))
     }
 
     @Test func tags_shownOnSecondLine() {

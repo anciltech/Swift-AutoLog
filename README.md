@@ -497,7 +497,9 @@ Handled `catch` blocks now stay visible too. When a logged function recovers fro
 local `do` / `catch`, AutoLog emits a warning-level inline event at the catch site and
 annotates the final function event with a handled-error count. The outer function can
 still finish successfully, but the recovered failure no longer disappears into a single
-green result row.
+green result row. Those catch-site events still flow through the normal
+`emitIfEnabled(...)` path, so duplicate suppression and omission rules apply in the
+same way they do for function-result events.
 
 ## Sink routing
 

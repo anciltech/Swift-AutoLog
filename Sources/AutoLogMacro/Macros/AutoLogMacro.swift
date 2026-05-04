@@ -657,14 +657,16 @@ extension AutoLogMacro {
     includesImplicitErrorBinding: Bool
   ) -> CodeBlockItemSyntax {
     let calledExpression = MemberAccessExprSyntax(
-      base: DeclReferenceExprSyntax(baseName: .predefined(.AutoLogSource)),
+      base: DeclReferenceExprSyntax(baseName: .predefined(.autoLogger)),
       period: .periodToken(),
-      name: .identifier("handledError")
+      name: .identifier("emitHandledErrorIfEnabled")
     )
 
     let arguments = if includesImplicitErrorBinding {
       LabeledExprListSyntax {
         LabeledExprSyntax(
+          label: .identifier("error"),
+          colon: .colonToken(),
           expression: DeclReferenceExprSyntax(baseName: .predefined(.error)),
           trailingComma: .commaToken()
         )

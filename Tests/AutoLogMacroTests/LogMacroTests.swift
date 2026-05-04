@@ -421,7 +421,7 @@ struct LogMacroTests {
             try performMirrorProjection()
           } catch {
             event.recordHandledError()
-            AutoLogSource.handledError(error, from: event, runtime: runtime)
+            autoLogger.emitHandledErrorIfEnabled(error: error, from: event, runtime: runtime)
                 projectionStatus = "Error: \\(error.localizedDescription)"
           }
         }

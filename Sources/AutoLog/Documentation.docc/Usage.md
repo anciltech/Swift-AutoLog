@@ -424,6 +424,8 @@ func project() async {
 That means a recovered failure no longer collapses into a single green success row.
 You will see the caught error at the catch site, and the final function event will
 also include a handled-error annotation so the control-flow story stays honest.
+Those catch-site rows still go through the same `emitIfEnabled(...)` path as every
+other AutoLog event, so omission rules and duplicate suppression remain consistent.
 
 ### What gets captured automatically
 

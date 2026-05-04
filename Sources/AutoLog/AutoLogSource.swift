@@ -462,13 +462,13 @@ public enum AutoLog {
     line: Int = #line,
     column: Int = #column
   ) {
-    runtime.logger.emitIfEnabled(
-      event: parentEvent.asHandledErrorEvent(
-        error,
-        location: "\(fileID):\(line):\(column)"
-      ),
-      configuration: runtime.configuration,
-      deduplicator: runtime.deduplicator
+    runtime.logger.emitHandledErrorIfEnabled(
+      error: error,
+      from: parentEvent,
+      runtime: runtime,
+      fileID: fileID,
+      line: line,
+      column: column
     )
   }
 
@@ -481,12 +481,12 @@ public enum AutoLog {
     line: Int = #line,
     column: Int = #column
   ) {
-    runtime.logger.emitIfEnabled(
-      event: parentEvent.asHandledErrorEvent(
-        location: "\(fileID):\(line):\(column)"
-      ),
-      configuration: runtime.configuration,
-      deduplicator: runtime.deduplicator
+    runtime.logger.emitHandledErrorIfEnabled(
+      from: parentEvent,
+      runtime: runtime,
+      fileID: fileID,
+      line: line,
+      column: column
     )
   }
 

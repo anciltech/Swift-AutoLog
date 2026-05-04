@@ -700,6 +700,28 @@ extension AutoLogger {
       deduplicator: deduplicator
     )
   }
+
+  /// Emits a warning-level handled-error event derived from a parent function event.
+  ///
+  /// This preserves the real caught error at the `catch` site while still honoring
+  /// omission rules and duplicate suppression through ``emitIfEnabled(event:configuration:deduplicator:)``.
+  public func emitHandledErrorIfEnabled(
+    error: (any Error)? = nil,
+    from parentEvent: AutoLogEvent,
+    runtime: AutoLogRuntime,
+    fileID: String = #fileID,
+    line: Int = #line,
+    column: Int = #column
+  ) {
+    emitIfEnabled(
+      event: parentEvent.asHandledErrorEvent(
+        error,
+        location: "\(fileID):\(line):\(column)"
+      ),
+      configuration: runtime.configuration,
+      deduplicator: runtime.deduplicator
+    )
+  }
 }
 
 extension AutoLogger where Self == AutoLogLogger {

@@ -22,9 +22,9 @@ public protocol AutoLogFormatter: Sendable {
 /// 👆🏼-🧵A1B2C3 │ 38ms │   bg │ └──🟢 AsyncExamplesViewModel.fetchPreferences(userId: 42) async → Prefs(dark, en)
 ///
 /// 👆🏼-🧵A1B2C3 │ 221ms│   bg │ └──🔴 AsyncExamplesViewModel.fetchUser(id: 99) async → notFound [NetworkError]
-/// 👆🏼-🧵A1B2C3 │      │      │ ┄ context ─────────────────────────────
+/// 👆🏼-🧵A1B2C3 │      │      │ ╭─ Actions leading up to issue
 /// 👆🏼-🧵A1B2C3 │  12ms│ main │ └──🟢 AsyncExamplesViewModel.loadUser(id: 99) async
-/// 👆🏼-🧵A1B2C3 │      │      │ ───────────────────────────────────────
+/// 👆🏼-🧵A1B2C3 │      │      │ ╰─ End issue context
 /// ```
 ///
 /// ### Customising the layout
@@ -104,7 +104,7 @@ public struct CompactFormatter: AutoLogFormatter {
     if case .failure = event.result, !event.errorContext.isEmpty {
       lines.append(
         renderRow(
-          body: "┄ context " + String(repeating: "─", count: 28),
+          body: "╭─ Actions leading up to issue",
           event: event,
           depth: depth,
           columnElements: columnElements,
@@ -115,7 +115,7 @@ public struct CompactFormatter: AutoLogFormatter {
       lines.append(contentsOf: event.errorContext.map(\.summary))
       lines.append(
         renderRow(
-          body: String(repeating: "─", count: 38),
+          body: "╰─ End issue context",
           event: event,
           depth: depth,
           columnElements: columnElements,
