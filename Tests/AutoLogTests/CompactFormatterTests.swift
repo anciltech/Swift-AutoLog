@@ -333,11 +333,11 @@ struct CompactFormatterTests {
 
         #expect(lines.count == 5)
         #expect(lines[0].contains("notFound"))
-        #expect(lines[1].contains("Actions leading up to issue"))
-        #expect(lines[1].contains("closest first"))
-        #expect(lines[2].contains("processPayment() async"))
-        #expect(lines[3].contains("Run [AsyncExamplesView:42]"))
-        #expect(lines[4].contains("Start of interaction chain"))
+        #expect(lines[1].contains("Actions leading up to Error"))
+        #expect(lines[1].contains("💥"))
+        #expect(lines[2].contains("Run [AsyncExamplesView:42]"))
+        #expect(lines[3].contains("processPayment() async"))
+        #expect(lines[4].contains("End Error Context"))
     }
 
     @Test func tags_shownOnSecondLine() {
@@ -383,10 +383,8 @@ struct CompactFormatterTests {
         event.recordHandledError()
 
         let output = CompactFormatter().format(event: event, configuration: configuration)
-        let lines = output.split(separator: "\n", omittingEmptySubsequences: false)
-
-        #expect(lines.count == 2)
-        #expect(lines[1].contains("Completed after recovering from 1 issue"))
+        #expect(output.contains("[1 error handled here]"))
+        #expect(!output.contains("Completed after recovering"))
     }
 
     @Test func earlyExit_showsOnSecondLine() {

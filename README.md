@@ -500,8 +500,9 @@ still finish successfully, but the recovered failure no longer disappears into a
 green result row. Those catch-site events still flow through the normal
 `emitIfEnabled(...)` path, so duplicate suppression and omission rules apply in the
 same way they do for function-result events. When failure context is attached, the
-formatter now lists the most recent precursor first so the issue reads top-down as
-"problem, immediate lead-up, earlier lead-up, origin."
+formatter now separates that trail with a distinct `Actions leading up to Error 💥`
+divider, and recovered-success rows keep a compact inline badge such as
+`[1 error handled here]` on the main green line.
 
 ## Sink routing
 

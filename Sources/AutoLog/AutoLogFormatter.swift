@@ -23,9 +23,9 @@ public protocol AutoLogFormatter: Sendable {
 ///
 /// 👆🏼-🧵A1B2C3 │ 221ms│   bg │ └──🔴 AsyncExamplesViewModel.fetchUser(id: 99) async → notFound [NetworkError]
 /// 👆🏼-🧵A1B2C3 │      │      │ ╰─ Recovered in catch block; AsyncExamplesViewModel.fetchUser() continued
-/// ──────────── Actions leading up to issue (closest first) ────────────
+/// ───────────── Actions leading up to Error 💥 ──────────────
 /// 👆🏼-🧵A1B2C3 │  12ms│ main │ └──🟢 AsyncExamplesViewModel.loadUser(id: 99) async
-/// ──────────── Start of interaction chain ────────────
+/// ──────────────── End Error Context ─────────────────
 /// ```
 ///
 /// ### Customising the layout
@@ -103,9 +103,9 @@ public struct CompactFormatter: AutoLogFormatter {
     }
 
     if case .failure = event.result, !event.errorContext.isEmpty {
-      lines.append(sectionDivider("Actions leading up to issue (closest first)"))
-      lines.append(contentsOf: event.errorContext.reversed().map(\.summary))
-      lines.append(sectionDivider("Start of interaction chain"))
+      lines.append(sectionDivider("Actions leading up to Error 💥"))
+      lines.append(contentsOf: event.errorContext.map(\.summary))
+      lines.append(sectionDivider("End Error Context"))
     }
 
     if case .failure(let error) = event.result,
@@ -398,6 +398,10 @@ public struct CompactFormatter: AutoLogFormatter {
       line += " → \(formattedError(error))"
     }
 
+    if let handledErrorBadge = handledErrorBadge(for: event) {
+      line += " \(handledErrorBadge)"
+    }
+
     return line
   }
 
@@ -511,6 +515,10 @@ public struct CompactFormatter: AutoLogFormatter {
       }
     }
 
+    if let handledErrorBadge = handledErrorBadge(for: event) {
+      appendSegment(handledErrorBadge, noLeadingSpace: false)
+    }
+
     return line
   }
 
@@ -544,10 +552,6 @@ public struct CompactFormatter: AutoLogFormatter {
       }
     }
 
-    if event.handledErrorCount > 0 {
-      details.append(handledErrorSummary(for: event))
-    }
-
     guard !details.isEmpty else { return nil }
     return details.joined(separator: " • ")
   }
@@ -569,18 +573,20 @@ public struct CompactFormatter: AutoLogFormatter {
     return "Recovered in catch block; \(event.inferredTypeName).\(event.functionName)() continued"
   }
 
-  private func handledErrorSummary(for event: AutoLogEvent) -> String {
-    let issueLabel = event.handledErrorCount == 1 ? "issue" : "issues"
-
-    if case .success = event.result {
-      return "Completed after recovering from \(event.handledErrorCount) \(issueLabel)"
-    }
-
-    return "Encountered \(event.handledErrorCount) recovered \(issueLabel) before final failure"
+  private func handledErrorBadge(for event: AutoLogEvent) -> String? {
+    guard event.handledErrorCount > 0 else { return nil }
+    let label = event.handledErrorCount == 1 ? "error" : "errors"
+    return "[\(event.handledErrorCount) \(label) handled here]"
   }
 
   private func sectionDivider(_ title: String) -> String {
-    "──────────── \(title) ────────────"
+    let totalWidth = 58
+    let content = " \(title) "
+    let sideWidth = max(8, (totalWidth - content.count) / 2)
+    let left = String(repeating: "─", count: sideWidth)
+    let rightCount = max(8, totalWidth - content.count - sideWidth)
+    let right = String(repeating: "─", count: rightCount)
+    return left + content + right
   }
 
   private func originBadge(for event: AutoLogEvent) -> String {
