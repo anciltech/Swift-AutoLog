@@ -1,4 +1,3 @@
-import SwiftDiagnostics
 import SwiftSyntax
 import SwiftSyntaxMacros
 
@@ -6,28 +5,11 @@ public struct OSLoggedMacro {}
 
 extension OSLoggedMacro: AutoLogAttributeMacro {
   static func ignore(_ attribute: AttributeSyntax) -> Bool {
-    guard let identifierType = IdentifierTypeSyntax(attribute.attributeName) else {
-      return false
-    }
-
-    switch identifierType.name.tokenKind {
-    case .predefined(.OSLog):
-      return true
-
-    case .predefined(.Omit) where attribute.arguments == nil:
-      return true
-
-    default:
-      return false
-    }
+    ignoresExistingInstrumentation(attribute, macroName: .OSLog)
   }
 
   static func introduce(for node: AttributeSyntax) -> AttributeSyntax {
-    AttributeSyntax(
-      TypeSyntax(
-        IdentifierTypeSyntax(name: .predefined(.OSLog))
-      )
-    )
+    introducedAttribute(from: node, named: .OSLog, preservingArguments: false)
   }
 }
 

@@ -311,8 +311,25 @@ public struct AutoLogEvent: CustomStringConvertible, CustomDebugStringConvertibl
     self.parameters = parameters
     self.result = result
     self.tags = tags
-    self.routes = Set(tags.compactMap { $0 as? AutoLogRoute })
-    self.visibleTags = tags.filter { !($0 is AutoLogRoute) }
+    if tags.isEmpty {
+      self.routes = []
+      self.visibleTags = []
+    } else {
+      var routes = Set<AutoLogRoute>()
+      var visibleTags: [any Taggable] = []
+      visibleTags.reserveCapacity(tags.count)
+
+      for tag in tags {
+        if let route = tag as? AutoLogRoute {
+          routes.insert(route)
+        } else {
+          visibleTags.append(tag)
+        }
+      }
+
+      self.routes = routes
+      self.visibleTags = visibleTags
+    }
     self.deduplicateWithin = deduplicateWithin
     self.omissionRules = omissionRules
     self.duration = nil

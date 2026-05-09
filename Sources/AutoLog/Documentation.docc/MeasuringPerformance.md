@@ -29,6 +29,9 @@ that keep the benchmark focused on real formatting cost instead of avoidable
 bookkeeping: route and visible-tag filtering are cached on `AutoLogEvent`,
 single-parameter calls skip dictionary sorting, and async detection uses direct
 string checks instead of regex matching on every emit.
+Tag classification now also has an empty-tag fast path and a single-pass
+non-empty path, so no-tag calls avoid route and visible-tag allocation work and
+mixed tag calls do not scan the same array twice.
 The default compact layout now also uses a dedicated body-rendering fast path
 instead of walking the generic element list for every event, which trims work
 from the benchmark's `Logged without tags`, `Logged with visible tags`, and
@@ -89,6 +92,16 @@ it easier to copy a single summary into notes or pull requests. The table uses
 family-specific baselines, so sync scenarios are compared against the plain
 sync body and `TaskGroup` scenarios are compared against the plain async
 `TaskGroup` body rather than against each other.
+
+For lower-noise numbers, prefer the release-mode helper from the package root:
+
+```bash
+AutoLogSourceCode/swift-autolog/scripts/benchmark.sh
+```
+
+That script runs the same performance suite with `--configuration release` so
+formatter, event construction, routing, and timing-capture changes are easier
+to compare between commits.
 
 ## Profile the benchmark with Instruments
 

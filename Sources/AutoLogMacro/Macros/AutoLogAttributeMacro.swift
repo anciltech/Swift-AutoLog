@@ -28,4 +28,47 @@ extension AutoLogAttributeMacro {
         self.introduce(for: node)
       }
   }
+
+  static func ignoresExistingInstrumentation(
+    _ attribute: AttributeSyntax,
+    macroName: TokenKind.Predefined
+  ) -> Bool {
+    guard let identifierType = IdentifierTypeSyntax(attribute.attributeName) else {
+      return false
+    }
+
+    if identifierType.name.tokenKind == .predefined(macroName) {
+      return true
+    }
+
+    if identifierType.name.tokenKind == .predefined(.Omit), attribute.arguments == nil {
+      return true
+    }
+
+    return false
+  }
+
+  static func introducedAttribute(
+    from node: AttributeSyntax,
+    named macroName: TokenSyntax.Predefined,
+    preservingArguments: Bool = true
+  ) -> AttributeSyntax {
+    guard preservingArguments else {
+      return AttributeSyntax(
+        TypeSyntax(
+          IdentifierTypeSyntax(
+            name: TokenSyntax.predefined(macroName)
+          )
+        )
+      )
+    }
+
+    var syntax = node
+    syntax.attributeName = TypeSyntax(
+      IdentifierTypeSyntax(
+        name: TokenSyntax.predefined(macroName)
+      )
+    )
+    return syntax
+  }
 }
