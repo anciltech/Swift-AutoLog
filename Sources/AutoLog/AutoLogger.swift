@@ -14,6 +14,16 @@ public protocol AutoLogger: Sendable {
   ///   - When the function throws an error.
   ///
   func emit(event: AutoLogEvent, configuration: AutoLogConfiguration)
+
+  /// Returns whether a macro-generated wrapper should capture elapsed time for
+  /// `event` under the entry-time runtime configuration.
+  func shouldMeasureTiming(for event: AutoLogEvent, configuration: AutoLogConfiguration) -> Bool
+}
+
+public extension AutoLogger {
+  func shouldMeasureTiming(for event: AutoLogEvent, configuration: AutoLogConfiguration) -> Bool {
+    event.isMeasuredExplicitly || configuration.measureTimingDefault
+  }
 }
 
 /// Structured metadata describing an early-exit path taken by a logged function.

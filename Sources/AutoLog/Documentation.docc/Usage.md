@@ -132,7 +132,9 @@ Advanced setups can still pass a custom logger, store, or refresh interval.
 For isolated hot paths, add `measure: false` to ``Log(using:level:omit:tag:measure:)``
 to suppress generated timing capture for that function, including when the
 function routes through a custom ``AutoLogger``. Use `measure: true` when a
-specific call site should display timing even if the runtime default is off.
+specific call site should capture and display timing even if the runtime default
+is off. When `measureTimingDefault` is false and a function does not opt in,
+the generated wrapper skips its clock sampling work for that call.
 If you ship a companion settings screen, matching presets such as "all depths",
 "depths 1-2", "depths 2-3", and "depths 3+" keep `measureTimingDepths`
 understandable while still mapping directly to the runtime configuration.

@@ -607,7 +607,7 @@ extension AutoLogMacro {
     )
   }
 
-  /// Generates: `let __logStart = ContinuousClock.now`
+  /// Generates a runtime-aware optional timing start.
   static func captureTimingStart() -> CodeBlockItemSyntax {
     CodeBlockItemSyntax(
       VariableDeclSyntax(
@@ -616,10 +616,48 @@ extension AutoLogMacro {
           arrayLiteral: PatternBindingSyntax(
             pattern: IdentifierPatternSyntax(identifier: .predefined(.__logStart)),
             initializer: InitializerClauseSyntax(
-              value: MemberAccessExprSyntax(
-                base: DeclReferenceExprSyntax(baseName: .predefined(.ContinuousClock)),
-                period: .periodToken(),
-                name: .predefined(.now)
+              value: TernaryExprSyntax(
+                condition: FunctionCallExprSyntax(
+                  calledExpression: MemberAccessExprSyntax(
+                    base: DeclReferenceExprSyntax(baseName: .predefined(.autoLogger)),
+                    period: .periodToken(),
+                    name: .identifier("shouldMeasureTiming")
+                  ),
+                  leftParen: .leftParenToken(),
+                  arguments: LabeledExprListSyntax(
+                    arrayLiteral:
+                      LabeledExprSyntax(
+                        label: .identifier("for"),
+                        colon: .colonToken(),
+                        expression: DeclReferenceExprSyntax(baseName: .predefined(.event)),
+                        trailingComma: .commaToken()
+                      ),
+                      LabeledExprSyntax(
+                        label: .identifier("configuration"),
+                        colon: .colonToken(),
+                        expression: MemberAccessExprSyntax(
+                          base: DeclReferenceExprSyntax(baseName: .identifier("runtime")),
+                          period: .periodToken(),
+                          name: .identifier("configuration")
+                        )
+                      )
+                  ),
+                  rightParen: .rightParenToken()
+                ),
+                questionMark: .postfixQuestionMarkToken(
+                  leadingTrivia: .space,
+                  trailingTrivia: .space
+                ),
+                thenExpression: MemberAccessExprSyntax(
+                  base: DeclReferenceExprSyntax(baseName: .predefined(.ContinuousClock)),
+                  period: .periodToken(),
+                  name: .predefined(.now)
+                ),
+                colon: .colonToken(
+                  leadingTrivia: .space,
+                  trailingTrivia: .space
+                ),
+                elseExpression: NilLiteralExprSyntax(nilKeyword: .keyword(.nil))
               )
             )
           )
@@ -628,24 +666,42 @@ extension AutoLogMacro {
     )
   }
 
-  /// Generates: `event.duration = ContinuousClock.now - __logStart`
+  /// Generates a duration assignment when timing was enabled at function entry.
   static func captureTimingEnd() -> CodeBlockItemSyntax {
     CodeBlockItemSyntax(
-      InfixOperatorExprSyntax(
-        leftOperand: MemberAccessExprSyntax(
-          base: DeclReferenceExprSyntax(baseName: .predefined(.event)),
-          period: .periodToken(),
-          name: .predefined(.duration)
-        ),
-        operator: AssignmentExprSyntax(),
-        rightOperand: InfixOperatorExprSyntax(
-          leftOperand: MemberAccessExprSyntax(
-            base: DeclReferenceExprSyntax(baseName: .predefined(.ContinuousClock)),
-            period: .periodToken(),
-            name: .predefined(.now)
-          ),
-          operator: BinaryOperatorExprSyntax(operator: .binaryOperator("-")),
-          rightOperand: DeclReferenceExprSyntax(baseName: .predefined(.__logStart))
+      IfExprSyntax(
+        conditions: ConditionElementListSyntax {
+          ConditionElementSyntax(
+            condition: .optionalBinding(
+              OptionalBindingConditionSyntax(
+                bindingSpecifier: .keyword(.let),
+                pattern: IdentifierPatternSyntax(identifier: .predefined(.__logStart))
+              )
+            )
+          )
+        },
+        body: CodeBlockSyntax(
+          statements: CodeBlockItemListSyntax {
+            CodeBlockItemSyntax(
+              InfixOperatorExprSyntax(
+                leftOperand: MemberAccessExprSyntax(
+                  base: DeclReferenceExprSyntax(baseName: .predefined(.event)),
+                  period: .periodToken(),
+                  name: .predefined(.duration)
+                ),
+                operator: AssignmentExprSyntax(),
+                rightOperand: InfixOperatorExprSyntax(
+                  leftOperand: MemberAccessExprSyntax(
+                    base: DeclReferenceExprSyntax(baseName: .predefined(.ContinuousClock)),
+                    period: .periodToken(),
+                    name: .predefined(.now)
+                  ),
+                  operator: BinaryOperatorExprSyntax(operator: .binaryOperator("-")),
+                  rightOperand: DeclReferenceExprSyntax(baseName: .predefined(.__logStart))
+                )
+              )
+            )
+          }
         )
       )
     )

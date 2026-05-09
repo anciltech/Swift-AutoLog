@@ -31,12 +31,14 @@ struct OSLogMacroTests {
           declaration: "func foo()"
         )
         autoLogger.emitStart(event: event, configuration: runtime.configuration, deduplicator: runtime.deduplicator)
-        let __logStart = ContinuousClock.now
+        let __logStart = autoLogger.shouldMeasureTiming(for: event, configuration: runtime.configuration) ? ContinuousClock.now : nil
         func _foo() {
           print("Foo")
         }
         let _ = _foo()
-        event.duration = ContinuousClock.now - __logStart
+        if let __logStart {
+          event.duration = ContinuousClock.now - __logStart
+        }
         autoLogger.emitIfEnabled(event: event, configuration: runtime.configuration, deduplicator: runtime.deduplicator)
       }
       """
@@ -68,13 +70,15 @@ struct OSLogMacroTests {
           tags: ["example"]
         )
         autoLogger.emitStart(event: event, configuration: runtime.configuration, deduplicator: runtime.deduplicator)
-        let __logStart = ContinuousClock.now
+        let __logStart = autoLogger.shouldMeasureTiming(for: event, configuration: runtime.configuration) ? ContinuousClock.now : nil
         func _sum(numbers: Int...) -> Int {
           return numbers.reduce(0, +)
         }
         let result = _sum(numbers: numbers)
         event.result = .success(result)
-        event.duration = ContinuousClock.now - __logStart
+        if let __logStart {
+          event.duration = ContinuousClock.now - __logStart
+        }
         autoLogger.emitIfEnabled(event: event, configuration: runtime.configuration, deduplicator: runtime.deduplicator)
         return result
       }
@@ -105,12 +109,14 @@ struct OSLogMacroTests {
           tags: [.commonTag, "example"]
         )
         autoLogger.emitStart(event: event, configuration: runtime.configuration, deduplicator: runtime.deduplicator)
-        let __logStart = ContinuousClock.now
+        let __logStart = autoLogger.shouldMeasureTiming(for: event, configuration: runtime.configuration) ? ContinuousClock.now : nil
         func _transform(value: Int, transform: (Int) -> String) -> String {
           return transform(value)
         }
         let result = _transform(value: value, transform: transform)
-        event.duration = ContinuousClock.now - __logStart
+        if let __logStart {
+          event.duration = ContinuousClock.now - __logStart
+        }
         autoLogger.emitIfEnabled(event: event, configuration: runtime.configuration, deduplicator: runtime.deduplicator)
         return result
       }
@@ -142,11 +148,13 @@ struct OSLogMacroTests {
           tags: ["example", .commonTag]
         )
         autoLogger.emitStart(event: event, configuration: runtime.configuration, deduplicator: runtime.deduplicator)
-        let __logStart = ContinuousClock.now
+        let __logStart = autoLogger.shouldMeasureTiming(for: event, configuration: runtime.configuration) ? ContinuousClock.now : nil
         func _ping() {
         }
         let _ = _ping()
-        event.duration = ContinuousClock.now - __logStart
+        if let __logStart {
+          event.duration = ContinuousClock.now - __logStart
+        }
         autoLogger.emitIfEnabled(event: event, configuration: runtime.configuration, deduplicator: runtime.deduplicator)
       }
       """

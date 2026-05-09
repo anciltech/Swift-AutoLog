@@ -69,6 +69,9 @@ generated wrapper.
 Function-level timing suppression is available on custom logger overloads too:
 `@Log(using: logger, measure: false)` skips `ContinuousClock` capture and
 duration assignment while still emitting the start and completion events.
+Default `@Log` timing capture now also checks the entry runtime configuration
+before sampling the clock, so `measureTimingDefault: false` avoids duration
+capture work unless a function explicitly opts back in with `measure: true`.
 `AutoLogEvent` now also caches a deterministic parameter-label order when it is
 constructed and refreshes that cache when parameters are replaced, so repeated
 formatter passes for the same event do not re-sort multi-parameter labels.

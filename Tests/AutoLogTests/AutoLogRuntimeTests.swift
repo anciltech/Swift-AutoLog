@@ -196,6 +196,45 @@ struct AutoLogRuntimeTests {
   }
 
   @Test
+  func defaultLoggedFunctionSkipsDurationWhenRuntimeTimingIsDisabled() {
+    let logger = MockLogger()
+    let runtime = AutoLogRuntime(
+      logger: logger,
+      configuration: AutoLogConfiguration(
+        emitStartEvents: false,
+        measureTimingDefault: false
+      )
+    )
+
+    AutoLog.withRuntime(runtime) {
+      TimingFixture().defaultMeasured()
+    }
+
+    #expect(logger.events.count == 1)
+    #expect(logger.events.first?.duration == nil)
+  }
+
+  @Test
+  func explicitMeasuredFunctionCapturesDurationWhenRuntimeTimingIsDisabled() {
+    let logger = MockLogger()
+    let runtime = AutoLogRuntime(
+      logger: logger,
+      configuration: AutoLogConfiguration(
+        emitStartEvents: false,
+        measureTimingDefault: false
+      )
+    )
+
+    AutoLog.withRuntime(runtime) {
+      TimingFixture().explicitMeasured()
+    }
+
+    #expect(logger.events.count == 1)
+    #expect(logger.events.first?.duration != nil)
+    #expect(logger.events.first?.isMeasuredExplicitly == true)
+  }
+
+  @Test
   func globalDeduplicationSuppressesRepeatedManualEvents() {
     let logger = MockLogger()
     let runtime = AutoLogRuntime(
@@ -265,4 +304,12 @@ private struct DeduplicationFixture {
   func sampleSelection(frameID: Int) -> Bool {
     frameID.isMultiple(of: 2)
   }
+}
+
+private struct TimingFixture {
+  @Log
+  func defaultMeasured() {}
+
+  @Log(measure: true)
+  func explicitMeasured() {}
 }
