@@ -24,6 +24,8 @@ public struct AutoLogEarlyExit: Sendable, Hashable, CustomStringConvertible {
     case `if`
     case elseif
     case `else`
+    case switchCase = "switch case"
+    case switchDefault = "switch default"
   }
 
   /// A domain-level hint describing the intent behind the early exit.

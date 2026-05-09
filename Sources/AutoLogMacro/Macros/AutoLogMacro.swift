@@ -12,6 +12,8 @@ struct EarlyExitContext {
     case `if`
     case elseif
     case `else`
+    case switchCase
+    case switchDefault
   }
 
   let kind: Kind
@@ -654,7 +656,7 @@ extension AutoLogMacro {
   }
 
   static func emitHandledError(
-    includesImplicitErrorBinding: Bool
+    errorExpression: ExprSyntax?
   ) -> CodeBlockItemSyntax {
     let calledExpression = MemberAccessExprSyntax(
       base: DeclReferenceExprSyntax(baseName: .predefined(.autoLogger)),
@@ -662,12 +664,12 @@ extension AutoLogMacro {
       name: .identifier("emitHandledErrorIfEnabled")
     )
 
-    let arguments = if includesImplicitErrorBinding {
+    let arguments = if let errorExpression {
       LabeledExprListSyntax {
         LabeledExprSyntax(
           label: .identifier("error"),
           colon: .colonToken(),
-          expression: DeclReferenceExprSyntax(baseName: .predefined(.error)),
+          expression: errorExpression,
           trailingComma: .commaToken()
         )
         LabeledExprSyntax(
@@ -873,9 +875,9 @@ extension AutoLogMacro {
           yieldCaptureIndex: &yieldCaptureIndex,
           earlyExitContext: earlyExitContext
         )
-        let includesImplicitErrorBinding = clause.catchItems.isEmpty
+        let errorExpression = catchErrorExpression(in: clause)
         clause.body.statements = CodeBlockItemListSyntax(
-          [recordHandledError(), emitHandledError(includesImplicitErrorBinding: includesImplicitErrorBinding)]
+          [recordHandledError(), emitHandledError(errorExpression: errorExpression)]
             + rewrittenStatements
         )
         catchClauses[index] = clause
@@ -949,6 +951,34 @@ extension AutoLogMacro {
       functionCall.additionalTrailingClosures = additional
 
       return ExprSyntax(functionCall)
+    }
+
+    if var switchExpr = expression.as(SwitchExprSyntax.self) {
+      switchExpr.subject = rewriteExpression(
+        switchExpr.subject,
+        yieldCaptureIndex: &yieldCaptureIndex,
+        earlyExitContext: earlyExitContext
+      )
+
+      var cases = switchExpr.cases
+      for index in cases.indices {
+        guard var switchCase = cases[index].as(SwitchCaseSyntax.self) else { continue }
+        let context = switchEarlyExitContext(
+          for: switchCase,
+          subject: switchExpr.subject
+        )
+        switchCase.statements = CodeBlockItemListSyntax(
+          rewriteConditionalBranchStatements(
+            Array(switchCase.statements),
+            yieldCaptureIndex: &yieldCaptureIndex,
+            earlyExitContext: context
+          )
+        )
+        cases[index] = SwitchCaseListSyntax.Element(switchCase)
+      }
+      switchExpr.cases = cases
+
+      return ExprSyntax(switchExpr)
     }
 
     if var ifExpr = expression.as(IfExprSyntax.self) {
@@ -1224,6 +1254,10 @@ extension AutoLogMacro {
       kindName = "elseif"
     case .else:
       kindName = "else"
+    case .switchCase:
+      kindName = "switchCase"
+    case .switchDefault:
+      kindName = "switchDefault"
     }
 
     return ExprSyntax(
@@ -1336,5 +1370,65 @@ extension AutoLogMacro {
     }
 
     return nil
+  }
+
+  static func catchErrorExpression(in clause: CatchClauseSyntax) -> ExprSyntax? {
+    guard let firstItem = clause.catchItems.first else {
+      return ExprSyntax(DeclReferenceExprSyntax(baseName: .predefined(.error)))
+    }
+
+    guard let pattern = firstItem.pattern else { return nil }
+    let text = pattern.trimmedDescription
+    let identifier = leadingCatchIdentifier(in: text)
+    return identifier.map {
+      ExprSyntax(DeclReferenceExprSyntax(baseName: .identifier($0)))
+    }
+  }
+
+  static func leadingCatchIdentifier(in pattern: String) -> String? {
+    let trimmed = pattern.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard !trimmed.isEmpty else { return nil }
+
+    let words = trimmed.split(whereSeparator: { !$0.isLetter && !$0.isNumber && $0 != "_" })
+      .map(String.init)
+    guard let first = words.first else { return nil }
+
+    if first == "let" || first == "var" {
+      return words.dropFirst().first
+    }
+
+    guard first.first?.isLowercase == true || first.first == "_" else { return nil }
+    guard trimmed.first?.isLetter == true else { return nil }
+    if words.count >= 3, words[1] == "as" {
+      return first
+    }
+    guard trimmed.allSatisfy({ $0.isLetter || $0.isNumber || $0 == "_" }) else { return nil }
+
+    return first == "_" ? nil : first
+  }
+
+  static func switchEarlyExitContext(
+    for switchCase: SwitchCaseSyntax,
+    subject: ExprSyntax
+  ) -> EarlyExitContext {
+    let subjectText = subject.trimmedDescription
+    let labelText: String
+    let kind: EarlyExitContext.Kind
+
+    switch switchCase.label {
+    case .case(let label):
+      kind = .switchCase
+      labelText = label.caseItems.trimmedDescription
+    case .default:
+      kind = .switchDefault
+      labelText = "default"
+    }
+
+    let condition = "switch \(subjectText): \(labelText)"
+    return EarlyExitContext(
+      kind: kind,
+      branchCondition: condition,
+      effectiveCondition: condition
+    )
   }
 }

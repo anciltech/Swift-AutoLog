@@ -26,14 +26,16 @@ that function is already running.
 
 * **Capture early exits as structured metadata**
 
-AutoLog can record when a function exits early from `guard`, `if`, `else if`, or `else` branches, and it can also preserve non-returning `if` / `else if` / `else` branch choices that later fall through to the normal function completion path. Final result, error, and timing information remain intact, and you can still add explicit intent such as optimization or expected control flow.
+AutoLog can record when a function exits early from `guard`, `if`, `else if`, `else`, or `switch` branches, and it can also preserve non-returning `if` / `else if` / `else` / `switch` branch choices that later fall through to the normal function completion path. Final result, error, and timing information remain intact, and you can still add explicit intent such as optimization or expected control flow.
 
 * **Treat handled catches as first-class events**
 
 When a logged function catches an error locally and continues, AutoLog now emits a
 warning-level inline event at the `catch` site and keeps a handled-error count on the
 parent function event. That preserves the fact that a real failure happened without
-misreporting the whole function as thrown.
+misreporting the whole function as thrown. Explicit catch bindings such as
+`catch let error` are forwarded to the handled-error event when the bound error
+is available.
 
 * **Trace interaction flow across the system**
 

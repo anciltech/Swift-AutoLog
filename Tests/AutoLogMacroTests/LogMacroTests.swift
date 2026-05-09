@@ -237,6 +237,49 @@ struct LogMacroTests {
   }
 
   @Test
+  func optionalIntFunction_withWhenTrait_emitsOnlyMatchingSuccessValue() throws {
+    assertMacro {
+      #"""
+      @When(Optional.some(42))
+      @Log
+      func selectedValue(flag: Bool) -> Int? {
+        return flag ? 42 : nil
+      }
+      """#
+    } expansion: {
+      """
+      @When(Optional.some(42))
+      func selectedValue(flag: Bool) -> Int? {
+        let runtime = AutoLog.runtimeSnapshot()
+        let autoLogger: any AutoLogger = runtime.logger
+        var event = AutoLogEvent(
+          source: AutoLogSource.current,
+
+          location: "TestModule/Test.swift:1:1",
+          declaration: "func selectedValue(flag: Bool) -> Int?",
+          parameters: [
+            "flag": flag
+          ],
+          tags: []
+        )
+        autoLogger.emitStart(event: event, configuration: runtime.configuration, deduplicator: runtime.deduplicator)
+        let __logStart = ContinuousClock.now
+        func _selectedValue(flag: Bool) -> Int? {
+          return flag ? 42 : nil
+        }
+        let result = _selectedValue(flag: flag)
+        event.result = .success(result)
+        event.duration = ContinuousClock.now - __logStart
+        if result == Optional.some(42) {
+          autoLogger.emitIfEnabled(event: event, configuration: runtime.configuration, deduplicator: runtime.deduplicator)
+        }
+        return result
+      }
+      """
+    }
+  }
+
+  @Test
   func function_withBareOmit_skipsExplicitLogInstrumentation() throws {
     assertMacro {
       """
@@ -434,6 +477,51 @@ struct LogMacroTests {
   }
 
   @Test
+  func functionWithExplicitCatchBinding_emitsHandledErrorWithBoundError() throws {
+    assertMacro {
+      #"""
+      @Log
+      func project() {
+        do {
+          try performMirrorProjection()
+        } catch let caught {
+          projectionStatus = "Error: \(caught)"
+        }
+      }
+      """#
+    } expansion: {
+      """
+      func project() {
+        let runtime = AutoLog.runtimeSnapshot()
+        let autoLogger: any AutoLogger = runtime.logger
+        var event = AutoLogEvent(
+          source: AutoLogSource.current,
+
+          location: "TestModule/Test.swift:1:1",
+          declaration: "func project()",
+          parameters: [:],
+          tags: []
+        )
+        autoLogger.emitStart(event: event, configuration: runtime.configuration, deduplicator: runtime.deduplicator)
+        let __logStart = ContinuousClock.now
+        func _project() {
+          do {
+            try performMirrorProjection()
+          } catch let caught {
+            event.recordHandledError()
+            autoLogger.emitHandledErrorIfEnabled(error: caught, from: event, runtime: runtime)
+                projectionStatus = "Error: \\(caught)"
+          }
+        }
+        let _ = _project()
+        event.duration = ContinuousClock.now - __logStart
+        autoLogger.emitIfEnabled(event: event, configuration: runtime.configuration, deduplicator: runtime.deduplicator)
+      }
+      """
+    }
+  }
+
+  @Test
   func boolFunction_logsGuardEarlyReturn() throws {
     assertMacro {
       #"""
@@ -571,6 +659,143 @@ struct LogMacroTests {
         event.duration = ContinuousClock.now - __logStart
         autoLogger.emitIfEnabled(event: event, configuration: runtime.configuration, deduplicator: runtime.deduplicator)
         return result
+      }
+      """
+    }
+  }
+
+  @Test
+  func stringFunction_logsSwitchEarlyReturns() throws {
+    assertMacro {
+      #"""
+      @Log
+      func route(kind: Int) -> String {
+        switch kind {
+        case 0:
+          return "zero"
+        default:
+          return "other"
+        }
+      }
+      """#
+    } expansion: {
+      """
+      func route(kind: Int) -> String {
+        let runtime = AutoLog.runtimeSnapshot()
+        let autoLogger: any AutoLogger = runtime.logger
+        var event = AutoLogEvent(
+          source: AutoLogSource.current,
+
+          location: "TestModule/Test.swift:1:1",
+          declaration: "func route(kind: Int) -> String",
+          parameters: [
+            "kind": kind
+          ],
+          tags: []
+        )
+        autoLogger.emitStart(event: event, configuration: runtime.configuration, deduplicator: runtime.deduplicator)
+        let __logStart = ContinuousClock.now
+        func _route(kind: Int) -> String {
+          switch kind {
+          case 0:
+            event.recordBranchDecision(kind: AutoLogEarlyExit.Kind.switchCase, condition: "switch kind: 0")
+            event.earlyExit = AutoLogEarlyExit(kind: AutoLogEarlyExit.Kind.switchCase, intent: .unknown, condition: "switch kind: 0", message: nil)
+            return "zero"
+          default:
+            event.recordBranchDecision(kind: AutoLogEarlyExit.Kind.switchDefault, condition: "switch kind: default")
+            event.earlyExit = AutoLogEarlyExit(kind: AutoLogEarlyExit.Kind.switchDefault, intent: .unknown, condition: "switch kind: default", message: nil)
+            return "other"
+          }
+        }
+        let result = _route(kind: kind)
+        event.result = .success(result)
+        event.duration = ContinuousClock.now - __logStart
+        autoLogger.emitIfEnabled(event: event, configuration: runtime.configuration, deduplicator: runtime.deduplicator)
+        return result
+      }
+      """
+    }
+  }
+
+  @Test
+  func voidFunction_preservesDeferBlock() throws {
+    assertMacro {
+      #"""
+      @Log
+      func cleanup() {
+        defer {
+          closeHandle()
+        }
+
+        openHandle()
+      }
+      """#
+    } expansion: {
+      """
+      func cleanup() {
+        let runtime = AutoLog.runtimeSnapshot()
+        let autoLogger: any AutoLogger = runtime.logger
+        var event = AutoLogEvent(
+          source: AutoLogSource.current,
+
+          location: "TestModule/Test.swift:1:1",
+          declaration: "func cleanup()",
+          parameters: [:],
+          tags: []
+        )
+        autoLogger.emitStart(event: event, configuration: runtime.configuration, deduplicator: runtime.deduplicator)
+        let __logStart = ContinuousClock.now
+        func _cleanup() {
+          defer {
+            closeHandle()
+          }
+
+          openHandle()
+        }
+        let _ = _cleanup()
+        event.duration = ContinuousClock.now - __logStart
+        autoLogger.emitIfEnabled(event: event, configuration: runtime.configuration, deduplicator: runtime.deduplicator)
+      }
+      """
+    }
+  }
+
+  @Test
+  func asyncFunction_preservesForAwaitLoop() throws {
+    assertMacro {
+      #"""
+      @Log
+      func consume(stream: AsyncStream<Int>) async {
+        for await value in stream {
+          print(value)
+        }
+      }
+      """#
+    } expansion: {
+      """
+      func consume(stream: AsyncStream<Int>) async {
+        let runtime = AutoLog.runtimeSnapshot()
+        let autoLogger: any AutoLogger = runtime.logger
+        var event = AutoLogEvent(
+          source: AutoLogSource.current,
+
+          location: "TestModule/Test.swift:1:1",
+          declaration: "func consume(stream: AsyncStream<Int>) async",
+          parameters: [
+            "stream": stream
+          ],
+          tags: []
+        )
+        autoLogger.emitStart(event: event, configuration: runtime.configuration, deduplicator: runtime.deduplicator)
+        let __logStart = ContinuousClock.now
+        func _consume(stream: AsyncStream<Int>) async {
+          for await value in stream {
+            print(value)
+          }
+        }
+        let _ = await _consume(stream: stream)
+        event.duration = ContinuousClock.now - __logStart
+        autoLogger.emitIfEnabled(event: event, configuration: runtime.configuration, deduplicator: runtime.deduplicator)
       }
       """
     }

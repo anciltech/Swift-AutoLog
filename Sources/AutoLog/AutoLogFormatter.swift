@@ -424,7 +424,6 @@ public struct CompactFormatter: AutoLogFormatter {
     let arrow = fmt.arrowStyle.arrow(for: depth)
     let em = emoji(for: event, style: fmt.statusStyle)
     let funcName = event.functionName
-    let params = formatParameters(event.parameters)
     let hasAsyncSpecifier = event.hasAsyncEffect
     var line = ""
     var isFirstSegment = true
@@ -464,6 +463,7 @@ public struct CompactFormatter: AutoLogFormatter {
           element: .functionName
         )
       case .parameters:
+        let params = formatParameters(event.parameters)
         appendSegment("(\(params))", noLeadingSpace: true, element: .parameters)
       case .effectSpecifiers:
         guard hasAsyncSpecifier else { continue }
@@ -753,6 +753,10 @@ public struct CompactFormatter: AutoLogFormatter {
       kind = "else if"
     case .else:
       kind = "else"
+    case .switchCase:
+      kind = "switch case"
+    case .switchDefault:
+      kind = "switch default"
     }
 
     guard let condition = decision.condition?.trimmingCharacters(in: .whitespacesAndNewlines),

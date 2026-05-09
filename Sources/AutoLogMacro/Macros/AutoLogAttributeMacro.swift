@@ -1,4 +1,3 @@
-import SwiftDiagnostics
 import SwiftSyntax
 import SwiftSyntaxMacros
 
@@ -22,13 +21,6 @@ extension AutoLogAttributeMacro {
       guard case let .attribute(syntax) = attribute else { return false }
       return self.ignore(syntax)
     }
-//
-//    context.diagnose(
-//      .init(
-//        node: node,
-//        message: .debug(self.introduce(for: node))
-//      )
-//    )
 
     return canExpand.contains(true)
       ? self.attributes()
@@ -36,12 +28,4 @@ extension AutoLogAttributeMacro {
         self.introduce(for: node)
       }
   }
-}
-
-struct DebugException: DiagnosticMessage {
-  var message: String
-
-  var diagnosticID: SwiftDiagnostics.MessageID { .init(domain: "d", id: "1") }
-
-  var severity: SwiftDiagnostics.DiagnosticSeverity { .error }
 }

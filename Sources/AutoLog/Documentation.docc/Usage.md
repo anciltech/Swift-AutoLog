@@ -333,7 +333,7 @@ Upon invocation of `deleteAllFavoriteFacts`, the `"Delete"` tag will be passed a
 
 ## Capture early exits and branch paths
 
-`@Log` and `@AutoLog` also capture structured metadata for early exits inside a function body. This includes exits from `guard`, `if`, `else if`, and `else` branches when they return or throw before the function reaches its normal end.
+`@Log` and `@AutoLog` also capture structured metadata for early exits inside a function body. This includes exits from `guard`, `if`, `else if`, `else`, and `switch` branches when they return or throw before the function reaches its normal end.
 
 ```swift
 // LayoutEditorService.swift
@@ -386,7 +386,7 @@ If an explicit `AutoLog.earlyExit(...)` call is present in a branch, the macro u
 
 ### Record non-returning branch choices
 
-AutoLog also records the executed `if`, `else if`, or `else` path when the branch continues normally and the function later finishes through its usual completion path.
+AutoLog also records the executed `if`, `else if`, `else`, or `switch` path when the branch continues normally and the function later finishes through its usual completion path.
 
 ```swift
 // ShortcutManager.swift
@@ -426,6 +426,9 @@ You will see the caught error at the catch site, and the final function event wi
 also include a handled-error annotation so the control-flow story stays honest.
 Those catch-site rows still go through the same `emitIfEnabled(...)` path as every
 other AutoLog event, so omission rules and duplicate suppression remain consistent.
+If the catch uses an explicit binding such as `catch let error`, AutoLog forwards
+that bound value to the handled-error event instead of relying only on Swift's
+implicit `error` binding.
 When failure context is available, the formatter now separates that trail with
 `˄` / `˅` dividers, inserts a `💥 Error in Type.function()` marker after the
 context list, shows `[1 error handled here]` on the yellow handled-error row,
@@ -436,7 +439,7 @@ and keeps the green success row compact with a trailing summary like
 
 For each early exit or recorded branch path, AutoLog captures:
 
-* the branch kind (`guard`, `if`, `elseif`, or `else`)
+* the branch kind (`guard`, `if`, `elseif`, `else`, `switch case`, or `switch default`)
 * the evaluated branch condition, when available
 * the explicit intent and message, when you provide them
 * handled-error warning events emitted from local `catch` blocks
