@@ -59,6 +59,7 @@ public struct CompactFormatter: AutoLogFormatter {
     let includesReturnValue = inlineElements.contains(.returnValue)
     let includesLineNumber = inlineElements.contains(.lineNumber)
     let visibleTags = event.visibleTags
+    var parameterText = ParameterText(parameters: event.parameters)
 
     let mainBody: String
     if let source = event.source, event.declaration == source.description {
@@ -70,7 +71,8 @@ public struct CompactFormatter: AutoLogFormatter {
         depth: depth,
         inlineElements: inlineElements,
         fmt: fmt,
-        configuration: configuration
+        configuration: configuration,
+        parameterText: &parameterText
       )
     } else {
       mainBody = standardBody(
@@ -79,7 +81,8 @@ public struct CompactFormatter: AutoLogFormatter {
         depth: depth,
         inlineElements: inlineElements,
         fmt: fmt,
-        configuration: configuration
+        configuration: configuration,
+        parameterText: &parameterText
       )
     }
 
@@ -150,6 +153,25 @@ public struct CompactFormatter: AutoLogFormatter {
   private enum Alignment {
     case leading
     case trailing
+  }
+
+  private struct ParameterText {
+    let parameters: [String: Any]
+    private var formatted: String?
+
+    init(parameters: [String: Any]) {
+      self.parameters = parameters
+    }
+
+    mutating func render(using formatter: ([String: Any]) -> String) -> String {
+      if let formatted {
+        return formatted
+      }
+
+      let value = formatter(parameters)
+      formatted = value
+      return value
+    }
   }
 
   private func renderRow(
@@ -318,7 +340,8 @@ public struct CompactFormatter: AutoLogFormatter {
     depth: Int,
     inlineElements: [LogFormat.Element],
     fmt: LogFormat,
-    configuration: AutoLogConfiguration
+    configuration: AutoLogConfiguration,
+    parameterText: inout ParameterText
   ) -> String {
     let prefix = tracePrefix(for: event, depth: depth)
     if fmt == .default {
@@ -327,7 +350,8 @@ public struct CompactFormatter: AutoLogFormatter {
         typeName: typeName,
         depth: depth,
         configuration: configuration,
-        forcedPrefix: prefix
+        forcedPrefix: prefix,
+        parameterText: &parameterText
       )
     }
     return bodyText(
@@ -337,7 +361,8 @@ public struct CompactFormatter: AutoLogFormatter {
       inlineElements: inlineElements,
       fmt: fmt,
       configuration: configuration,
-      forcedPrefix: prefix
+      forcedPrefix: prefix,
+      parameterText: &parameterText
     )
   }
 
@@ -347,7 +372,8 @@ public struct CompactFormatter: AutoLogFormatter {
     depth: Int,
     inlineElements: [LogFormat.Element],
     fmt: LogFormat,
-    configuration: AutoLogConfiguration
+    configuration: AutoLogConfiguration,
+    parameterText: inout ParameterText
   ) -> String {
     if fmt == .default {
       return defaultBodyText(
@@ -355,7 +381,8 @@ public struct CompactFormatter: AutoLogFormatter {
         typeName: typeName,
         depth: depth,
         configuration: configuration,
-        forcedPrefix: nil
+        forcedPrefix: nil,
+        parameterText: &parameterText
       )
     }
     return bodyText(
@@ -365,7 +392,8 @@ public struct CompactFormatter: AutoLogFormatter {
       inlineElements: inlineElements,
       fmt: fmt,
       configuration: configuration,
-      forcedPrefix: nil
+      forcedPrefix: nil,
+      parameterText: &parameterText
     )
   }
 
@@ -374,7 +402,8 @@ public struct CompactFormatter: AutoLogFormatter {
     typeName: String,
     depth: Int,
     configuration: AutoLogConfiguration,
-    forcedPrefix: String?
+    forcedPrefix: String?,
+    parameterText: inout ParameterText
   ) -> String {
     var line = forcedPrefix ?? LogFormat.ArrowStyle.default.arrow(for: depth)
     let status = emoji(for: event, style: .default)
@@ -388,7 +417,7 @@ public struct CompactFormatter: AutoLogFormatter {
     line += "."
     line += event.functionName
     line += "("
-    line += formatParameters(event.parameters)
+    line += parameterText.render(using: formatParameters)
     line += ")"
 
     if event.hasAsyncEffect {
@@ -419,7 +448,8 @@ public struct CompactFormatter: AutoLogFormatter {
     inlineElements: [LogFormat.Element],
     fmt: LogFormat,
     configuration: AutoLogConfiguration,
-    forcedPrefix: String?
+    forcedPrefix: String?,
+    parameterText: inout ParameterText
   ) -> String {
     let arrow = fmt.arrowStyle.arrow(for: depth)
     let em = emoji(for: event, style: fmt.statusStyle)
@@ -463,7 +493,7 @@ public struct CompactFormatter: AutoLogFormatter {
           element: .functionName
         )
       case .parameters:
-        let params = formatParameters(event.parameters)
+        let params = parameterText.render(using: formatParameters)
         appendSegment("(\(params))", noLeadingSpace: true, element: .parameters)
       case .effectSpecifiers:
         guard hasAsyncSpecifier else { continue }

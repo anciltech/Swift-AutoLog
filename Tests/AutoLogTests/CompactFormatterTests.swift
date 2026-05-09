@@ -160,6 +160,36 @@ struct CompactFormatterTests {
         #expect(CompactFormatter().format(event: event, configuration: configuration).contains("fetchUser(id: 1)"))
     }
 
+    @Test func duplicateParameterElements_reuseFormattedParameterText() {
+        final class CountedParameter: CustomStringConvertible {
+            var descriptionAccessCount = 0
+
+            var description: String {
+                descriptionAccessCount += 1
+                return "payload"
+            }
+        }
+
+        let parameter = CountedParameter()
+        let event = makeEvent(
+            declaration: "func track(value: CountedParameter)",
+            parameters: ["value": parameter]
+        )
+        let config = AutoLogConfiguration(
+            logFormat: LogFormat(mainLine: [
+                .functionName,
+                .parameters,
+                .space,
+                .parameters,
+            ])
+        )
+
+        let output = CompactFormatter().format(event: event, configuration: config)
+
+        #expect(output.contains("track(value: payload) (value: payload)"))
+        #expect(parameter.descriptionAccessCount == 1)
+    }
+
     @Test func identifiableParameter_prefersShortIDSummary() {
         final class Frame {
             let id: UUID

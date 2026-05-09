@@ -48,14 +48,14 @@ formatter and output-profile matching do not keep re-splitting the same
 `AutoLogOutput` now also trims and drops empty type-name filters at
 construction and decode time so `matches(_:)` can reuse the normalized list
 without doing extra cleanup work on every emit.
+`CompactFormatter` also keeps formatted parameter text in a per-event cache
+while rendering, so custom formats that include `.parameters` more than once
+reuse the same sorted and stringified parameter payload.
 
 ## Current performance TODOs
 
 The next hot-path targets worth exploring are:
 
-- make parameter rendering lazy so `CompactFormatter` only formats
-  `event.parameters` when the active `LogFormat` actually includes
-  `.parameters`
 - reduce multi-parameter overhead further by avoiding repeated sorting and
   reflection-heavy formatting work where possible
 - look at the remaining generic formatter path for custom `LogFormat` values to
