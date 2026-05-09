@@ -11,6 +11,7 @@ from pathlib import Path
 
 TRACKED_SCENARIOS = [
     "Logged without tags",
+    "Logged without tags (normal logger)",
     "Logged with routing tags",
     "Logged with visible tags",
     "Logged with mixed tags",
@@ -55,6 +56,41 @@ xychart-beta
 ```"""
 
 
+def logger_profile_comparison(rows: list[dict[str, str]]) -> list[str]:
+    benchmark_rows = [
+        row for row in rows
+        if row["scenario"] == "Logged without tags"
+        and "benchmark-logger" in row["load_profile"]
+    ]
+    normal_rows = [
+        row for row in rows
+        if row["scenario"] == "Logged without tags (normal logger)"
+    ]
+    if not benchmark_rows or not normal_rows:
+        return []
+
+    benchmark = benchmark_rows[-1]
+    normal = normal_rows[-1]
+    benchmark_overhead = float(benchmark["overhead_us"])
+    normal_overhead = float(normal["overhead_us"])
+    delta = normal_overhead - benchmark_overhead
+    multiplier = normal_overhead / benchmark_overhead if benchmark_overhead else 0
+
+    return [
+        "## Logger Profile Comparison",
+        "",
+        "This compares the synthetic benchmark logger against the default",
+        "`AutoLogLogger` path for the no-tag scenario. It is the closest current",
+        "baseline for normal logging cost.",
+        "",
+        "| Profile | Run | Overhead (us) | Delta vs benchmark logger |",
+        "|---|---|---:|---:|",
+        f"| Benchmark logger | {benchmark['run_id']} | {benchmark_overhead:.3f} | 0.000 |",
+        f"| Normal AutoLogLogger | {normal['run_id']} | {normal_overhead:.3f} | {delta:+.3f} ({multiplier:.2f}x) |",
+        "",
+    ]
+
+
 def markdown(rows: list[dict[str, str]]) -> str:
     rows_by_run: dict[str, list[dict[str, str]]] = defaultdict(list)
     for row in rows:
@@ -94,6 +130,8 @@ def markdown(rows: list[dict[str, str]]) -> str:
         chart = chart_for(rows, scenario)
         if chart:
             lines.extend([f"### {scenario}", "", chart, ""])
+
+    lines.extend(logger_profile_comparison(rows))
 
     lines.extend(
         [

@@ -45,6 +45,22 @@ final class AutoLogPerformanceTests: XCTestCase {
     }
   }
 
+  func testLoggedFunctionWithoutTagsUsingNormalLogger() {
+    measureScenario(named: "Logged without tags (normal logger)") {
+      let fixture = PerformanceFixture()
+
+      AutoLog.withRuntime(.normalLoggingBenchmark) {
+        var checksum = 0
+
+        for iteration in 0..<Self.iterations {
+          checksum &+= fixture.loggedWithoutTags(iteration)
+        }
+
+        XCTAssertNotEqual(checksum, .min)
+      }
+    }
+  }
+
   func testLoggedFunctionWithVisibleTags() {
     measureScenario(named: "Logged with visible tags") {
       let fixture = PerformanceFixture()
@@ -172,6 +188,13 @@ private extension AutoLogRuntime {
   static var benchmark: Self {
     AutoLogRuntime(
       logger: BenchmarkLogger(),
+      configuration: AutoLogPerformanceTests.configuration
+    )
+  }
+
+  static var normalLoggingBenchmark: Self {
+    AutoLogRuntime(
+      logger: AutoLogLogger(errorContextLimit: 0),
       configuration: AutoLogPerformanceTests.configuration
     )
   }
@@ -476,6 +499,12 @@ private final class LockedScenarios: @unchecked Sendable {
         family: .sync,
         iterations: AutoLogPerformanceTests.iterations,
         addedWork: "Macro wrapper, AutoLogEvent capture, formatter path"
+      )
+    case "Logged without tags (normal logger)":
+      ScenarioDescriptor(
+        family: .sync,
+        iterations: AutoLogPerformanceTests.iterations,
+        addedWork: "Default AutoLogLogger path, output resolution, context snapshot, and OSLog delivery"
       )
     case "Logged with visible tags":
       ScenarioDescriptor(

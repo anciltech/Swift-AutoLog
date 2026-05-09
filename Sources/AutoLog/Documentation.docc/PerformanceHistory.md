@@ -37,3 +37,11 @@ Compare runs with the same mode and similar load profile first. A loaded run is
 useful because it exposes scheduler sensitivity and variance, but it is also
 noisier by design, so rerun suspicious results before treating them as a
 regression.
+
+The history should keep both logger profiles visible:
+
+- the synthetic benchmark logger isolates macro/event/formatter/routing work
+  while discarding final output
+- the normal logger scenario, `Logged without tags (normal logger)`, uses the
+  default `AutoLogLogger` path so OSLog delivery and rolling context bookkeeping
+  remain represented
