@@ -55,6 +55,9 @@ Custom format rendering now also uses a compact format plan so a single pass
 classifies leading metadata columns, inline elements, and dependent flags. When
 callers install a fixed formatter-level `LogFormat`, that plan is prepared once
 at formatter initialization instead of rebuilt on each emitted event.
+`AutoLogEvent` also specializes single-tag construction, so route-only events
+such as `.splunk` and single visible tags avoid the mixed-tag classification
+loop and visible-tag reserve path.
 
 ## Current performance TODOs
 
@@ -62,9 +65,9 @@ The next hot-path targets worth exploring are:
 
 - reduce multi-parameter overhead further by avoiding repeated sorting and
   reflection-heavy formatting work where possible
-- look at macro-generated event construction for no-tag and route-only cases to
-  see whether `[String: Any]` / `[any Taggable]` setup can be specialized
-  further without hurting readability
+- look at macro-generated no-parameter and no-tag event construction to see
+  whether defaulted initializer arguments can avoid empty dictionary and array
+  literals without making expansion snapshots harder to read
 
 ## Latest local evaluation
 

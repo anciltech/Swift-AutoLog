@@ -313,6 +313,14 @@ public struct AutoLogEvent: CustomStringConvertible, CustomDebugStringConvertibl
     if tags.isEmpty {
       self.routes = []
       self.visibleTags = []
+    } else if tags.count == 1, let tag = tags.first {
+      if let route = tag as? AutoLogRoute {
+        self.routes = [route]
+        self.visibleTags = []
+      } else {
+        self.routes = []
+        self.visibleTags = [tag]
+      }
     } else {
       var routes = Set<AutoLogRoute>()
       var visibleTags: [any Taggable] = []

@@ -101,6 +101,31 @@ struct AutoLoggerTests {
   }
 
   @Test
+  func singleRouteTag_isClassifiedWithoutVisibleTags() {
+    let event = AutoLogEvent(
+      location: "App/Feature.swift:1:1",
+      declaration: "func uploadAuditTrail()",
+      tags: [AutoLogRoute.splunk]
+    )
+
+    #expect(event.routes == [.splunk])
+    #expect(event.visibleTags.isEmpty)
+  }
+
+  @Test
+  func singleVisibleTag_isClassifiedWithoutRoutes() {
+    let event = AutoLogEvent(
+      location: "App/Feature.swift:1:1",
+      declaration: "func uploadAuditTrail()",
+      tags: ["audit"]
+    )
+
+    #expect(event.routes.isEmpty)
+    #expect(event.visibleTags.count == 1)
+    #expect(String(describing: event.visibleTags[0]) == "audit")
+  }
+
+  @Test
   func routeTags_forwardOnlyToMatchingSinks() {
     let sink = MockEventSink(route: .splunk)
     let logger = AutoLogLogger(formatter: MockFormatter(), sinks: [sink])
