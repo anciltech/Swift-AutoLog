@@ -140,12 +140,7 @@ public struct AutoLogErrorContextEntry: Sendable, Hashable, CustomStringConverti
 }
 
 /// A type representing captured metadata from an invoked function.
-///
-/// The event is marked `@unchecked Sendable` because it can intentionally carry
-/// arbitrary user parameter and result values through `[String: Any]` and
-/// `Result<Any, any Error>`. AutoLog treats those payloads as captured snapshots
-/// while loggers and sinks move events across sendable boundaries.
-public struct AutoLogEvent: @unchecked Sendable, CustomStringConvertible, CustomDebugStringConvertible {
+public struct AutoLogEvent: CustomStringConvertible, CustomDebugStringConvertible {
   /// The logging level associated with the event.
   public let level: (any Levelable)?
 

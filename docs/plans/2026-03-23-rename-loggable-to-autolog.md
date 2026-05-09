@@ -64,7 +64,7 @@ public protocol AutoLogger: Sendable {
 }
 
 /// A type representing captured metadata from an invoked function.
-public struct AutoLogEvent: @unchecked Sendable, CustomStringConvertible, CustomDebugStringConvertible {
+public struct AutoLogEvent: CustomStringConvertible, CustomDebugStringConvertible {
   /// The logging level associated with the event.
   public let level: (any Levelable)?
 
