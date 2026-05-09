@@ -45,3 +45,8 @@ The history should keep both logger profiles visible:
 - the normal logger scenario, `Logged without tags (normal logger)`, uses the
   default `AutoLogLogger` path so OSLog delivery and rolling context bookkeeping
   remain represented
+- the direct OSLog scenarios call `OSLog.Logger` manually so the history can
+  compare no logging, normal OSLog, and AutoLog in the same run family
+- the complex scenarios measure inline early returns, branch paths, switch
+  branches, and handled catches, which are more representative of macro
+  instrumentation than a wrapper around a helper call

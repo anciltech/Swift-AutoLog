@@ -11,7 +11,10 @@ from pathlib import Path
 
 TRACKED_SCENARIOS = [
     "Logged without tags",
+    "Direct OSLog",
     "Logged without tags (normal logger)",
+    "Direct OSLog complex",
+    "AutoLog complex (normal logger)",
     "Logged with routing tags",
     "Logged with visible tags",
     "Logged with mixed tags",
@@ -56,39 +59,103 @@ xychart-beta
 ```"""
 
 
+def latest_row(rows: list[dict[str, str]], scenario: str, load_contains: str | None = None) -> dict[str, str] | None:
+    matches = [
+        row for row in rows
+        if row["scenario"] == scenario
+        and (load_contains is None or load_contains in row["load_profile"])
+    ]
+    return matches[-1] if matches else None
+
+
+def comparison_line(
+    profile: str,
+    row: dict[str, str] | None,
+    baseline_overhead: float,
+) -> str | None:
+    if row is None:
+        return None
+
+    overhead = float(row["overhead_us"])
+    delta = overhead - baseline_overhead
+    return f"| {profile} | {row['run_id']} | {overhead:.3f} | {delta:+.3f} |"
+
+
 def logger_profile_comparison(rows: list[dict[str, str]]) -> list[str]:
     benchmark_rows = [
         row for row in rows
         if row["scenario"] == "Logged without tags"
         and "benchmark-logger" in row["load_profile"]
     ]
-    normal_rows = [
-        row for row in rows
-        if row["scenario"] == "Logged without tags (normal logger)"
-    ]
-    if not benchmark_rows or not normal_rows:
-        return []
+    simple_baseline = latest_row(rows, "Baseline")
+    simple_oslog = latest_row(rows, "Direct OSLog")
+    simple_autolog = latest_row(rows, "Logged without tags (normal logger)")
+    complex_baseline = latest_row(rows, "Baseline complex")
+    complex_oslog = latest_row(rows, "Direct OSLog complex")
+    complex_autolog = latest_row(rows, "AutoLog complex (normal logger)")
 
-    benchmark = benchmark_rows[-1]
-    normal = normal_rows[-1]
-    benchmark_overhead = float(benchmark["overhead_us"])
-    normal_overhead = float(normal["overhead_us"])
-    delta = normal_overhead - benchmark_overhead
-    multiplier = normal_overhead / benchmark_overhead if benchmark_overhead else 0
-
-    return [
-        "## Logger Profile Comparison",
+    lines = [
+        "## Logging Profile Comparison",
         "",
-        "This compares the synthetic benchmark logger against the default",
-        "`AutoLogLogger` path for the no-tag scenario. It is the closest current",
-        "baseline for normal logging cost.",
-        "",
-        "| Profile | Run | Overhead (us) | Delta vs benchmark logger |",
-        "|---|---|---:|---:|",
-        f"| Benchmark logger | {benchmark['run_id']} | {benchmark_overhead:.3f} | 0.000 |",
-        f"| Normal AutoLogLogger | {normal['run_id']} | {normal_overhead:.3f} | {delta:+.3f} ({multiplier:.2f}x) |",
+        "These tables compare no logging, direct `OSLog.Logger`, and the",
+        "default `AutoLogLogger` path. The benchmark logger remains useful for",
+        "isolating formatter/routing work, but the normal logger rows are the",
+        "real-world baseline.",
         "",
     ]
+
+    simple_baseline_overhead = float(simple_baseline["overhead_us"]) if simple_baseline else 0
+    simple_lines = [
+        comparison_line("No logging", simple_baseline, simple_baseline_overhead),
+        comparison_line("Direct OSLog", simple_oslog, simple_baseline_overhead),
+        comparison_line("AutoLog normal logger", simple_autolog, simple_baseline_overhead),
+    ]
+    simple_lines = [line for line in simple_lines if line is not None]
+    if simple_lines:
+        lines.extend([
+            "### Simple Control Flow",
+            "",
+            "| Profile | Run | Overhead (us) | Delta vs no logging |",
+            "|---|---|---:|---:|",
+            *simple_lines,
+            "",
+        ])
+
+    complex_baseline_overhead = float(complex_baseline["overhead_us"]) if complex_baseline else 0
+    complex_lines = [
+        comparison_line("No logging", complex_baseline, complex_baseline_overhead),
+        comparison_line("Direct OSLog", complex_oslog, complex_baseline_overhead),
+        comparison_line("AutoLog normal logger", complex_autolog, complex_baseline_overhead),
+    ]
+    complex_lines = [line for line in complex_lines if line is not None]
+    if complex_lines:
+        lines.extend([
+            "### Complex Control Flow",
+            "",
+            "| Profile | Run | Overhead (us) | Delta vs no logging |",
+            "|---|---|---:|---:|",
+            *complex_lines,
+            "",
+        ])
+
+    benchmark = benchmark_rows[-1] if benchmark_rows else None
+    normal = simple_autolog
+    if benchmark and normal:
+        benchmark_overhead = float(benchmark["overhead_us"])
+        normal_overhead = float(normal["overhead_us"])
+        delta = normal_overhead - benchmark_overhead
+        multiplier = normal_overhead / benchmark_overhead if benchmark_overhead else 0
+        lines.extend([
+            "### Benchmark Logger Reference",
+            "",
+            "| Profile | Run | Overhead (us) | Delta vs benchmark logger |",
+            "|---|---|---:|---:|",
+            f"| Benchmark logger | {benchmark['run_id']} | {benchmark_overhead:.3f} | 0.000 |",
+            f"| Normal AutoLogLogger | {normal['run_id']} | {normal_overhead:.3f} | {delta:+.3f} ({multiplier:.2f}x) |",
+            "",
+        ])
+
+    return lines
 
 
 def markdown(rows: list[dict[str, str]]) -> str:

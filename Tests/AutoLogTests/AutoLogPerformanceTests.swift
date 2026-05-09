@@ -1,5 +1,8 @@
 import AutoLog
 import Dispatch
+#if canImport(OSLog)
+import OSLog
+#endif
 import XCTest
 
 final class AutoLogPerformanceTests: XCTestCase {
@@ -61,6 +64,19 @@ final class AutoLogPerformanceTests: XCTestCase {
     }
   }
 
+  func testDirectOSLogFunction() {
+    measureScenario(named: "Direct OSLog") {
+      let fixture = PerformanceFixture()
+      var checksum = 0
+
+      for iteration in 0..<Self.iterations {
+        checksum &+= fixture.directOSLog(iteration)
+      }
+
+      XCTAssertNotEqual(checksum, .min)
+    }
+  }
+
   func testLoggedFunctionWithVisibleTags() {
     measureScenario(named: "Logged with visible tags") {
       let fixture = PerformanceFixture()
@@ -102,6 +118,48 @@ final class AutoLogPerformanceTests: XCTestCase {
 
         for iteration in 0..<Self.iterations {
           checksum &+= fixture.loggedWithMixedTags(iteration)
+        }
+
+        XCTAssertNotEqual(checksum, .min)
+      }
+    }
+  }
+
+  func testBaselineComplexFunction() {
+    measureScenario(named: "Baseline complex") {
+      let fixture = PerformanceFixture()
+      var checksum = 0
+
+      for iteration in 0..<Self.iterations {
+        checksum &+= fixture.baselineComplex(iteration)
+      }
+
+      XCTAssertNotEqual(checksum, .min)
+    }
+  }
+
+  func testDirectOSLogComplexFunction() {
+    measureScenario(named: "Direct OSLog complex") {
+      let fixture = PerformanceFixture()
+      var checksum = 0
+
+      for iteration in 0..<Self.iterations {
+        checksum &+= fixture.directOSLogComplex(iteration)
+      }
+
+      XCTAssertNotEqual(checksum, .min)
+    }
+  }
+
+  func testLoggedComplexFunctionUsingNormalLogger() {
+    measureScenario(named: "AutoLog complex (normal logger)") {
+      let fixture = PerformanceFixture()
+
+      AutoLog.withRuntime(.normalLoggingBenchmark) {
+        var checksum = 0
+
+        for iteration in 0..<Self.iterations {
+          checksum &+= fixture.loggedComplexWithNormalLogger(iteration)
         }
 
         XCTAssertNotEqual(checksum, .min)
@@ -201,9 +259,21 @@ private extension AutoLogRuntime {
 }
 
 private struct PerformanceFixture: Sendable {
+  private static let directLogger = Logger(
+    subsystem: "SwiftAutoLogPerformanceTests",
+    category: "DirectOSLog"
+  )
+
   @inline(never)
   func baseline(_ value: Int) -> Int {
     controlFlowBody(value)
+  }
+
+  @inline(never)
+  func directOSLog(_ value: Int) -> Int {
+    let result = controlFlowBody(value)
+    Self.directLogger.info("directOSLog value=\(value) result=\(result)")
+    return result
   }
 
   @inline(never)
@@ -236,6 +306,51 @@ private struct PerformanceFixture: Sendable {
   @Log
   func loggedWithMixedTags(_ value: Int) -> Int {
     controlFlowBody(value)
+  }
+
+  @inline(never)
+  func baselineComplex(_ value: Int) -> Int {
+    complexBody(value, shouldLogDirectly: false)
+  }
+
+  @inline(never)
+  func directOSLogComplex(_ value: Int) -> Int {
+    complexBody(value, shouldLogDirectly: true)
+  }
+
+  @inline(never)
+  @Log
+  func loggedComplexWithNormalLogger(_ value: Int) -> Int {
+    if value.isMultiple(of: 19) {
+      return fallbackValue(for: -value)
+    }
+
+    var result = value &* 17
+
+    if value.isMultiple(of: 5) {
+      result &+= 33
+    } else if value.isMultiple(of: 7) {
+      result &-= 21
+    } else {
+      result ^= 0x1234
+    }
+
+    do {
+      result &+= try recoverableAdjustment(for: value)
+    } catch {
+      result ^= 0x0BAD
+    }
+
+    switch value % 4 {
+    case 0:
+      return result &+ 4
+    case 1:
+      return result &- 3
+    case 2:
+      return result ^ 0x00CC
+    default:
+      return result
+    }
   }
 
   @inline(never)
@@ -277,6 +392,53 @@ private struct PerformanceFixture: Sendable {
   }
 
   @inline(never)
+  private func complexBody(_ value: Int, shouldLogDirectly: Bool) -> Int {
+    if value.isMultiple(of: 19) {
+      let result = fallbackValue(for: -value)
+      if shouldLogDirectly {
+        Self.directLogger.info("complex early-exit value=\(value) result=\(result)")
+      }
+      return result
+    }
+
+    var result = value &* 17
+
+    if value.isMultiple(of: 5) {
+      result &+= 33
+    } else if value.isMultiple(of: 7) {
+      result &-= 21
+    } else {
+      result ^= 0x1234
+    }
+
+    do {
+      result &+= try recoverableAdjustment(for: value)
+    } catch {
+      if shouldLogDirectly {
+        Self.directLogger.warning("complex handled error value=\(value)")
+      }
+      result ^= 0x0BAD
+    }
+
+    switch value % 4 {
+    case 0:
+      result &+= 4
+    case 1:
+      result &-= 3
+    case 2:
+      result ^= 0x00CC
+    default:
+      break
+    }
+
+    if shouldLogDirectly {
+      Self.directLogger.info("complex success value=\(value) result=\(result)")
+    }
+
+    return result
+  }
+
+  @inline(never)
   private func taskGroupBody(_ value: Int) async -> Int {
     await withTaskGroup(of: Int.self, returning: Int.self) { group in
       group.addTask {
@@ -303,6 +465,15 @@ private struct PerformanceFixture: Sendable {
     }
 
     return result ^ 0x5A5A
+  }
+
+  @inline(never)
+  private func recoverableAdjustment(for value: Int) throws -> Int {
+    if value.isMultiple(of: 13) {
+      throw BenchmarkFailure.synthetic
+    }
+
+    return value & 0xFF
   }
 
   @inline(never)
@@ -353,6 +524,7 @@ private struct ScenarioMeasurement {
 private enum ScenarioFamily {
   case sync
   case taskGroup
+  case complex
 
   var label: String {
     switch self {
@@ -360,6 +532,8 @@ private enum ScenarioFamily {
       "sync"
     case .taskGroup:
       "task-group"
+    case .complex:
+      "complex"
     }
   }
 }
@@ -506,6 +680,12 @@ private final class LockedScenarios: @unchecked Sendable {
         iterations: AutoLogPerformanceTests.iterations,
         addedWork: "Default AutoLogLogger path, output resolution, context snapshot, and OSLog delivery"
       )
+    case "Direct OSLog":
+      ScenarioDescriptor(
+        family: .sync,
+        iterations: AutoLogPerformanceTests.iterations,
+        addedWork: "Reference body plus direct OSLog Logger.info call"
+      )
     case "Logged with visible tags":
       ScenarioDescriptor(
         family: .sync,
@@ -523,6 +703,24 @@ private final class LockedScenarios: @unchecked Sendable {
         family: .sync,
         iterations: AutoLogPerformanceTests.iterations,
         addedWork: "Formatter work, visible tags, route checks, and sink traversal"
+      )
+    case "Baseline complex":
+      ScenarioDescriptor(
+        family: .complex,
+        iterations: AutoLogPerformanceTests.iterations,
+        addedWork: "Inline reference body with early returns, branches, switch, and handled errors"
+      )
+    case "Direct OSLog complex":
+      ScenarioDescriptor(
+        family: .complex,
+        iterations: AutoLogPerformanceTests.iterations,
+        addedWork: "Complex reference body plus direct OSLog success and handled-error logs"
+      )
+    case "AutoLog complex (normal logger)":
+      ScenarioDescriptor(
+        family: .complex,
+        iterations: AutoLogPerformanceTests.iterations,
+        addedWork: "Normal AutoLogLogger path over inline early exits, branches, switch, and handled catches"
       )
     case "Baseline task group":
       ScenarioDescriptor(
@@ -546,7 +744,7 @@ private final class LockedScenarios: @unchecked Sendable {
   }
 
   private static func isBaseline(_ scenario: String) -> Bool {
-    scenario == "Baseline" || scenario == "Baseline task group"
+    scenario == "Baseline" || scenario == "Baseline task group" || scenario == "Baseline complex"
   }
 
   private static func formattedRow(
