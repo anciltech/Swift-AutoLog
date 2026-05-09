@@ -222,6 +222,8 @@ Every interaction origin gets a compact source-plus-badge prefix such as
 `👆🏼-🧵A1B`. The origin event becomes a trace root, and downstream calls
 keep that same prefix while using longer branch lengths to hint at
 architectural depth:
+Async interaction scopes preserve the same source context across suspension
+points, so work that resumes after `await` still belongs to the original trace.
 
 ```text
 👆🏼-🧵A1B - 👆🏼 Save [PaymentsView:42]

@@ -182,6 +182,7 @@ struct AutoLogSourceTests {
         await withMockRuntime {
             var capturedEmoji: String?
             await AutoLogSource.run(InteractionSource.api("GET /users")) {
+                await Task.yield()
                 capturedEmoji = AutoLogSource.current?.emoji
             }
             #expect(capturedEmoji == "🌐")
@@ -240,14 +241,20 @@ struct AutoLogSourceTests {
 
     @Test func run_async_returnsOperationResult() async {
         await withMockRuntime {
-            let result = await AutoLogSource.run(InteractionSource.api("Fetch")) { "data" }
+            let result = await AutoLogSource.run(InteractionSource.api("Fetch")) {
+                await Task.yield()
+                return "data"
+            }
             #expect(result == "data")
         }
     }
 
     @Test func source_log_async_returnsOperationResult() async {
         await withMockRuntime {
-            let result = await InteractionSource.api("Fetch").log { "data" }
+            let result = await InteractionSource.api("Fetch").log {
+                await Task.yield()
+                return "data"
+            }
             #expect(result == "data")
         }
     }
