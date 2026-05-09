@@ -66,6 +66,9 @@ Macro expansion now also omits explicit `parameters: [:]` and `tags: []`
 arguments when a logged function has no captured parameters or tags, letting
 `AutoLogEvent` use its defaults instead of constructing empty literals in the
 generated wrapper.
+Function-level timing suppression is available on custom logger overloads too:
+`@Log(using: logger, measure: false)` skips `ContinuousClock` capture and
+duration assignment while still emitting the start and completion events.
 `AutoLogEvent` now also caches a deterministic parameter-label order when it is
 constructed and refreshes that cache when parameters are replaced, so repeated
 formatter passes for the same event do not re-sort multi-parameter labels.

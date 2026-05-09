@@ -110,6 +110,37 @@ struct LogMacroTests {
   }
 
   @Test
+  func voidFunction_customLoggerMeasureFalse_omitsTimingWork() throws {
+    assertMacro {
+      #"""
+      @Log(using: customLogger, measure: false)
+      func foo() {
+        print("Foo")
+      }
+      """#
+    } expansion: {
+      """
+      func foo() {
+        let runtime = AutoLog.runtimeSnapshot()
+        let autoLogger: any AutoLogger = customLogger
+        var event = AutoLogEvent(
+          source: AutoLogSource.current,
+
+          location: "TestModule/Test.swift:1:1",
+          declaration: "func foo()"
+        )
+        autoLogger.emitStart(event: event, configuration: runtime.configuration, deduplicator: runtime.deduplicator)
+        func _foo() {
+          print("Foo")
+        }
+        let _ = _foo()
+        autoLogger.emitIfEnabled(event: event, configuration: runtime.configuration, deduplicator: runtime.deduplicator)
+      }
+      """
+    }
+  }
+
+  @Test
   func stringFunction_default_noAdditionalAnnotations() throws {
     assertMacro {
       #"""

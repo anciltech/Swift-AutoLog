@@ -309,10 +309,34 @@ public macro Log(
 
 @attached(body)
 public macro Log(
+  using loggable: any AutoLogger,
+  level: (any Levelable)? = nil,
+  omit: any Omittable... = [],
+  tag: any Taggable... = [],
+  measure: Bool
+) = #externalMacro(
+  module: "AutoLogMacro",
+  type: "LogMacro"
+)
+
+@attached(body)
+public macro Log(
   architecture loggable: any AutoLogger,
   level: (any Levelable)? = nil,
   omit: any Omittable... = [],
   tag: any Taggable... = []
+) = #externalMacro(
+  module: "AutoLogMacro",
+  type: "LogMacro"
+)
+
+@attached(body)
+public macro Log(
+  architecture loggable: any AutoLogger,
+  level: (any Levelable)? = nil,
+  omit: any Omittable... = [],
+  tag: any Taggable... = [],
+  measure: Bool
 ) = #externalMacro(
   module: "AutoLogMacro",
   type: "LogMacro"
