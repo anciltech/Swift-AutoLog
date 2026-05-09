@@ -28,9 +28,7 @@ struct LogMacroTests {
           source: AutoLogSource.current,
 
           location: "TestModule/Test.swift:1:1",
-          declaration: "func foo()",
-          parameters: [:],
-          tags: []
+          declaration: "func foo()"
         )
         autoLogger.emitStart(event: event, configuration: runtime.configuration, deduplicator: runtime.deduplicator)
         let __logStart = ContinuousClock.now
@@ -63,9 +61,7 @@ struct LogMacroTests {
           source: AutoLogSource.current,
 
           location: "TestModule/Test.swift:1:1",
-          declaration: "func foo()",
-          parameters: [:],
-          tags: []
+          declaration: "func foo()"
         )
         autoLogger.emitStart(event: event, configuration: runtime.configuration, deduplicator: runtime.deduplicator)
         let __logStart = ContinuousClock.now
@@ -98,9 +94,7 @@ struct LogMacroTests {
           source: AutoLogSource.current,
 
           location: "TestModule/Test.swift:1:1",
-          declaration: "func foo()",
-          parameters: [:],
-          tags: []
+          declaration: "func foo()"
         )
         autoLogger.emitStart(event: event, configuration: runtime.configuration, deduplicator: runtime.deduplicator)
         let __logStart = ContinuousClock.now
@@ -133,9 +127,7 @@ struct LogMacroTests {
           source: AutoLogSource.current,
 
           location: "TestModule/Test.swift:1:1",
-          declaration: "func foo() -> String",
-          parameters: [:],
-          tags: []
+          declaration: "func foo() -> String"
         )
         autoLogger.emitStart(event: event, configuration: runtime.configuration, deduplicator: runtime.deduplicator)
         let __logStart = ContinuousClock.now
@@ -176,7 +168,7 @@ struct LogMacroTests {
           parameters: [
             "frameID": frameID
           ],
-          tags: [], deduplicateWithin: .seconds(1)
+          deduplicateWithin: .seconds(1)
         )
         autoLogger.emitStart(event: event, configuration: runtime.configuration, deduplicator: runtime.deduplicator)
         let __logStart = ContinuousClock.now
@@ -216,8 +208,7 @@ struct LogMacroTests {
           declaration: "func isSelected(frameID: Int) -> Bool",
           parameters: [
             "frameID": frameID
-          ],
-          tags: []
+          ]
         )
         autoLogger.emitStart(event: event, configuration: runtime.configuration, deduplicator: runtime.deduplicator)
         let __logStart = ContinuousClock.now
@@ -259,8 +250,7 @@ struct LogMacroTests {
           declaration: "func selectedValue(flag: Bool) -> Int?",
           parameters: [
             "flag": flag
-          ],
-          tags: []
+          ]
         )
         autoLogger.emitStart(event: event, configuration: runtime.configuration, deduplicator: runtime.deduplicator)
         let __logStart = ContinuousClock.now
@@ -323,7 +313,7 @@ struct LogMacroTests {
           parameters: [
             "flag": flag
           ],
-          tags: [], omissionRules: [AutoLogOmissionRule(scope: AutoLogOmissionRule.Scope.result, tokens: ["false"])]
+          omissionRules: [AutoLogOmissionRule(scope: AutoLogOmissionRule.Scope.result, tokens: ["false"])]
         )
         autoLogger.emitStart(event: event, configuration: runtime.configuration, deduplicator: runtime.deduplicator)
         let __logStart = ContinuousClock.now
@@ -361,8 +351,7 @@ struct LogMacroTests {
 
           location: "TestModule/Test.swift:1:1",
           declaration: "func refreshSession() throws",
-          parameters: [:],
-          tags: [], omissionRules: [AutoLogOmissionRule(scope: AutoLogOmissionRule.Scope.error, tokens: [], upToCount: 1)]
+          omissionRules: [AutoLogOmissionRule(scope: AutoLogOmissionRule.Scope.error, tokens: [], upToCount: 1)]
         )
         autoLogger.emitStart(event: event, configuration: runtime.configuration, deduplicator: runtime.deduplicator)
         let __logStart = ContinuousClock.now
@@ -407,8 +396,7 @@ struct LogMacroTests {
 
           location: "TestModule/Test.swift:1:1",
           declaration: "func refreshSession() throws -> Bool",
-          parameters: [:],
-          tags: [], omissionRules: [AutoLogOmissionRule(scope: AutoLogOmissionRule.Scope.error, tokens: ["iamError", "nextAuthStep", "UserName"], upToCount: 1)]
+          omissionRules: [AutoLogOmissionRule(scope: AutoLogOmissionRule.Scope.error, tokens: ["iamError", "nextAuthStep", "UserName"], upToCount: 1)]
         )
         autoLogger.emitStart(event: event, configuration: runtime.configuration, deduplicator: runtime.deduplicator)
         let __logStart = ContinuousClock.now
@@ -453,9 +441,7 @@ struct LogMacroTests {
           source: AutoLogSource.current,
 
           location: "TestModule/Test.swift:1:1",
-          declaration: "func project()",
-          parameters: [:],
-          tags: []
+          declaration: "func project()"
         )
         autoLogger.emitStart(event: event, configuration: runtime.configuration, deduplicator: runtime.deduplicator)
         let __logStart = ContinuousClock.now
@@ -498,9 +484,7 @@ struct LogMacroTests {
           source: AutoLogSource.current,
 
           location: "TestModule/Test.swift:1:1",
-          declaration: "func project()",
-          parameters: [:],
-          tags: []
+          declaration: "func project()"
         )
         autoLogger.emitStart(event: event, configuration: runtime.configuration, deduplicator: runtime.deduplicator)
         let __logStart = ContinuousClock.now
@@ -546,8 +530,7 @@ struct LogMacroTests {
           declaration: "func deleteActiveLayout(collection: LayoutCollection) -> Bool",
           parameters: [
             "collection": collection
-          ],
-          tags: []
+          ]
         )
         autoLogger.emitStart(event: event, configuration: runtime.configuration, deduplicator: runtime.deduplicator)
         let __logStart = ContinuousClock.now
@@ -594,8 +577,7 @@ struct LogMacroTests {
           declaration: "func refresh(sessionToken: String?)",
           parameters: [
             "sessionToken": sessionToken
-          ],
-          tags: []
+          ]
         )
         autoLogger.emitStart(event: event, configuration: runtime.configuration, deduplicator: runtime.deduplicator)
         let __logStart = ContinuousClock.now
@@ -640,8 +622,7 @@ struct LogMacroTests {
           declaration: "func deleteActiveLayout(collection: LayoutCollection) -> Bool",
           parameters: [
             "collection": collection
-          ],
-          tags: []
+          ]
         )
         autoLogger.emitStart(event: event, configuration: runtime.configuration, deduplicator: runtime.deduplicator)
         let __logStart = ContinuousClock.now
@@ -690,8 +671,7 @@ struct LogMacroTests {
           declaration: "func route(kind: Int) -> String",
           parameters: [
             "kind": kind
-          ],
-          tags: []
+          ]
         )
         autoLogger.emitStart(event: event, configuration: runtime.configuration, deduplicator: runtime.deduplicator)
         let __logStart = ContinuousClock.now
@@ -739,9 +719,7 @@ struct LogMacroTests {
           source: AutoLogSource.current,
 
           location: "TestModule/Test.swift:1:1",
-          declaration: "func cleanup()",
-          parameters: [:],
-          tags: []
+          declaration: "func cleanup()"
         )
         autoLogger.emitStart(event: event, configuration: runtime.configuration, deduplicator: runtime.deduplicator)
         let __logStart = ContinuousClock.now
@@ -783,8 +761,7 @@ struct LogMacroTests {
           declaration: "func consume(stream: AsyncStream<Int>) async",
           parameters: [
             "stream": stream
-          ],
-          tags: []
+          ]
         )
         autoLogger.emitStart(event: event, configuration: runtime.configuration, deduplicator: runtime.deduplicator)
         let __logStart = ContinuousClock.now
@@ -827,8 +804,7 @@ struct LogMacroTests {
           declaration: "func cachedLookup(hit: Bool) -> Bool",
           parameters: [
             "hit": hit
-          ],
-          tags: []
+          ]
         )
         autoLogger.emitStart(event: event, configuration: runtime.configuration, deduplicator: runtime.deduplicator)
         let __logStart = ContinuousClock.now
@@ -877,8 +853,7 @@ struct LogMacroTests {
           declaration: "func cachedLookup(hit: Bool) -> Bool",
           parameters: [
             "hit": hit
-          ],
-          tags: []
+          ]
         )
         autoLogger.emitStart(event: event, configuration: runtime.configuration, deduplicator: runtime.deduplicator)
         let __logStart = ContinuousClock.now
@@ -927,8 +902,7 @@ struct LogMacroTests {
           declaration: "func deleteActiveLayout(collection: LayoutCollection) -> Bool",
           parameters: [
             "collection": collection
-          ],
-          tags: []
+          ]
         )
         autoLogger.emitStart(event: event, configuration: runtime.configuration, deduplicator: runtime.deduplicator)
         let __logStart = ContinuousClock.now
@@ -972,8 +946,7 @@ struct LogMacroTests {
           declaration: "func foo(bar: String) -> String",
           parameters: [
             "bar": bar
-          ],
-          tags: []
+          ]
         )
         autoLogger.emitStart(event: event, configuration: runtime.configuration, deduplicator: runtime.deduplicator)
         let __logStart = ContinuousClock.now
@@ -1054,8 +1027,7 @@ struct LogMacroTests {
           declaration: "func toggleFramePicker(isVisible: Bool)",
           parameters: [
             "isVisible": isVisible
-          ],
-          tags: []
+          ]
         )
         autoLogger.emitStart(event: event, configuration: runtime.configuration, deduplicator: runtime.deduplicator)
         let __logStart = ContinuousClock.now
@@ -1098,8 +1070,7 @@ struct LogMacroTests {
           parameters: [
             "bar": bar,
             "biz": biz
-          ],
-          tags: []
+          ]
         )
         autoLogger.emitStart(event: event, configuration: runtime.configuration, deduplicator: runtime.deduplicator)
         let __logStart = ContinuousClock.now
@@ -1137,9 +1108,7 @@ struct LogMacroTests {
           source: AutoLogSource.current,
 
           location: "TestModule/Test.swift:1:1",
-          declaration: "mutating func foo()",
-          parameters: [:],
-          tags: []
+          declaration: "mutating func foo()"
         )
         autoLogger.emitStart(event: event, configuration: runtime.configuration, deduplicator: runtime.deduplicator)
         let __logStart = ContinuousClock.now
@@ -1214,9 +1183,7 @@ struct LogMacroTests {
           source: AutoLogSource.current,
 
           location: "TestModule/Test.swift:1:1",
-          declaration: "mutating func foo() throws",
-          parameters: [:],
-          tags: []
+          declaration: "mutating func foo() throws"
         )
         autoLogger.emitStart(event: event, configuration: runtime.configuration, deduplicator: runtime.deduplicator)
         let __logStart = ContinuousClock.now
@@ -1269,7 +1236,6 @@ struct LogMacroTests {
 
           location: "TestModule/Test.swift:1:1",
           declaration: "func foo() throws",
-          parameters: [:],
           tags: ["example"]
         )
         autoLogger.emitStart(event: event, configuration: runtime.configuration, deduplicator: runtime.deduplicator)
@@ -1314,9 +1280,7 @@ struct LogMacroTests {
           source: AutoLogSource.current,
 
           location: "TestModule/Test.swift:1:1",
-          declaration: "func foo() throws -> Int",
-          parameters: [:],
-          tags: []
+          declaration: "func foo() throws -> Int"
         )
         autoLogger.emitStart(event: event, configuration: runtime.configuration, deduplicator: runtime.deduplicator)
         let __logStart = ContinuousClock.now
@@ -1373,9 +1337,7 @@ struct LogMacroTests {
           source: AutoLogSource.current,
 
           location: "TestModule/Test.swift:1:1",
-          declaration: "func foo(_ value: Int) throws",
-          parameters: [:],
-          tags: []
+          declaration: "func foo(_ value: Int) throws"
         )
         autoLogger.emitStart(event: event, configuration: runtime.configuration, deduplicator: runtime.deduplicator)
         let __logStart = ContinuousClock.now
@@ -1427,8 +1389,7 @@ struct LogMacroTests {
           source: AutoLogSource.current,
 
           location: "TestModule/Test.swift:1:1",
-          declaration: "func foo(_ value: Int, content: String) throws -> (Int, String)",
-          tags: []
+          declaration: "func foo(_ value: Int, content: String) throws -> (Int, String)"
         )
         autoLogger.emitStart(event: event, configuration: runtime.configuration, deduplicator: runtime.deduplicator)
         let __logStart = ContinuousClock.now
@@ -1482,7 +1443,6 @@ struct LogMacroTests {
 
           location: "TestModule/Test.swift:1:1",
           declaration: "func foo() async throws",
-          parameters: [:],
           tags: ["example"]
         )
         autoLogger.emitStart(event: event, configuration: runtime.configuration, deduplicator: runtime.deduplicator)
@@ -1526,8 +1486,7 @@ struct LogMacroTests {
           declaration: "func performTask(completion: @escaping () -> Void)",
           parameters: [
             "completion": completion
-          ],
-          tags: []
+          ]
         )
         autoLogger.emitStart(event: event, configuration: runtime.configuration, deduplicator: runtime.deduplicator)
         let __logStart = ContinuousClock.now
@@ -1566,8 +1525,7 @@ struct LogMacroTests {
           declaration: "func check(condition: @autoclosure () -> Bool) -> Bool",
           parameters: [
             "condition": condition
-          ],
-          tags: []
+          ]
         )
         autoLogger.emitStart(event: event, configuration: runtime.configuration, deduplicator: runtime.deduplicator)
         let __logStart = ContinuousClock.now
@@ -1605,8 +1563,7 @@ struct LogMacroTests {
           parameters: [
             "value": value,
             "newValue": newValue
-          ],
-          tags: []
+          ]
         )
         autoLogger.emitStart(event: event, configuration: runtime.configuration, deduplicator: runtime.deduplicator)
         let __logStart = ContinuousClock.now
@@ -1641,9 +1598,7 @@ struct LogMacroTests {
           source: AutoLogSource.current,
 
           location: "TestModule/Test.swift:1:1",
-          declaration: "static func staticMethod(info: String) -> String",
-          parameters: [:],
-          tags: []
+          declaration: "static func staticMethod(info: String) -> String"
         )
         autoLogger.emitStart(event: event, configuration: runtime.configuration, deduplicator: runtime.deduplicator)
         let __logStart = ContinuousClock.now
@@ -1679,9 +1634,7 @@ struct LogMacroTests {
           source: AutoLogSource.current,
 
           location: "TestModule/Test.swift:1:1",
-          declaration: "func execute(operation: () throws -> Void) rethrows",
-          parameters: [:],
-          tags: []
+          declaration: "func execute(operation: () throws -> Void) rethrows"
         )
         autoLogger.emitStart(event: event, configuration: runtime.configuration, deduplicator: runtime.deduplicator)
         let __logStart = ContinuousClock.now
@@ -1760,7 +1713,6 @@ struct LogMacroTests {
 
           location: "TestModule/Test.swift:1:1",
           declaration: "func ping()",
-          parameters: [:],
           tags: ["example", .commonTag]
         )
         autoLogger.emitStart(event: event, configuration: runtime.configuration, deduplicator: runtime.deduplicator)
@@ -1838,8 +1790,7 @@ struct LogMacroTests {
           declaration: #"func greet(name: String = "Guest") -> String"#,
           parameters: [
             "name": name
-          ],
-          tags: []
+          ]
         )
         autoLogger.emitStart(event: event, configuration: runtime.configuration, deduplicator: runtime.deduplicator)
         let __logStart = ContinuousClock.now
@@ -1877,8 +1828,7 @@ struct LogMacroTests {
           declaration: "func sum(numbers: Int...) -> Int",
           parameters: [
             "numbers": numbers
-          ],
-          tags: []
+          ]
         )
         autoLogger.emitStart(event: event, configuration: runtime.configuration, deduplicator: runtime.deduplicator)
         let __logStart = ContinuousClock.now
@@ -1920,8 +1870,7 @@ struct LogMacroTests {
           declaration: "func compute(value: Int) -> Int",
           parameters: [
             "value": value
-          ],
-          tags: []
+          ]
         )
         autoLogger.emitStart(event: event, configuration: runtime.configuration, deduplicator: runtime.deduplicator)
         let __logStart = ContinuousClock.now
@@ -1955,9 +1904,7 @@ struct LogMacroTests {
           source: AutoLogSource.current,
 
           location: "TestModule/Test.swift:1:1",
-          declaration: "func makeIncrementer() -> (Int) -> Int",
-          parameters: [:],
-          tags: []
+          declaration: "func makeIncrementer() -> (Int) -> Int"
         )
         autoLogger.emitStart(event: event, configuration: runtime.configuration, deduplicator: runtime.deduplicator)
         let __logStart = ContinuousClock.now
@@ -2000,8 +1947,7 @@ struct LogMacroTests {
           declaration: "func fetchData(completion: @escaping () async -> String)",
           parameters: [
             "completion": completion
-          ],
-          tags: []
+          ]
         )
         autoLogger.emitStart(event: event, configuration: runtime.configuration, deduplicator: runtime.deduplicator)
         let __logStart = ContinuousClock.now
@@ -2042,8 +1988,7 @@ struct LogMacroTests {
           declaration: "func updateUI(message: String)",
           parameters: [
             "message": message
-          ],
-          tags: []
+          ]
         )
         autoLogger.emitStart(event: event, configuration: runtime.configuration, deduplicator: runtime.deduplicator)
         let __logStart = ContinuousClock.now
@@ -2080,8 +2025,7 @@ struct LogMacroTests {
           parameters: [
             "first": first,
             "second": second
-          ],
-          tags: []
+          ]
         )
         autoLogger.emitStart(event: event, configuration: runtime.configuration, deduplicator: runtime.deduplicator)
         let __logStart = ContinuousClock.now
@@ -2118,9 +2062,7 @@ struct LogMacroTests {
           source: AutoLogSource.current,
 
           location: "TestModule/Test.swift:1:1",
-          declaration: "func performAction()",
-          parameters: [:],
-          tags: []
+          declaration: "func performAction()"
         )
         autoLogger.emitStart(event: event, configuration: runtime.configuration, deduplicator: runtime.deduplicator)
         let __logStart = ContinuousClock.now
@@ -2153,9 +2095,7 @@ struct LogMacroTests {
           source: AutoLogSource.current,
 
           location: "TestModule/Test.swift:1:1",
-          declaration: "func getOptionalValue() -> Int?",
-          parameters: [:],
-          tags: []
+          declaration: "func getOptionalValue() -> Int?"
         )
         autoLogger.emitStart(event: event, configuration: runtime.configuration, deduplicator: runtime.deduplicator)
         let __logStart = ContinuousClock.now
@@ -2194,8 +2134,7 @@ struct LogMacroTests {
           declaration: "func performAsyncTask(completion: @escaping () async throws -> String) async throws -> String",
           parameters: [
             "completion": completion
-          ],
-          tags: []
+          ]
         )
         autoLogger.emitStart(event: event, configuration: runtime.configuration, deduplicator: runtime.deduplicator)
         let __logStart = ContinuousClock.now
@@ -2237,9 +2176,7 @@ struct LogMacroTests {
           source: AutoLogSource.current,
 
           location: "TestModule/Test.swift:1:1",
-          declaration: "override func description() -> String",
-          parameters: [:],
-          tags: []
+          declaration: "override func description() -> String"
         )
         autoLogger.emitStart(event: event, configuration: runtime.configuration, deduplicator: runtime.deduplicator)
         let __logStart = ContinuousClock.now
@@ -2278,8 +2215,7 @@ struct LogMacroTests {
           parameters: [
             "score": score,
             "increment": increment
-          ],
-          tags: []
+          ]
         )
         autoLogger.emitStart(event: event, configuration: runtime.configuration, deduplicator: runtime.deduplicator)
         let __logStart = ContinuousClock.now
@@ -2315,8 +2251,7 @@ struct LogMacroTests {
           declaration: "func optionalTest(value: String?) -> String",
           parameters: [
             "value": value
-          ],
-          tags: []
+          ]
         )
         autoLogger.emitStart(event: event, configuration: runtime.configuration, deduplicator: runtime.deduplicator)
         let __logStart = ContinuousClock.now
@@ -2359,8 +2294,7 @@ struct LogMacroTests {
           declaration: "func merge<T, U>(_ first: [T], with second: [U]) -> [(T, U)]\n  where T: Comparable, U: Comparable",
           parameters: [
             "first": first
-          ],
-          tags: []
+          ]
         )
         autoLogger.emitStart(event: event, configuration: runtime.configuration, deduplicator: runtime.deduplicator)
         let __logStart = ContinuousClock.now
@@ -2399,8 +2333,7 @@ struct LogMacroTests {
           declaration: "func perform(action: (() -> Void)? = nil)",
           parameters: [
             "action": action
-          ],
-          tags: []
+          ]
         )
         autoLogger.emitStart(event: event, configuration: runtime.configuration, deduplicator: runtime.deduplicator)
         let __logStart = ContinuousClock.now
@@ -2438,8 +2371,7 @@ struct LogMacroTests {
           declaration: "static func create<T>(value: T) -> [T]",
           parameters: [
             "value": value
-          ],
-          tags: []
+          ]
         )
         autoLogger.emitStart(event: event, configuration: runtime.configuration, deduplicator: runtime.deduplicator)
         let __logStart = ContinuousClock.now
@@ -2477,8 +2409,7 @@ struct LogMacroTests {
           declaration: "func process(pair: (Int, String)) -> String",
           parameters: [
             "pair": pair
-          ],
-          tags: []
+          ]
         )
         autoLogger.emitStart(event: event, configuration: runtime.configuration, deduplicator: runtime.deduplicator)
         let __logStart = ContinuousClock.now
@@ -2517,8 +2448,7 @@ struct LogMacroTests {
           parameters: [
             "elements": elements,
             "predicate": predicate
-          ],
-          tags: []
+          ]
         )
         autoLogger.emitStart(event: event, configuration: runtime.configuration, deduplicator: runtime.deduplicator)
         let __logStart = ContinuousClock.now
@@ -2558,8 +2488,7 @@ struct LogMacroTests {
           parameters: [
             "elements": elements,
             "predicate": predicate
-          ],
-          tags: []
+          ]
         )
         autoLogger.emitStart(event: event, configuration: runtime.configuration, deduplicator: runtime.deduplicator)
         let __logStart = ContinuousClock.now

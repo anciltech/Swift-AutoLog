@@ -28,9 +28,7 @@ struct OSLogMacroTests {
           source: AutoLogSource.current,
 
           location: "TestModule/Test.swift:1:1",
-          declaration: "func foo()",
-          parameters: [:],
-          tags: []
+          declaration: "func foo()"
         )
         autoLogger.emitStart(event: event, configuration: runtime.configuration, deduplicator: runtime.deduplicator)
         let __logStart = ContinuousClock.now
@@ -141,7 +139,6 @@ struct OSLogMacroTests {
 
           location: "TestModule/Test.swift:1:1",
           declaration: "func ping()",
-          parameters: [:],
           tags: ["example", .commonTag]
         )
         autoLogger.emitStart(event: event, configuration: runtime.configuration, deduplicator: runtime.deduplicator)

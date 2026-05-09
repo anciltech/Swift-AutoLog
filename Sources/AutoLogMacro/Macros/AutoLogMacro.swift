@@ -227,6 +227,11 @@ extension AutoLogMacro {
     let capturedParameters = declaration.parameters.filter { parameter in
       !omittableTraits.contains(where: { trait in trait.isOmitParameter(parameter.name) })
     }
+    let capturesParameters = !omittableTraits.contains(where: \.isOmitParameters)
+      && !capturedParameters.isEmpty
+    let capturesTags = !taggableTraits.isEmpty
+    let hasDeduplication = deduplicationTrait != nil
+    let hasOmissionRules = !omitRuleTraits.isEmpty
 
     return CodeBlockItemSyntax(
       VariableDeclSyntax(
@@ -287,21 +292,23 @@ extension AutoLogMacro {
                     label: .predefined(.declaration),
                     colon: .colonToken(),
                     expression: StringLiteralExprSyntax(content: declaration.description),
-                    trailingComma: .commaToken(),
+                    trailingComma: capturesParameters || capturesTags || hasDeduplication || hasOmissionRules
+                      ? .commaToken()
+                      : nil,
                     trailingTrivia: .newline
                   )
 
                   // MARK: - parameters: [String: Any]
-                  if !omittableTraits.contains(where: \.isOmitParameters) {
+                  if capturesParameters {
                     LabeledExprSyntax(
                       label: .predefined(.parameters),
                       colon: .colonToken(),
                       expression: DictionaryExprSyntax(
                         leftSquare: .leftSquareToken(
-                          trailingTrivia: capturedParameters.isEmpty ? [] : .newline
+                          trailingTrivia: .newline
                         ),
                         rightSquare: .rightSquareToken(
-                          leadingTrivia: capturedParameters.isEmpty ? [] : .newline
+                          leadingTrivia: .newline
                         )
                       ) {
                         DictionaryElementListSyntax {
@@ -317,25 +324,29 @@ extension AutoLogMacro {
                           }
                         }
                       },
-                      trailingComma: .commaToken(),
+                      trailingComma: capturesTags || hasDeduplication || hasOmissionRules
+                        ? .commaToken()
+                        : nil,
                       trailingTrivia: .newline
                     )
                   }
 
                   // MARK: - Tags
-                  LabeledExprSyntax(
-                    label: .predefined(.tags),
-                    colon: .colonToken(),
-                    expression: ArrayExprSyntax(
-                      elements: ArrayElementListSyntax {
-                        taggableTraits.map { trait in
-                          ArrayElementSyntax(expression: trait)
+                  if capturesTags {
+                    LabeledExprSyntax(
+                      label: .predefined(.tags),
+                      colon: .colonToken(),
+                      expression: ArrayExprSyntax(
+                        elements: ArrayElementListSyntax {
+                          taggableTraits.map { trait in
+                            ArrayElementSyntax(expression: trait)
+                          }
                         }
-                      }
-                    ),
-                    trailingComma: deduplicationTrait == nil && omitRuleTraits.isEmpty ? nil : .commaToken(),
-                    trailingTrivia: deduplicationTrait == nil && omitRuleTraits.isEmpty ? .newline : []
-                  )
+                      ),
+                      trailingComma: hasDeduplication || hasOmissionRules ? .commaToken() : nil,
+                      trailingTrivia: hasDeduplication || hasOmissionRules ? [] : .newline
+                    )
+                  }
 
                   if let deduplicationTrait {
                     LabeledExprSyntax(

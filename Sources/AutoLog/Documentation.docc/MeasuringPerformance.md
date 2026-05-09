@@ -58,6 +58,10 @@ at formatter initialization instead of rebuilt on each emitted event.
 `AutoLogEvent` also specializes single-tag construction, so route-only events
 such as `.splunk` and single visible tags avoid the mixed-tag classification
 loop and visible-tag reserve path.
+Macro expansion now also omits explicit `parameters: [:]` and `tags: []`
+arguments when a logged function has no captured parameters or tags, letting
+`AutoLogEvent` use its defaults instead of constructing empty literals in the
+generated wrapper.
 
 ## Current performance TODOs
 
@@ -65,9 +69,8 @@ The next hot-path targets worth exploring are:
 
 - reduce multi-parameter overhead further by avoiding repeated sorting and
   reflection-heavy formatting work where possible
-- look at macro-generated no-parameter and no-tag event construction to see
-  whether defaulted initializer arguments can avoid empty dictionary and array
-  literals without making expansion snapshots harder to read
+- continue looking for macro-generation opportunities that reduce work without
+  making expansion snapshots harder to audit
 
 ## Latest local evaluation
 
