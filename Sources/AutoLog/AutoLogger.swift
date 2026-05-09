@@ -532,6 +532,10 @@ public struct AutoLogLogger: AutoLogger {
     let snapshotCapacity: Int
   }
 
+  private struct FailureContextSnapshot {
+    let entries: [AutoLogErrorContextEntry]
+  }
+
   private final class Storage: @unchecked Sendable {
     let state = Mutex(State())
   }
@@ -553,6 +557,10 @@ public struct AutoLogLogger: AutoLogger {
     let preferredContextConfiguration = configuration.applying(
       output: outputs.preferredContextOutput
     )
+    let failureContextSnapshot = makeFailureContextSnapshot(
+      for: event,
+      outputs: outputs.matchedOutputs
+    )
     var snapshot: AutoLogErrorContextEntry?
 
     for output in outputs.matchedOutputs where output.route == .console {
@@ -563,6 +571,7 @@ public struct AutoLogLogger: AutoLogger {
       }
       let enrichedEvent = enrichFailureContextIfNeeded(
         for: event,
+        snapshot: failureContextSnapshot,
         contextLimit: output.errorContextLimit,
         triggerLimit: output.failureContextTriggerLimit
       )
@@ -585,6 +594,7 @@ public struct AutoLogLogger: AutoLogger {
       let outputConfiguration = configuration.applying(output: output)
       let enrichedEvent = enrichFailureContextIfNeeded(
         for: event,
+        snapshot: failureContextSnapshot,
         contextLimit: output.errorContextLimit,
         triggerLimit: output.failureContextTriggerLimit
       )
@@ -625,21 +635,35 @@ public struct AutoLogLogger: AutoLogger {
     self.storage = Storage()
   }
 
+  private func makeFailureContextSnapshot(
+    for event: AutoLogEvent,
+    outputs: [AutoLogOutput]
+  ) -> FailureContextSnapshot? {
+    guard case .failure = event.result else { return nil }
+    guard outputs.contains(where: { $0.errorContextLimit > 0 }) else { return nil }
+
+    return storage.state.withLock { state in
+      FailureContextSnapshot(entries: state.recentEntries)
+    }
+  }
+
   private func enrichFailureContextIfNeeded(
     for event: AutoLogEvent,
+    snapshot: FailureContextSnapshot?,
     contextLimit: Int,
     triggerLimit: Int
   ) -> AutoLogEvent {
-    guard case .failure = event.result, contextLimit > 0 else { return event }
+    guard case .failure = event.result,
+          contextLimit > 0,
+          let snapshot
+    else { return event }
 
     var enriched = event
-    enriched.errorContext = storage.state.withLock { state in
-      let scopedEntries = recentEntriesWithinTriggerLimit(
-        state.recentEntries,
-        triggerLimit: triggerLimit
-      )
-      return Array(scopedEntries.suffix(contextLimit))
-    }
+    let scopedEntries = recentEntriesWithinTriggerLimit(
+      snapshot.entries,
+      triggerLimit: triggerLimit
+    )
+    enriched.errorContext = Array(scopedEntries.suffix(contextLimit))
     return enriched
   }
 

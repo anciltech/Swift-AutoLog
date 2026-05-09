@@ -75,6 +75,9 @@ capture work unless a function explicitly opts back in with `measure: true`.
 `AutoLogEvent` now also caches a deterministic parameter-label order when it is
 constructed and refreshes that cache when parameters are replaced, so repeated
 formatter passes for the same event do not re-sort multi-parameter labels.
+Failure events now also snapshot the logger's recent-context buffer once per
+emit and derive each output profile's context limit from that snapshot, avoiding
+repeated lock reads when a failure fans out to multiple outputs.
 
 ## Current performance TODOs
 
