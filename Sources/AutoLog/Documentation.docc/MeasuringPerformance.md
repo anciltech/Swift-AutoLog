@@ -65,6 +65,22 @@ The next hot-path targets worth exploring are:
   see whether `[String: Any]` / `[any Taggable]` setup can be specialized
   further without hurting readability
 
+## Latest local evaluation
+
+The 2026-05-09 project audit reran the benchmark suite in both debug and
+release modes. On that machine, the release helper reported roughly `8-14us`
+of added sync overhead per logged call depending on tag shape, with route-only
+calls cheapest, no-tag calls in the middle, and visible/mixed tag output higher
+because those scenarios render more user-facing text. The logged `TaskGroup`
+scenario added roughly `31us` per measured call against the async baseline.
+
+Those numbers support the same practical guidance as the benchmark design:
+`@Log` is appropriate for interaction workflows, service boundaries,
+architecture traces, and demo scenarios, while hot loops, per-frame work, and
+large-volume polling should use omission, deduplication, route filtering, or a
+more targeted manual event. Treat exact timings as machine-local; use the
+relative deltas and rerun the release helper before judging regressions.
+
 ## Run the benchmark in Xcode
 
 1. Open the `swift-autolog` package in Xcode.
