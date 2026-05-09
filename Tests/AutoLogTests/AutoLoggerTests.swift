@@ -7,6 +7,23 @@ struct AutoLoggerTests {
   static let mock = MockLogger()
 
   @Test
+  func autoLogEvent_canCrossSendableBoundaries() {
+    let event = AutoLogEvent(
+      location: "App/Feature.swift:42:1",
+      declaration: "func refreshDashboard() -> String",
+      parameters: ["id": 42],
+      result: .success("ready"),
+      tags: ["demo"]
+    )
+
+    let operation: @Sendable () -> AutoLogEvent = {
+      event
+    }
+
+    #expect(operation().functionName == "refreshDashboard")
+  }
+
+  @Test
   func whenLoggerAttachedToType_expectedToCaptureAllEvent() async throws {
     // Workaround: @AutoLog(using: MockLogger) triggers a Swift compiler ICE due to
     // existential boxing in macro argument type-checking (ResolveMacroRequest crash).

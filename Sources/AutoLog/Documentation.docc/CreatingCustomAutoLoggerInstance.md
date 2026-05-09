@@ -29,6 +29,9 @@ public import Sentry
 This method is called each time a function either completes successfully or throws an error.
 When the default ``AutoLogLogger`` handles a failure, it also populates
 `event.errorContext` with a rolling trail of recent emitted log summaries.
+``AutoLogEvent`` can cross `Sendable` logger and sink boundaries; its
+conformance is unchecked because parameters and results intentionally preserve
+arbitrary user values as captured log payloads.
 
 ```swift
 // SentryLogger.swift

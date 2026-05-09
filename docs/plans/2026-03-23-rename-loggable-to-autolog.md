@@ -63,9 +63,8 @@ public protocol AutoLogger: Sendable {
   func emit(event: AutoLogEvent)
 }
 
-// TODO: 23122K - Make this type conform to Sendable and use CustomDebugStringConvertible
 /// A type representing captured metadata from an invoked function.
-public struct AutoLogEvent: CustomStringConvertible, CustomDebugStringConvertible {
+public struct AutoLogEvent: @unchecked Sendable, CustomStringConvertible, CustomDebugStringConvertible {
   /// The logging level associated with the event.
   public let level: (any Levelable)?
 
