@@ -41,10 +41,12 @@ public struct CompactFormatter: AutoLogFormatter {
   /// A fixed format override. When `nil`, ``AutoLogConfiguration/logFormat`` is
   /// consulted on every call to ``format(event:configuration:)``.
   public let format: LogFormat?
+  private let fixedFormatPlan: FormatPlan?
 
   public init(profile: DepthProfile = .mvvm, format: LogFormat? = nil) {
-    self.profile = profile
-    self.format  = format
+    self.profile         = profile
+    self.format          = format
+    self.fixedFormatPlan = format.map(FormatPlan.init(format:))
   }
 
   public func format(
@@ -53,23 +55,20 @@ public struct CompactFormatter: AutoLogFormatter {
   ) -> String {
     let typeName = event.inferredTypeName
     let fmt = format ?? configuration.logFormat
+    let plan = fixedFormatPlan ?? FormatPlan(format: fmt)
     let depth = profile.depth(for: typeName) ?? 1
-    let columnElements = leadingColumnElements(in: fmt.mainLine)
-    let inlineElements = Array(fmt.mainLine.dropFirst(columnElements.count))
-    let includesReturnValue = inlineElements.contains(.returnValue)
-    let includesLineNumber = inlineElements.contains(.lineNumber)
     let visibleTags = event.visibleTags
     var parameterText = ParameterText(parameters: event.parameters)
 
     let mainBody: String
     if let source = event.source, event.declaration == source.description {
-      mainBody = interactionBody(for: event, includesLineNumber: includesLineNumber)
+      mainBody = interactionBody(for: event, includesLineNumber: plan.includesLineNumber)
     } else if event.source is SourceContext {
       mainBody = traceBody(
         for: event,
         typeName: typeName,
         depth: depth,
-        inlineElements: inlineElements,
+        inlineElements: plan.inlineElements,
         fmt: fmt,
         configuration: configuration,
         parameterText: &parameterText
@@ -79,7 +78,7 @@ public struct CompactFormatter: AutoLogFormatter {
         for: event,
         typeName: typeName,
         depth: depth,
-        inlineElements: inlineElements,
+        inlineElements: plan.inlineElements,
         fmt: fmt,
         configuration: configuration,
         parameterText: &parameterText
@@ -90,7 +89,7 @@ public struct CompactFormatter: AutoLogFormatter {
       body: mainBody,
       event: event,
       depth: depth,
-      columnElements: columnElements,
+      columnElements: plan.columnElements,
       configuration: configuration
     )]
 
@@ -100,7 +99,7 @@ public struct CompactFormatter: AutoLogFormatter {
           body: "╰─ \(detail)",
           event: event,
           depth: depth,
-          columnElements: columnElements,
+          columnElements: plan.columnElements,
           configuration: configuration,
           rowKind: .annotation
         )
@@ -115,13 +114,13 @@ public struct CompactFormatter: AutoLogFormatter {
     }
 
     if case .failure(let error) = event.result,
-       !includesReturnValue {
+       !plan.includesReturnValue {
       lines.append(
         renderRow(
           body: "╰─ \(formattedError(error))",
           event: event,
           depth: depth,
-          columnElements: columnElements,
+          columnElements: plan.columnElements,
           configuration: configuration,
           rowKind: .annotation
         )
@@ -133,7 +132,7 @@ public struct CompactFormatter: AutoLogFormatter {
           body: "╰─ [\(tagList)]",
           event: event,
           depth: depth,
-          columnElements: columnElements,
+          columnElements: plan.columnElements,
           configuration: configuration,
           rowKind: .annotation
         )
@@ -171,6 +170,48 @@ public struct CompactFormatter: AutoLogFormatter {
       let value = formatter(parameters)
       formatted = value
       return value
+    }
+  }
+
+  private struct FormatPlan: Sendable {
+    let columnElements: [LogFormat.Element]
+    let inlineElements: [LogFormat.Element]
+    let includesReturnValue: Bool
+    let includesLineNumber: Bool
+
+    init(format: LogFormat) {
+      var columnElements: [LogFormat.Element] = []
+      var inlineElements: [LogFormat.Element] = []
+      var scanningColumns = true
+      var includesReturnValue = false
+      var includesLineNumber = false
+
+      columnElements.reserveCapacity(format.mainLine.count)
+      inlineElements.reserveCapacity(format.mainLine.count)
+
+      for element in format.mainLine {
+        if scanningColumns, element.isColumnCandidate {
+          columnElements.append(element)
+          continue
+        }
+
+        scanningColumns = false
+        inlineElements.append(element)
+
+        switch element {
+        case .returnValue:
+          includesReturnValue = true
+        case .lineNumber:
+          includesLineNumber = true
+        default:
+          break
+        }
+      }
+
+      self.columnElements = columnElements
+      self.inlineElements = inlineElements
+      self.includesReturnValue = includesReturnValue
+      self.includesLineNumber = includesLineNumber
     }
   }
 
@@ -233,17 +274,6 @@ public struct CompactFormatter: AutoLogFormatter {
       configuration: configuration,
       rowKind: .main
     )
-  }
-
-  private func leadingColumnElements(in elements: [LogFormat.Element]) -> [LogFormat.Element] {
-    var columns: [LogFormat.Element] = []
-
-    for element in elements {
-      guard element.isColumnCandidate else { break }
-      columns.append(element)
-    }
-
-    return columns
   }
 
   private func columnText(

@@ -51,6 +51,10 @@ without doing extra cleanup work on every emit.
 `CompactFormatter` also keeps formatted parameter text in a per-event cache
 while rendering, so custom formats that include `.parameters` more than once
 reuse the same sorted and stringified parameter payload.
+Custom format rendering now also uses a compact format plan so a single pass
+classifies leading metadata columns, inline elements, and dependent flags. When
+callers install a fixed formatter-level `LogFormat`, that plan is prepared once
+at formatter initialization instead of rebuilt on each emitted event.
 
 ## Current performance TODOs
 
@@ -58,9 +62,6 @@ The next hot-path targets worth exploring are:
 
 - reduce multi-parameter overhead further by avoiding repeated sorting and
   reflection-heavy formatting work where possible
-- look at the remaining generic formatter path for custom `LogFormat` values to
-  see whether some of the default fast-path savings can be reused there without
-  reintroducing per-call setup cost
 - look at macro-generated event construction for no-tag and route-only cases to
   see whether `[String: Any]` / `[any Taggable]` setup can be specialized
   further without hurting readability
