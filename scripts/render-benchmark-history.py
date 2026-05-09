@@ -21,6 +21,8 @@ TRACKED_SCENARIOS = [
     "Logged task group",
 ]
 
+HIGH_RSD_PERCENT = 20.0
+
 
 def read_rows(path: Path) -> list[dict[str, str]]:
     with path.open(newline="") as handle:
@@ -33,6 +35,20 @@ def run_label(row: dict[str, str]) -> str:
 
 def cell(row: dict[str, str], key: str) -> str:
     return row.get(key) or ""
+
+
+def rsd(row: dict[str, str]) -> float | None:
+    value = cell(row, "rsd_percent")
+    return float(value) if value else None
+
+
+def signal(row: dict[str, str]) -> str:
+    value = rsd(row)
+    if value is None:
+        return "legacy/no RSD"
+    if value > HIGH_RSD_PERCENT:
+        return "high variance"
+    return "ok"
 
 
 def run_aliases(rows: list[dict[str, str]]) -> dict[str, str]:
@@ -86,7 +102,7 @@ def chart_for(
         for _, row in references
     )
     reference_summary = ", ".join(
-        f"{name}={float(row['overhead_us']):.2f}us"
+        f"{name} {aliases[row['run_id']]}={float(row['overhead_us']):.2f}us"
         for name, row in references
     )
     title = f"{scenario} overhead per call"
@@ -122,7 +138,10 @@ def comparison_line(
 
     overhead = float(row["overhead_us"])
     delta = overhead - baseline_overhead
-    return f"| {profile} | {row['run_id']} | {overhead:.3f} | {delta:+.3f} |"
+    return (
+        f"| {profile} | {row['run_id']} | {overhead:.3f} | "
+        f"{cell(row, 'rsd_percent')} | {signal(row)} | {delta:+.3f} |"
+    )
 
 
 def logger_profile_comparison(rows: list[dict[str, str]]) -> list[str]:
@@ -159,8 +178,8 @@ def logger_profile_comparison(rows: list[dict[str, str]]) -> list[str]:
         lines.extend([
             "### Simple Control Flow",
             "",
-            "| Profile | Run | Overhead (us) | Delta vs no logging |",
-            "|---|---|---:|---:|",
+            "| Profile | Run | Overhead (us) | RSD (%) | Signal | Delta vs no logging |",
+            "|---|---|---:|---:|---|---:|",
             *simple_lines,
             "",
         ])
@@ -176,8 +195,8 @@ def logger_profile_comparison(rows: list[dict[str, str]]) -> list[str]:
         lines.extend([
             "### Complex Control Flow",
             "",
-            "| Profile | Run | Overhead (us) | Delta vs no logging |",
-            "|---|---|---:|---:|",
+            "| Profile | Run | Overhead (us) | RSD (%) | Signal | Delta vs no logging |",
+            "|---|---|---:|---:|---|---:|",
             *complex_lines,
             "",
         ])
@@ -192,12 +211,57 @@ def logger_profile_comparison(rows: list[dict[str, str]]) -> list[str]:
         lines.extend([
             "### Benchmark Logger Reference",
             "",
-            "| Profile | Run | Overhead (us) | Delta vs benchmark logger |",
-            "|---|---|---:|---:|",
-            f"| Benchmark logger | {benchmark['run_id']} | {benchmark_overhead:.3f} | 0.000 |",
-            f"| Normal AutoLogLogger | {normal['run_id']} | {normal_overhead:.3f} | {delta:+.3f} ({multiplier:.2f}x) |",
+            "| Profile | Run | Overhead (us) | RSD (%) | Signal | Delta vs benchmark logger |",
+            "|---|---|---:|---:|---|---:|",
+            f"| Benchmark logger | {benchmark['run_id']} | {benchmark_overhead:.3f} | {cell(benchmark, 'rsd_percent')} | {signal(benchmark)} | 0.000 |",
+            f"| Normal AutoLogLogger | {normal['run_id']} | {normal_overhead:.3f} | {cell(normal, 'rsd_percent')} | {signal(normal)} | {delta:+.3f} ({multiplier:.2f}x) |",
             "",
         ])
+
+    return lines
+
+
+def signal_notes(rows: list[dict[str, str]], aliases: dict[str, str]) -> list[str]:
+    high_variance_rows = [row for row in rows if signal(row) == "high variance"]
+    missing_rsd_runs = sorted({
+        aliases[row["run_id"]]
+        for row in rows
+        if rsd(row) is None
+    })
+
+    lines = [
+        "## Signal Notes",
+        "",
+        f"Rows above `{HIGH_RSD_PERCENT:.0f}%` RSD are high variance and should be rerun before treating them as regressions.",
+    ]
+    if missing_rsd_runs:
+        lines.append(
+            "Legacy runs without RSD are directional only: "
+            + ", ".join(missing_rsd_runs)
+            + "."
+        )
+    lines.append("")
+
+    if high_variance_rows:
+        lines.extend([
+            "| Key | Scenario | Overhead (us) | RSD (%) | Suggested read |",
+            "|---|---|---:|---:|---|",
+        ])
+        for row in high_variance_rows:
+            lines.append(
+                "| "
+                + " | ".join(
+                    [
+                        aliases[row["run_id"]],
+                        cell(row, "scenario"),
+                        cell(row, "overhead_us"),
+                        cell(row, "rsd_percent"),
+                        "repeat before regression call",
+                    ]
+                )
+                + " |"
+            )
+        lines.append("")
 
     return lines
 
@@ -238,13 +302,15 @@ def markdown(rows: list[dict[str, str]]) -> str:
             + " |"
         )
 
+    lines.extend(["", *signal_notes(rows, aliases)])
+
     lines.extend([
-        "",
         "## Charts",
         "",
         "Each chart uses short run keys from the table above to keep labels readable.",
         "The first line is the scenario. Additional horizontal lines are references:",
-        "`no logging` and, when available, direct `OSLog.Logger`.",
+        "`no logging` and, when available, direct `OSLog.Logger`. Reference",
+        "labels include the run key that supplied the value.",
         "",
     ])
     for scenario in TRACKED_SCENARIOS:
@@ -258,8 +324,8 @@ def markdown(rows: list[dict[str, str]]) -> str:
         [
             "## Data",
             "",
-            "| Run | Scenario | Average (s) | Added (s) | Overhead (us) | RSD (%) |",
-            "|---|---|---:|---:|---:|---:|",
+            "| Run | Scenario | Average (s) | Added (s) | Overhead (us) | RSD (%) | Signal |",
+            "|---|---|---:|---:|---:|---:|---|",
         ]
     )
 
@@ -274,6 +340,7 @@ def markdown(rows: list[dict[str, str]]) -> str:
                     cell(row, "added_s"),
                     cell(row, "overhead_us"),
                     cell(row, "rsd_percent"),
+                    signal(row),
                 ]
             )
             + " |"

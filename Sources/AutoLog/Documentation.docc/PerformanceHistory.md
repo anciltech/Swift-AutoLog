@@ -38,6 +38,11 @@ useful because it exposes scheduler sensitivity and variance, but it is also
 noisier by design, so rerun suspicious results before treating them as a
 regression.
 
+The generated Markdown history now includes a signal-quality pass over `RSD`.
+Rows above `20%` are labeled `high variance`, listed in a dedicated signal
+notes table, and should be repeated before making regression calls. Legacy rows
+without `RSD` are kept as directional history.
+
 The history should keep both logger profiles visible:
 
 - the synthetic benchmark logger isolates macro/event/formatter/routing work
