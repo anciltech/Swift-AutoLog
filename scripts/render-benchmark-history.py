@@ -28,34 +28,78 @@ def read_rows(path: Path) -> list[dict[str, str]]:
 
 
 def run_label(row: dict[str, str]) -> str:
-    label = row["label"] or row["run_id"]
-    mode = row["mode"]
-    load = row["load_profile"]
-    return f"{label}\\n{mode}\\n{load}"
+    return row["label"] or row["run_id"]
 
 
 def cell(row: dict[str, str], key: str) -> str:
     return row.get(key) or ""
 
 
-def chart_for(rows: list[dict[str, str]], scenario: str) -> str:
+def run_aliases(rows: list[dict[str, str]]) -> dict[str, str]:
+    aliases: dict[str, str] = {}
+    for row in rows:
+        run_id = row["run_id"]
+        if run_id not in aliases:
+            aliases[run_id] = f"R{len(aliases) + 1}"
+    return aliases
+
+
+def reference_rows(rows: list[dict[str, str]], scenario: str) -> list[tuple[str, dict[str, str]]]:
+    if scenario == "Logged task group":
+        baseline = latest_row(rows, "Baseline task group")
+        return [("no logging", baseline)] if baseline else []
+
+    if "complex" in scenario.lower():
+        baseline = latest_row(rows, "Baseline complex")
+        oslog = latest_row(rows, "Direct OSLog complex")
+    else:
+        baseline = latest_row(rows, "Baseline")
+        oslog = latest_row(rows, "Direct OSLog")
+
+    references: list[tuple[str, dict[str, str]]] = []
+    if baseline:
+        references.append(("no logging", baseline))
+    if oslog:
+        references.append(("direct OSLog", oslog))
+    return references
+
+
+def chart_for(
+    rows: list[dict[str, str]],
+    scenario: str,
+    aliases: dict[str, str],
+) -> str:
     scenario_rows = [row for row in rows if row["scenario"] == scenario]
-    labels = [run_label(row) for row in scenario_rows]
+    labels = [aliases[row["run_id"]] for row in scenario_rows]
     values = [float(row["overhead_us"]) for row in scenario_rows]
     if not values:
         return ""
 
-    max_value = max(values)
+    references = reference_rows(rows, scenario)
+    reference_values = [float(row["overhead_us"]) for _, row in references]
+    max_value = max(values + reference_values)
     y_max = max(1, int(max_value * 1.2) + 1)
     label_text = ", ".join(f'"{label}"' for label in labels)
     value_text = ", ".join(f"{value:.2f}" for value in values)
+    reference_lines = "\n".join(
+        "  line [" + ", ".join(f"{float(row['overhead_us']):.2f}" for _ in values) + "]"
+        for _, row in references
+    )
+    reference_summary = ", ".join(
+        f"{name}={float(row['overhead_us']):.2f}us"
+        for name, row in references
+    )
+    title = f"{scenario} overhead per call"
+    if reference_summary:
+        title += f" (refs: {reference_summary})"
 
     return f"""```mermaid
 xychart-beta
-  title "{scenario} overhead per call"
+  title "{title}"
   x-axis [{label_text}]
   y-axis "us" 0 --> {y_max}
   line [{value_text}]
+{reference_lines}
 ```"""
 
 
@@ -162,6 +206,7 @@ def markdown(rows: list[dict[str, str]]) -> str:
     rows_by_run: dict[str, list[dict[str, str]]] = defaultdict(list)
     for row in rows:
         rows_by_run[row["run_id"]].append(row)
+    aliases = run_aliases(rows)
 
     lines = [
         "# AutoLog Benchmark History",
@@ -172,8 +217,8 @@ def markdown(rows: list[dict[str, str]]) -> str:
         "",
         "## Runs",
         "",
-        "| Run | Mode | Load | Commit | Notable change |",
-        "|---|---|---|---|---|",
+        "| Key | Run | Mode | Load | Commit | Notable change |",
+        "|---|---|---|---|---|---|",
     ]
 
     for run_id, run_rows in rows_by_run.items():
@@ -182,6 +227,7 @@ def markdown(rows: list[dict[str, str]]) -> str:
             "| "
             + " | ".join(
                 [
+                    aliases[run_id],
                     run_id,
                     cell(first, "mode"),
                     cell(first, "load_profile"),
@@ -192,9 +238,17 @@ def markdown(rows: list[dict[str, str]]) -> str:
             + " |"
         )
 
-    lines.extend(["", "## Charts", ""])
+    lines.extend([
+        "",
+        "## Charts",
+        "",
+        "Each chart uses short run keys from the table above to keep labels readable.",
+        "The first line is the scenario. Additional horizontal lines are references:",
+        "`no logging` and, when available, direct `OSLog.Logger`.",
+        "",
+    ])
     for scenario in TRACKED_SCENARIOS:
-        chart = chart_for(rows, scenario)
+        chart = chart_for(rows, scenario, aliases)
         if chart:
             lines.extend([f"### {scenario}", "", chart, ""])
 
