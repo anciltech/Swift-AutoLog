@@ -58,7 +58,10 @@ public struct CompactFormatter: AutoLogFormatter {
     let plan = fixedFormatPlan ?? FormatPlan(format: fmt)
     let depth = profile.depth(for: typeName) ?? 1
     let visibleTags = event.visibleTags
-    var parameterText = ParameterText(parameters: event.parameters)
+    var parameterText = ParameterText(
+      parameters: event.parameters,
+      labels: event.parameterLabels
+    )
 
     let mainBody: String
     if let source = event.source, event.declaration == source.description {
@@ -156,18 +159,20 @@ public struct CompactFormatter: AutoLogFormatter {
 
   private struct ParameterText {
     let parameters: [String: Any]
+    let labels: [String]
     private var formatted: String?
 
-    init(parameters: [String: Any]) {
+    init(parameters: [String: Any], labels: [String]) {
       self.parameters = parameters
+      self.labels = labels
     }
 
-    mutating func render(using formatter: ([String: Any]) -> String) -> String {
+    mutating func render(using formatter: ([String: Any], [String]) -> String) -> String {
       if let formatted {
         return formatted
       }
 
-      let value = formatter(parameters)
+      let value = formatter(parameters, labels)
       formatted = value
       return value
     }
@@ -835,7 +840,7 @@ public struct CompactFormatter: AutoLogFormatter {
     return trimmed
   }
 
-  private func formatParameters(_ parameters: [String: Any]) -> String {
+  private func formatParameters(_ parameters: [String: Any], labels: [String]) -> String {
     switch parameters.count {
     case 0:
       return ""
@@ -843,10 +848,9 @@ public struct CompactFormatter: AutoLogFormatter {
       guard let (label, value) = parameters.first else { return "" }
       return "\(label): \(formatParameterValue(value))"
     default:
-      let sortedKeys = parameters.keys.sorted()
       var result = ""
 
-      for (index, key) in sortedKeys.enumerated() {
+      for (index, key) in labels.enumerated() {
         if index > 0 {
           result += ", "
         }

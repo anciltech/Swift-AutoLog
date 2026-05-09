@@ -171,7 +171,18 @@ public struct AutoLogEvent: CustomStringConvertible, CustomDebugStringConvertibl
 
   /// A set of arguments passed to a function, associated
   /// with their parameter labels.
-  public var parameters: [String: Any]
+  public var parameters: [String: Any] {
+    didSet {
+      parameterLabels = Self.orderedParameterLabels(from: parameters)
+    }
+  }
+
+  /// Stable parameter label order used by formatters.
+  ///
+  /// Dictionaries do not promise iteration order, so this is captured once when
+  /// the event is created and reused by formatter paths that need deterministic
+  /// output.
+  public private(set) var parameterLabels: [String]
 
   /// The result of the function.
   public var result: Result<Any, any Error>
@@ -308,6 +319,7 @@ public struct AutoLogEvent: CustomStringConvertible, CustomDebugStringConvertibl
     self.functionName = Self.extractFunctionName(from: declaration)
     self.hasAsyncEffect = Self.hasAsyncEffect(in: declaration)
     self.parameters = parameters
+    self.parameterLabels = Self.orderedParameterLabels(from: parameters)
     self.result = result
     self.tags = tags
     if tags.isEmpty {
@@ -473,6 +485,17 @@ public struct AutoLogEvent: CustomStringConvertible, CustomDebugStringConvertibl
       declaration[range.upperBound] == "{"
 
     return hasValidLeadingBoundary && hasValidTrailingBoundary
+  }
+
+  private static func orderedParameterLabels(from parameters: [String: Any]) -> [String] {
+    switch parameters.count {
+    case 0:
+      return []
+    case 1:
+      return parameters.first.map { [$0.key] } ?? []
+    default:
+      return parameters.keys.sorted()
+    }
   }
 }
 

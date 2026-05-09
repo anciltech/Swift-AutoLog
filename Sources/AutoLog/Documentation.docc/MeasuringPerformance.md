@@ -66,13 +66,14 @@ Macro expansion now also omits explicit `parameters: [:]` and `tags: []`
 arguments when a logged function has no captured parameters or tags, letting
 `AutoLogEvent` use its defaults instead of constructing empty literals in the
 generated wrapper.
+`AutoLogEvent` now also caches a deterministic parameter-label order when it is
+constructed and refreshes that cache when parameters are replaced, so repeated
+formatter passes for the same event do not re-sort multi-parameter labels.
 
 ## Current performance TODOs
 
 The next hot-path targets worth exploring are:
 
-- reduce multi-parameter overhead further by avoiding repeated label sorting
-  when generated call-site order is already stable
 - continue looking for macro-generation opportunities that reduce work without
   making expansion snapshots harder to audit
 

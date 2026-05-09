@@ -126,6 +126,28 @@ struct AutoLoggerTests {
   }
 
   @Test
+  func parameterLabels_areCachedAndRefreshWhenParametersChange() {
+    var event = AutoLogEvent(
+      location: "App/Feature.swift:1:1",
+      declaration: "func track(zeta: Int, alpha: Int, middle: Int)",
+      parameters: [
+        "zeta": 3,
+        "alpha": 1,
+        "middle": 2,
+      ]
+    )
+
+    #expect(event.parameterLabels == ["alpha", "middle", "zeta"])
+
+    event.parameters = [
+      "beta": 2,
+      "alpha": 1,
+    ]
+
+    #expect(event.parameterLabels == ["alpha", "beta"])
+  }
+
+  @Test
   func routeTags_forwardOnlyToMatchingSinks() {
     let sink = MockEventSink(route: .splunk)
     let logger = AutoLogLogger(formatter: MockFormatter(), sinks: [sink])
