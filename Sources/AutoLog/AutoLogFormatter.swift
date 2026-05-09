@@ -843,14 +843,15 @@ public struct CompactFormatter: AutoLogFormatter {
       guard let (label, value) = parameters.first else { return "" }
       return "\(label): \(formatParameterValue(value))"
     default:
-      let sortedParameters = parameters.sorted { $0.key < $1.key }
+      let sortedKeys = parameters.keys.sorted()
       var result = ""
 
-      for (index, parameter) in sortedParameters.enumerated() {
+      for (index, key) in sortedKeys.enumerated() {
         if index > 0 {
           result += ", "
         }
-        result += "\(parameter.key): \(formatParameterValue(parameter.value))"
+        guard let value = parameters[key] else { continue }
+        result += "\(key): \(formatParameterValue(value))"
       }
 
       return result
@@ -878,12 +879,30 @@ public struct CompactFormatter: AutoLogFormatter {
       return shortTypeName(from: String(reflecting: type))
     }
 
+    if let custom = value as? any CustomStringConvertible {
+      let description = custom.description
+      if isClearlyValueDescription(description) {
+        return description
+      }
+    }
+
     let description = String(describing: value)
     if isTypeOnlyDescription(description, for: value) {
       return shortIdentifierSummary(for: value) ?? shortTypeName(from: description)
     }
 
     return description
+  }
+
+  private func isClearlyValueDescription(_ description: String) -> Bool {
+    guard let first = description.first else { return false }
+    if first.isLowercase || first.isNumber {
+      return true
+    }
+
+    return description.contains { character in
+      character.isWhitespace || ":,()[]{}=/\\\"'".contains(character)
+    }
   }
 
   private func isTypeOnlyDescription(_ description: String, for value: Any) -> Bool {

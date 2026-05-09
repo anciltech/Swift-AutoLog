@@ -160,6 +160,21 @@ struct CompactFormatterTests {
         #expect(CompactFormatter().format(event: event, configuration: configuration).contains("fetchUser(id: 1)"))
     }
 
+    @Test func multipleParameters_sortedByLabel() {
+        let event = makeEvent(
+            declaration: "func track(zeta: Int, alpha: Int, middle: Int)",
+            parameters: [
+                "zeta": 3,
+                "alpha": 1,
+                "middle": 2,
+            ]
+        )
+
+        let output = CompactFormatter().format(event: event, configuration: configuration)
+
+        #expect(output.contains("track(alpha: 1, middle: 2, zeta: 3)"))
+    }
+
     @Test func duplicateParameterElements_reuseFormattedParameterText() {
         final class CountedParameter: CustomStringConvertible {
             var descriptionAccessCount = 0

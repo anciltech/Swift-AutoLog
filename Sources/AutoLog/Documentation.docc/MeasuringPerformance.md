@@ -51,6 +51,10 @@ without doing extra cleanup work on every emit.
 `CompactFormatter` also keeps formatted parameter text in a per-event cache
 while rendering, so custom formats that include `.parameters` more than once
 reuse the same sorted and stringified parameter payload.
+Multi-parameter formatting now sorts only parameter labels before looking up
+values and returns clearly value-like `CustomStringConvertible` descriptions
+before the type-only reflection fallback, reducing tuple copying and avoidable
+reflection for common payload wrappers.
 Custom format rendering now also uses a compact format plan so a single pass
 classifies leading metadata columns, inline elements, and dependent flags. When
 callers install a fixed formatter-level `LogFormat`, that plan is prepared once
@@ -67,8 +71,8 @@ generated wrapper.
 
 The next hot-path targets worth exploring are:
 
-- reduce multi-parameter overhead further by avoiding repeated sorting and
-  reflection-heavy formatting work where possible
+- reduce multi-parameter overhead further by avoiding repeated label sorting
+  when generated call-site order is already stable
 - continue looking for macro-generation opportunities that reduce work without
   making expansion snapshots harder to audit
 
