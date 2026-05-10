@@ -18,7 +18,11 @@ public struct AutoLogOutput: Sendable, Codable, Equatable, Identifiable {
   public var route: AutoLogRoute
   public var isEnabled: Bool
   public var eventTypes: Set<AutoLogOutputEventType>
-  public var typeNameFilters: [String]
+  public var typeNameFilters: [String] {
+    didSet {
+      typeNameFilters = Self.normalizedTypeNameFilters(typeNameFilters)
+    }
+  }
   public var measureTiming: Bool
   public var timingDepths: Set<Int>?
   public var normalizedTiming: Bool

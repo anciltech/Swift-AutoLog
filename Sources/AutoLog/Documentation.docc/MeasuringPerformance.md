@@ -46,8 +46,8 @@ name, source line, short location, function name, and async presence so the
 formatter and output-profile matching do not keep re-splitting the same
 `location` and `declaration` strings within a single emit.
 `AutoLogOutput` now also trims and drops empty type-name filters at
-construction and decode time so `matches(_:)` can reuse the normalized list
-without doing extra cleanup work on every emit.
+construction, decode time, and direct mutation so `matches(_:)` can reuse the
+normalized list without doing extra cleanup work on every emit.
 `CompactFormatter` also keeps formatted parameter text in a per-event cache
 while rendering, so custom formats that include `.parameters` more than once
 reuse the same sorted and stringified parameter payload.

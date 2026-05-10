@@ -475,6 +475,32 @@ struct AutoLoggerTests {
   }
 
   @Test
+  func outputProfileMatching_normalizesTypeFiltersAfterMutation() {
+    var output = AutoLogOutput(
+      name: "Console ViewModel Success",
+      route: .console,
+      eventTypes: [.success],
+      typeNameFilters: ["repository"]
+    )
+
+    output.typeNameFilters = ["  viewmodel  ", "", " service "]
+
+    #expect(output.typeNameFilters == ["viewmodel", "service"])
+
+    let matchingEvent = AutoLogEvent(
+      location: "App/CheckoutViewModel.swift:13:1",
+      declaration: "func processPayment() async"
+    )
+    let blankFilterEvent = AutoLogEvent(
+      location: "App/CheckoutRepository.swift:14:1",
+      declaration: "func processPayment() async"
+    )
+
+    #expect(output.matches(matchingEvent))
+    #expect(!output.matches(blankFilterEvent))
+  }
+
+  @Test
   func autoLogEvent_outputEventTypeReflectsInteractionStartAndFailureCases() {
     let interactionSource = AutoLogInteraction.button("Pay")
     let interaction = AutoLogEvent(
