@@ -3,6 +3,11 @@
 A set of macros that support type-wide and per-function logging with ability to customize how logs are handled.
 
 ## Overview
+The `AutoLog` library product supports iOS, macOS, and watchOS 11 or newer. The same
+macro-generated events, visible tags, and route tags are available in watch app
+targets that depend on `AutoLog`; the companion settings UI remains development
+tooling and is not part of the watchOS runtime surface.
+
 There are many situations where logging additional information is helpful. However most of them are neglected as they reqire some boilerplate, this is especially present in bidirectional architectures. Swift AutoLog aims to simplify this by providing macros that can:
 
 * **Annotate all methods within type or extension**

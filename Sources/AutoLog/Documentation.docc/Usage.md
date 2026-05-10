@@ -157,6 +157,8 @@ If you want to embed that editor directly in an iOS or macOS app, the package
 also ships `AutoLogSettingsUI` with `AutoLogOutputSettingsView`, which reuses
 the same output-profile model, live preview, and code-snippet generation as the
 standalone `AutoLogSettings` companion app.
+The `AutoLog` runtime itself also supports watchOS 11 or newer; route tags and visible tags
+work in watch app code without bringing the settings UI along.
 Persisted configurations that still match the package's former single-line
 default are automatically migrated to the newer columnar origin/duration/thread
 layout the next time the shared configuration store is loaded.

@@ -70,6 +70,11 @@ Then add `AutoLog` to the target that should use the macros:
 )
 ```
 
+The `AutoLog` library product supports iOS, macOS, and watchOS 11 or newer. Tag handling,
+including visible tags and route tags such as `.console`, `.firebase`, or
+`.splunk`, is part of the portable runtime behavior and is available in watch
+app targets that depend on `AutoLog`.
+
 ### Xcode project
 
 In Xcode:
@@ -337,7 +342,9 @@ When `outputs` is present, each output profile can decide:
 The companion settings preview now uses the same `AutoLogOutput.matches(_:)`
 rules as `AutoLogLogger`, so route matching, event-kind filtering, and
 case-insensitive type-name filters stay aligned between the sample preview and
-real emitted output.
+real emitted output. That settings surface is development tooling; watchOS
+support is scoped to the `AutoLog` library product and does not require the
+settings UI to run on a watch.
 
 You can still provide a custom logger and advanced store settings when needed:
 
