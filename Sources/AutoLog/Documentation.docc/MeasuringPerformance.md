@@ -59,6 +59,9 @@ Custom format rendering now also uses a compact format plan so a single pass
 classifies leading metadata columns, inline elements, and dependent flags. When
 callers install a fixed formatter-level `LogFormat`, that plan is prepared once
 at formatter initialization instead of rebuilt on each emitted event.
+The default runtime `LogFormat` now also uses a shared precomputed plan, so
+callers that rely on live configuration avoid rebuilding the stock column and
+inline-element classification for every emitted event.
 `AutoLogEvent` also specializes single-tag construction, so route-only events
 such as `.splunk` and single visible tags avoid the mixed-tag classification
 loop and visible-tag reserve path.

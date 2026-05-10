@@ -632,6 +632,10 @@ It gives the clearest picture of where the overhead sits inside the logged
 function path, especially `AutoLogEvent` creation, `CompactFormatter`, and route
 filtering. A matching CLI capture looks like this:
 
+The default compact layout uses a shared precomputed format plan when the
+formatter reads `AutoLogConfiguration.logFormat`, so the common dynamic-settings
+path does not rebuild default column and inline-element metadata for each event.
+
 ```bash
 xcrun xctrace record \
   --template 'Time Profiler' \

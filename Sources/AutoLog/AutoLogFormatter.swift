@@ -55,7 +55,7 @@ public struct CompactFormatter: AutoLogFormatter {
   ) -> String {
     let typeName = event.inferredTypeName
     let fmt = format ?? configuration.logFormat
-    let plan = fixedFormatPlan ?? FormatPlan(format: fmt)
+    let plan = fixedFormatPlan ?? (fmt == .default ? .defaultPlan : FormatPlan(format: fmt))
     let depth = profile.depth(for: typeName) ?? 1
     let visibleTags = event.visibleTags
     var parameterText = ParameterText(
@@ -179,6 +179,8 @@ public struct CompactFormatter: AutoLogFormatter {
   }
 
   private struct FormatPlan: Sendable {
+    static let defaultPlan = FormatPlan(format: .default)
+
     let columnElements: [LogFormat.Element]
     let inlineElements: [LogFormat.Element]
     let includesReturnValue: Bool
