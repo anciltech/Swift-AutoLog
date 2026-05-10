@@ -6,7 +6,7 @@ struct DebugDiagnostic: DiagnosticMessage {
 
   var diagnosticID: MessageID {
     MessageID(
-      domain: "Loggable",
+      domain: "AutoLog",
       id: "-"
     )
   }

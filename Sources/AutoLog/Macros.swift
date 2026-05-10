@@ -103,12 +103,12 @@ public macro OSLog(
 
 /// Introduces ``Log(using:)`` to all methods within attached context.
 ///
-/// - Parameter loggable: The type that handles captured events.
+/// - Parameter logger: The type that handles captured events.
 ///
 /// Annotating declaration with ``AutoLog(using:)`` will intoduce
 /// ``Log(using:)`` macros implicitly to all methods within.
 ///
-/// When  `loggable` parameter is specified, introdcued``Log(using:)``
+/// When  `logger` parameter is specified, introdcued``Log(using:)``
 /// macros will use it. In order to override implicit parameter, we must explicity
 /// mark method with ``Log(using:)``
 /// ```swift
@@ -148,14 +148,14 @@ public macro AutoLog() = #externalMacro(
 
 @attached(memberAttribute)
 @attached(extension, names: arbitrary)
-public macro AutoLog(using loggable: any AutoLogger) = #externalMacro(
+public macro AutoLog(using logger: any AutoLogger) = #externalMacro(
   module: "AutoLogMacro",
   type: "LoggedMacro"
 )
 
 @attached(memberAttribute)
 @attached(extension, names: arbitrary)
-public macro AutoLog(architecture loggable: any AutoLogger) = #externalMacro(
+public macro AutoLog(architecture logger: any AutoLogger) = #externalMacro(
   module: "AutoLogMacro",
   type: "LoggedMacro"
 )
@@ -164,21 +164,21 @@ public macro AutoLog(architecture loggable: any AutoLogger) = #externalMacro(
 /// macro argument type-checking on Swift 6.2.x.
 @attached(memberAttribute)
 @attached(extension, names: arbitrary)
-public macro AutoLog(using loggable: AutoLogLogger) = #externalMacro(
+public macro AutoLog(using logger: AutoLogLogger) = #externalMacro(
   module: "AutoLogMacro",
   type: "LoggedMacro"
 )
 
 @attached(memberAttribute)
 @attached(extension, names: arbitrary)
-public macro AutoLog(architecture loggable: AutoLogLogger) = #externalMacro(
+public macro AutoLog(architecture logger: AutoLogLogger) = #externalMacro(
   module: "AutoLogMacro",
   type: "LoggedMacro"
 )
 
 /// Logs annotated function and send captured event to a ``AutoLogger`` instance.
 ///
-/// - Parameter loggable: The type that handles captured events.
+/// - Parameter logger: The type that handles captured events.
 @attached(body)
 public macro Log() = #externalMacro(
   module: "AutoLogMacro",
@@ -264,13 +264,13 @@ public macro Log(
 )
 
 @attached(body)
-public macro Log(using loggable: any AutoLogger) = #externalMacro(
+public macro Log(using logger: any AutoLogger) = #externalMacro(
   module: "AutoLogMacro",
   type: "LogMacro"
 )
 
 @attached(body)
-public macro Log(architecture loggable: any AutoLogger) = #externalMacro(
+public macro Log(architecture logger: any AutoLogger) = #externalMacro(
   module: "AutoLogMacro",
   type: "LogMacro"
 )
@@ -278,13 +278,13 @@ public macro Log(architecture loggable: any AutoLogger) = #externalMacro(
 /// Overload for concrete `AutoLogLogger` to avoid existential boxing in
 /// macro argument type-checking on Swift 6.2.x.
 @attached(body)
-public macro Log(using loggable: AutoLogLogger) = #externalMacro(
+public macro Log(using logger: AutoLogLogger) = #externalMacro(
   module: "AutoLogMacro",
   type: "LogMacro"
 )
 
 @attached(body)
-public macro Log(architecture loggable: AutoLogLogger) = #externalMacro(
+public macro Log(architecture logger: AutoLogLogger) = #externalMacro(
   module: "AutoLogMacro",
   type: "LogMacro"
 )
@@ -292,13 +292,13 @@ public macro Log(architecture loggable: AutoLogLogger) = #externalMacro(
 /// Logs annotated function and send captured event to a ``AutoLogger`` instance.
 ///
 /// - Parameters:
-///   - loggable: An instance of ``AutoLogger`` that handles events.
+///   - logger: An instance of ``AutoLogger`` that handles events.
 ///   - level: The logging level of which event should be emitted.
 ///   - omit: The information to be omitted when capturing event.
 ///   - tag: The tags to be associated with captured event.
 @attached(body)
 public macro Log(
-  using loggable: any AutoLogger,
+  using logger: any AutoLogger,
   level: (any Levelable)? = nil,
   omit: any Omittable... = [],
   tag: any Taggable... = []
@@ -309,7 +309,7 @@ public macro Log(
 
 @attached(body)
 public macro Log(
-  using loggable: any AutoLogger,
+  using logger: any AutoLogger,
   level: (any Levelable)? = nil,
   omit: any Omittable... = [],
   tag: any Taggable... = [],
@@ -321,7 +321,7 @@ public macro Log(
 
 @attached(body)
 public macro Log(
-  architecture loggable: any AutoLogger,
+  architecture logger: any AutoLogger,
   level: (any Levelable)? = nil,
   omit: any Omittable... = [],
   tag: any Taggable... = []
@@ -332,7 +332,7 @@ public macro Log(
 
 @attached(body)
 public macro Log(
-  architecture loggable: any AutoLogger,
+  architecture logger: any AutoLogger,
   level: (any Levelable)? = nil,
   omit: any Omittable... = [],
   tag: any Taggable... = [],
@@ -346,7 +346,7 @@ public macro Log(
 /// macro argument type-checking on Swift 6.2.x.
 @attached(body)
 public macro Log(
-  using loggable: AutoLogLogger,
+  using logger: AutoLogLogger,
   level: (any Levelable)? = nil,
   omit: any Omittable... = [],
   tag: any Taggable... = []
@@ -357,7 +357,7 @@ public macro Log(
 
 @attached(body)
 public macro Log(
-  using loggable: AutoLogLogger,
+  using logger: AutoLogLogger,
   level: (any Levelable)? = nil,
   omit: any Omittable... = [],
   tag: any Taggable... = [],
@@ -369,7 +369,7 @@ public macro Log(
 
 @attached(body)
 public macro Log(
-  architecture loggable: AutoLogLogger,
+  architecture logger: AutoLogLogger,
   level: (any Levelable)? = nil,
   omit: any Omittable... = [],
   tag: any Taggable... = []
@@ -380,7 +380,7 @@ public macro Log(
 
 @attached(body)
 public macro Log(
-  architecture loggable: AutoLogLogger,
+  architecture logger: AutoLogLogger,
   level: (any Levelable)? = nil,
   omit: any Omittable... = [],
   tag: any Taggable... = [],
