@@ -8,6 +8,7 @@ private struct UserDefaultsBox: @unchecked Sendable {
 public enum AutoLogOutputEventType: String, Sendable, Codable, CaseIterable, Hashable {
   case interaction
   case start
+  case warning
   case success
   case failure
 }
@@ -286,6 +287,10 @@ extension AutoLogEvent {
 
     if case .failure = result {
       return .failure
+    }
+
+    if let level = level as? LogLevel, level == .warning {
+      return .warning
     }
 
     return .success

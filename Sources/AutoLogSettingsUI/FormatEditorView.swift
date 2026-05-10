@@ -282,6 +282,7 @@ struct FormatEditorView: View {
     switch eventType {
     case .interaction: "Interaction"
     case .start: "Start"
+    case .warning: "Warning"
     case .success: "Success"
     case .failure: "Failure"
     }

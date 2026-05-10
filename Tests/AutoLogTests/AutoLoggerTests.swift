@@ -459,6 +459,28 @@ struct AutoLoggerTests {
   }
 
   @Test
+  func outputProfileMatching_canFilterWarningEventsSeparatelyFromSuccesses() {
+    let output = AutoLogOutput(
+      name: "Console Warnings",
+      route: .console,
+      eventTypes: [.warning]
+    )
+
+    let warningEvent = AutoLogEvent(
+      level: LogLevel.warning,
+      location: "App/OrderCache.swift:14:1",
+      declaration: "func publishUpdate()"
+    )
+    let successEvent = AutoLogEvent(
+      location: "App/OrderCache.swift:15:1",
+      declaration: "func publishUpdate()"
+    )
+
+    #expect(output.matches(warningEvent))
+    #expect(!output.matches(successEvent))
+  }
+
+  @Test
   func outputProfileMatching_normalizesTypeFiltersBeforeEmitTime() throws {
     let output = AutoLogOutput(
       name: "Console ViewModel Success",
@@ -501,7 +523,7 @@ struct AutoLoggerTests {
   }
 
   @Test
-  func autoLogEvent_outputEventTypeReflectsInteractionStartAndFailureCases() {
+  func autoLogEvent_outputEventTypeReflectsInteractionStartWarningAndFailureCases() {
     let interactionSource = AutoLogInteraction.button("Pay")
     let interaction = AutoLogEvent(
       source: interactionSource,
@@ -518,9 +540,15 @@ struct AutoLoggerTests {
       declaration: "func processPayment() async throws",
       result: .failure(Failure.mock)
     )
+    let warning = AutoLogEvent(
+      level: LogLevel.warning,
+      location: "App/OrderCache.swift:13:1",
+      declaration: "func publishUpdate()"
+    )
 
     #expect(interaction.outputEventType == .interaction)
     #expect(start.outputEventType == .start)
+    #expect(warning.outputEventType == .warning)
     #expect(failure.outputEventType == .failure)
     #expect(failure.inferredTypeName == "CheckoutViewModel")
   }
