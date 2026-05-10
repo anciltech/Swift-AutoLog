@@ -20,9 +20,9 @@ Computed properties are not auto-logged today.
 * **Use one live runtime snapshot per invocation**
 
 Macro-generated wrappers capture an ``AutoLogRuntime`` snapshot at function entry, so
-the same logger and configuration are used consistently for a function's start and
-completion even if the companion settings app updates the live configuration while
-that function is already running.
+the same logger, configuration, and deduplicator are used consistently for a
+function's start, timing, and completion even if the companion settings app updates
+the live configuration while that function is already running.
 
 * **Capture early exits as structured metadata**
 

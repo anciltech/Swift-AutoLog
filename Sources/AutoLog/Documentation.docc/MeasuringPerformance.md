@@ -66,6 +66,10 @@ Macro expansion now also omits explicit `parameters: [:]` and `tags: []`
 arguments when a logged function has no captured parameters or tags, letting
 `AutoLogEvent` use its defaults instead of constructing empty literals in the
 generated wrapper.
+Macro-generated wrappers now also use runtime-based `AutoLogger` helpers for
+start emission, completion emission, and timing checks. The captured
+`AutoLogRuntime` still supplies the same entry-time logger, configuration, and
+deduplicator, but the generated call sites no longer repeat those fields.
 Function-level timing suppression is available on custom logger overloads too:
 `@Log(using: logger, measure: false)` skips `ContinuousClock` capture and
 duration assignment while still emitting the start and completion events.

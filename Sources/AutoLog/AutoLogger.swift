@@ -761,6 +761,18 @@ extension AutoLogger {
     emit(event: enrichedEvent, configuration: configuration)
   }
 
+  /// Emits an event using the logger configuration and deduplicator captured at function entry.
+  public func emitIfEnabled(
+    event: AutoLogEvent,
+    runtime: AutoLogRuntime
+  ) {
+    emitIfEnabled(
+      event: event,
+      configuration: runtime.configuration,
+      deduplicator: runtime.deduplicator
+    )
+  }
+
   /// Emits a start event (🔵) for the given event when enabled by configuration.
   ///
   /// Called automatically by macro-generated code at function entry.
@@ -784,6 +796,24 @@ extension AutoLogger {
       configuration: configuration,
       deduplicator: deduplicator
     )
+  }
+
+  /// Emits a start event using the logger configuration and deduplicator captured at function entry.
+  public func emitStart(
+    event: AutoLogEvent,
+    runtime: AutoLogRuntime
+  ) {
+    emitStart(
+      event: event,
+      configuration: runtime.configuration,
+      deduplicator: runtime.deduplicator
+    )
+  }
+
+  /// Returns whether a macro-generated wrapper should capture elapsed time for
+  /// `event` under the runtime captured at function entry.
+  public func shouldMeasureTiming(for event: AutoLogEvent, runtime: AutoLogRuntime) -> Bool {
+    shouldMeasureTiming(for: event, configuration: runtime.configuration)
   }
 
   /// Emits a warning-level handled-error event derived from a parent function event.

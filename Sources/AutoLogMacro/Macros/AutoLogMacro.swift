@@ -468,7 +468,7 @@ extension AutoLogMacro {
   }
 
   /// Generates:
-  /// `autoLogger.emitIfEnabled(event: event, configuration: runtime.configuration, deduplicator: runtime.deduplicator)`
+  /// `autoLogger.emitIfEnabled(event: event, runtime: runtime)`
   static func emit(
     when resultFilterTrait: (any ExprSyntaxProtocol)? = nil
   ) -> CodeBlockItemSyntax {
@@ -518,23 +518,9 @@ extension AutoLogMacro {
               trailingComma: .commaToken()
             ),
             LabeledExprSyntax(
-              label: .identifier("configuration"),
+              label: .identifier("runtime"),
               colon: .colonToken(),
-              expression: MemberAccessExprSyntax(
-                base: DeclReferenceExprSyntax(baseName: .identifier("runtime")),
-                period: .periodToken(),
-                name: .identifier("configuration")
-              ),
-              trailingComma: .commaToken()
-            ),
-            LabeledExprSyntax(
-              label: .identifier("deduplicator"),
-              colon: .colonToken(),
-              expression: MemberAccessExprSyntax(
-                base: DeclReferenceExprSyntax(baseName: .identifier("runtime")),
-                period: .periodToken(),
-                name: .identifier("deduplicator")
-              )
+              expression: DeclReferenceExprSyntax(baseName: .identifier("runtime"))
             )
         ),
         rightParen: .rightParenToken()
@@ -543,7 +529,7 @@ extension AutoLogMacro {
   }
 
   /// Generates:
-  /// `autoLogger.emitStart(event: event, configuration: runtime.configuration, deduplicator: runtime.deduplicator)`
+  /// `autoLogger.emitStart(event: event, runtime: runtime)`
   ///
   /// The `emitStart` default implementation on `AutoLogger` checks the
   /// configuration captured at function entry before emitting.
@@ -565,23 +551,9 @@ extension AutoLogMacro {
               trailingComma: .commaToken()
             ),
             LabeledExprSyntax(
-              label: .identifier("configuration"),
+              label: .identifier("runtime"),
               colon: .colonToken(),
-              expression: MemberAccessExprSyntax(
-                base: DeclReferenceExprSyntax(baseName: .identifier("runtime")),
-                period: .periodToken(),
-                name: .identifier("configuration")
-              ),
-              trailingComma: .commaToken()
-            ),
-            LabeledExprSyntax(
-              label: .identifier("deduplicator"),
-              colon: .colonToken(),
-              expression: MemberAccessExprSyntax(
-                base: DeclReferenceExprSyntax(baseName: .identifier("runtime")),
-                period: .periodToken(),
-                name: .identifier("deduplicator")
-              )
+              expression: DeclReferenceExprSyntax(baseName: .identifier("runtime"))
             )
         ),
         rightParen: .rightParenToken()
@@ -633,13 +605,9 @@ extension AutoLogMacro {
                         trailingComma: .commaToken()
                       ),
                       LabeledExprSyntax(
-                        label: .identifier("configuration"),
+                        label: .identifier("runtime"),
                         colon: .colonToken(),
-                        expression: MemberAccessExprSyntax(
-                          base: DeclReferenceExprSyntax(baseName: .identifier("runtime")),
-                          period: .periodToken(),
-                          name: .identifier("configuration")
-                        )
+                        expression: DeclReferenceExprSyntax(baseName: .identifier("runtime"))
                       )
                   ),
                   rightParen: .rightParenToken()
