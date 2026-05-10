@@ -22,6 +22,11 @@ Opt out of logging and exclude methods from emitting events.
 
 ## Import the AutoLog library
 
+Add the `https://github.com/anciltech/Swift-AutoLog.git` package at `0.5.0` or
+newer and choose the `AutoLog` product in Xcode or Swift Package Manager. If
+Xcode shows a `Loggable` product, the dependency is pinned to the older `0.4.0`
+release line from before the package was renamed.
+
 After importing AutoLog for the first time, you will be prompted to enable macros provided by the library.
 ```swift
 // FavoriteFactsModel.swift
