@@ -315,6 +315,50 @@ struct LogMacroTests {
   }
 
   @Test
+  func customEquatableFunction_withWhenTrait_emitsOnlyMatchingSuccessValue() throws {
+    assertMacro {
+      #"""
+      @When(SelectionState(isSelected: true))
+      @Log
+      func selectionState(frameID: Int) -> SelectionState {
+        return SelectionState(isSelected: frameID.isMultiple(of: 2))
+      }
+      """#
+    } expansion: {
+      """
+      @When(SelectionState(isSelected: true))
+      func selectionState(frameID: Int) -> SelectionState {
+        let runtime = AutoLog.runtimeSnapshot()
+        let autoLogger: any AutoLogger = runtime.logger
+        var event = AutoLogEvent(
+          source: AutoLogSource.current,
+
+          location: "TestModule/Test.swift:1:1",
+          declaration: "func selectionState(frameID: Int) -> SelectionState",
+          parameters: [
+            "frameID": frameID
+          ]
+        )
+        autoLogger.emitStart(event: event, configuration: runtime.configuration, deduplicator: runtime.deduplicator)
+        let __logStart = autoLogger.shouldMeasureTiming(for: event, configuration: runtime.configuration) ? ContinuousClock.now : nil
+        func _selectionState(frameID: Int) -> SelectionState {
+          return SelectionState(isSelected: frameID.isMultiple(of: 2))
+        }
+        let result = _selectionState(frameID: frameID)
+        event.result = .success(result)
+        if let __logStart {
+          event.duration = ContinuousClock.now - __logStart
+        }
+        if result == SelectionState(isSelected: true) {
+          autoLogger.emitIfEnabled(event: event, configuration: runtime.configuration, deduplicator: runtime.deduplicator)
+        }
+        return result
+      }
+      """
+    }
+  }
+
+  @Test
   func function_withBareOmit_skipsExplicitLogInstrumentation() throws {
     assertMacro {
       """

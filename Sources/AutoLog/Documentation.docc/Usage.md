@@ -257,7 +257,10 @@ struct InteractionManager {
 ```
 
 The function still returns normally, but AutoLog only emits the success event
-when the returned value matches the expression you provided.
+when the returned value matches the expression you provided. The generated
+comparison uses `==`, so optional results and custom `Equatable` return types
+work as long as the filter expression has the same comparable shape as the
+function's result.
 
 > Initializers are not implicitly marked with the ``Log(using:)`` annotation. Marking them explicitly also has no effect.
 
