@@ -166,7 +166,10 @@ struct SourceableTests {
     }
 
     @Test @MainActor func textButtonLog_mirrorsTitleActionInitializers() {
+        let localizedLiteral = Button.log("home_button_login", action: {})
         let stringTitle = Button.log("Continue", action: {})
+        let dynamicTitle = "Continue"
+        let dynamicStringTitle = Button.log(dynamicTitle, logName: "continue", action: {})
         let localizedTitle = Button.log(
             LocalizedStringKey("fitness_tracker_apple_health"),
             logName: "fitness tracker apple health",
@@ -179,7 +182,9 @@ struct SourceableTests {
         )
         let roleTitle = Button.log("Delete", role: .destructive, action: {})
 
+        _ = localizedLiteral
         _ = stringTitle
+        _ = dynamicStringTitle
         _ = localizedTitle
         _ = resourceTitle
         _ = roleTitle
@@ -210,6 +215,7 @@ struct SourceableTests {
     }
 
     @Test @MainActor func imageLabelButtonLog_mirrorsSystemImageInitializers() {
+        let localizedLiteral = Button.log("home_button_login", systemImage: "person", action: {})
         let stringTitle = Button.log("Continue", systemImage: "arrow.right", action: {})
         let localizedTitle = Button.log(
             LocalizedStringKey("continue_button_title"),
@@ -230,6 +236,7 @@ struct SourceableTests {
             action: {}
         )
 
+        _ = localizedLiteral
         _ = stringTitle
         _ = localizedTitle
         _ = resourceTitle

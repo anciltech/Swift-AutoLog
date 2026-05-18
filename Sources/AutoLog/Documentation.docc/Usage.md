@@ -276,7 +276,7 @@ asset-image initializers. Localized titles and `LocalizedStringResource` values
 take an explicit `logName` so logs stay stable while UI copy localizes:
 
 ```swift
-Button.log("Continue", action: {
+Button.log("home_button_login", action: {
   viewModel.continue()
 })
 
@@ -289,6 +289,11 @@ Button.log(
   }
 )
 ```
+
+For string literals, `Button.log` follows SwiftUI and treats the literal as a
+localized string key, using the same key as the stable interaction name. Dynamic
+`String` values use the string-title overload; pass `logName` when the displayed
+string and analytics source should differ.
 
 Async actions are supported by the same shape. In Swift 6, callbacks that cross
 task boundaries should be `@Sendable`; the async `Button.log` overload keeps the

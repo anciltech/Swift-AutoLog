@@ -10,6 +10,10 @@ private func autoLogButtonName<S: StringProtocol>(
     logName ?? String(title)
 }
 
+private func autoLogButtonName(_ title: StaticString) -> String {
+    String(describing: title)
+}
+
 extension Button {
     /// Creates a custom-label button that automatically logs the interaction and
     /// propagates the source to all downstream `@AutoLog` function calls.
@@ -144,6 +148,30 @@ extension Button {
 extension Button where Label == Text {
     /// Creates a button that automatically logs the interaction and
     /// propagates the source to all downstream `@AutoLog` function calls.
+    ///
+    /// String literals are treated as localized string keys, matching SwiftUI's
+    /// `Button(_:action:)` behavior while using the key as the stable log name.
+    @MainActor public static func log(
+        _ titleKey: StaticString,
+        action: @escaping @MainActor () -> Void,
+        fileID: String = #fileID,
+        line: Int = #line,
+        column: Int = #column
+    ) -> Button<Text> {
+        let logName = autoLogButtonName(titleKey)
+        return Button(LocalizedStringKey(logName)) {
+            AutoLogInteraction.button(logName).log(
+                fileID: fileID,
+                line: line,
+                column: column
+            ) {
+                action()
+            }
+        }
+    }
+
+    /// Creates a button from dynamic string text and logs the interaction.
+    @_disfavoredOverload
     @MainActor public static func log<S>(
         _ title: S,
         logName: String? = nil,
@@ -205,6 +233,31 @@ extension Button where Label == Text {
     }
 
     /// Creates a role-based title button that logs the interaction.
+    ///
+    /// String literals are treated as localized string keys, matching SwiftUI's
+    /// `Button(_:role:action:)` behavior while using the key as the stable log name.
+    @MainActor public static func log(
+        _ titleKey: StaticString,
+        role: ButtonRole?,
+        action: @escaping @MainActor () -> Void,
+        fileID: String = #fileID,
+        line: Int = #line,
+        column: Int = #column
+    ) -> Button<Text> {
+        let logName = autoLogButtonName(titleKey)
+        return Button(LocalizedStringKey(logName), role: role) {
+            AutoLogInteraction.button(logName).log(
+                fileID: fileID,
+                line: line,
+                column: column
+            ) {
+                action()
+            }
+        }
+    }
+
+    /// Creates a role-based dynamic-string title button that logs the interaction.
+    @_disfavoredOverload
     @MainActor public static func log<S>(
         _ title: S,
         logName: String? = nil,
@@ -269,6 +322,29 @@ extension Button where Label == Text {
     }
 
     /// Async variant of ``log(_:logName:action:fileID:line:column:)``.
+    @MainActor public static func log(
+        _ titleKey: StaticString,
+        action: @escaping @Sendable () async -> Void,
+        fileID: String = #fileID,
+        line: Int = #line,
+        column: Int = #column
+    ) -> Button<Text> {
+        let logName = autoLogButtonName(titleKey)
+        return Button(LocalizedStringKey(logName)) {
+            Task {
+                await AutoLogInteraction.button(logName).log(
+                    fileID: fileID,
+                    line: line,
+                    column: column
+                ) { @Sendable in
+                    await action()
+                }
+            }
+        }
+    }
+
+    /// Async variant for dynamic string text.
+    @_disfavoredOverload
     @MainActor public static func log<S>(
         _ title: S,
         logName: String? = nil,
@@ -336,6 +412,30 @@ extension Button where Label == Text {
     }
 
     /// Async role-based title variant that logs the interaction.
+    @MainActor public static func log(
+        _ titleKey: StaticString,
+        role: ButtonRole?,
+        action: @escaping @Sendable () async -> Void,
+        fileID: String = #fileID,
+        line: Int = #line,
+        column: Int = #column
+    ) -> Button<Text> {
+        let logName = autoLogButtonName(titleKey)
+        return Button(LocalizedStringKey(logName), role: role) {
+            Task {
+                await AutoLogInteraction.button(logName).log(
+                    fileID: fileID,
+                    line: line,
+                    column: column
+                ) { @Sendable in
+                    await action()
+                }
+            }
+        }
+    }
+
+    /// Async role-based dynamic-string title variant.
+    @_disfavoredOverload
     @MainActor public static func log<S>(
         _ title: S,
         logName: String? = nil,
@@ -462,6 +562,28 @@ extension Button where Label == Text {
 
 extension Button where Label == SwiftUI.Label<Text, Image> {
     /// Creates a label-style button with a system image and logged interaction.
+    @MainActor public static func log(
+        _ titleKey: StaticString,
+        systemImage: String,
+        action: @escaping @MainActor () -> Void,
+        fileID: String = #fileID,
+        line: Int = #line,
+        column: Int = #column
+    ) -> Button<SwiftUI.Label<Text, Image>> {
+        let logName = autoLogButtonName(titleKey)
+        return Button(LocalizedStringKey(logName), systemImage: systemImage) {
+            AutoLogInteraction.button(logName).log(
+                fileID: fileID,
+                line: line,
+                column: column
+            ) {
+                action()
+            }
+        }
+    }
+
+    /// Creates a dynamic-string label-style button with a system image and logged interaction.
+    @_disfavoredOverload
     @MainActor public static func log<S>(
         _ title: S,
         systemImage: String,
@@ -526,6 +648,29 @@ extension Button where Label == SwiftUI.Label<Text, Image> {
     }
 
     /// Creates a role-based label-style button with a system image and logged interaction.
+    @MainActor public static func log(
+        _ titleKey: StaticString,
+        systemImage: String,
+        role: ButtonRole?,
+        action: @escaping @MainActor () -> Void,
+        fileID: String = #fileID,
+        line: Int = #line,
+        column: Int = #column
+    ) -> Button<SwiftUI.Label<Text, Image>> {
+        let logName = autoLogButtonName(titleKey)
+        return Button(LocalizedStringKey(logName), systemImage: systemImage, role: role) {
+            AutoLogInteraction.button(logName).log(
+                fileID: fileID,
+                line: line,
+                column: column
+            ) {
+                action()
+            }
+        }
+    }
+
+    /// Creates a role-based dynamic-string label-style button with a system image.
+    @_disfavoredOverload
     @MainActor public static func log<S>(
         _ title: S,
         systemImage: String,
@@ -593,6 +738,30 @@ extension Button where Label == SwiftUI.Label<Text, Image> {
     }
 
     /// Async label-style button with a system image and logged interaction.
+    @MainActor public static func log(
+        _ titleKey: StaticString,
+        systemImage: String,
+        action: @escaping @Sendable () async -> Void,
+        fileID: String = #fileID,
+        line: Int = #line,
+        column: Int = #column
+    ) -> Button<SwiftUI.Label<Text, Image>> {
+        let logName = autoLogButtonName(titleKey)
+        return Button(LocalizedStringKey(logName), systemImage: systemImage) {
+            Task {
+                await AutoLogInteraction.button(logName).log(
+                    fileID: fileID,
+                    line: line,
+                    column: column
+                ) { @Sendable in
+                    await action()
+                }
+            }
+        }
+    }
+
+    /// Async dynamic-string label-style button with a system image.
+    @_disfavoredOverload
     @MainActor public static func log<S>(
         _ title: S,
         systemImage: String,
@@ -663,6 +832,31 @@ extension Button where Label == SwiftUI.Label<Text, Image> {
     }
 
     /// Async role-based label-style button with a system image and logged interaction.
+    @MainActor public static func log(
+        _ titleKey: StaticString,
+        systemImage: String,
+        role: ButtonRole?,
+        action: @escaping @Sendable () async -> Void,
+        fileID: String = #fileID,
+        line: Int = #line,
+        column: Int = #column
+    ) -> Button<SwiftUI.Label<Text, Image>> {
+        let logName = autoLogButtonName(titleKey)
+        return Button(LocalizedStringKey(logName), systemImage: systemImage, role: role) {
+            Task {
+                await AutoLogInteraction.button(logName).log(
+                    fileID: fileID,
+                    line: line,
+                    column: column
+                ) { @Sendable in
+                    await action()
+                }
+            }
+        }
+    }
+
+    /// Async role-based dynamic-string label-style button with a system image.
+    @_disfavoredOverload
     @MainActor public static func log<S>(
         _ title: S,
         systemImage: String,
@@ -737,6 +931,29 @@ extension Button where Label == SwiftUI.Label<Text, Image> {
 
     /// Creates a label-style button with an image resource and logged interaction.
     @available(iOS 17.0, macOS 14.0, tvOS 17.0, watchOS 10.0, *)
+    @MainActor public static func log(
+        _ titleKey: StaticString,
+        image: ImageResource,
+        action: @escaping @MainActor () -> Void,
+        fileID: String = #fileID,
+        line: Int = #line,
+        column: Int = #column
+    ) -> Button<SwiftUI.Label<Text, Image>> {
+        let logName = autoLogButtonName(titleKey)
+        return Button(LocalizedStringKey(logName), image: image) {
+            AutoLogInteraction.button(logName).log(
+                fileID: fileID,
+                line: line,
+                column: column
+            ) {
+                action()
+            }
+        }
+    }
+
+    /// Creates a dynamic-string label-style button with an image resource.
+    @available(iOS 17.0, macOS 14.0, tvOS 17.0, watchOS 10.0, *)
+    @_disfavoredOverload
     @MainActor public static func log<S>(
         _ title: S,
         image: ImageResource,
@@ -803,6 +1020,30 @@ extension Button where Label == SwiftUI.Label<Text, Image> {
 
     /// Creates a role-based label-style button with an image resource and logged interaction.
     @available(iOS 17.0, macOS 14.0, tvOS 17.0, watchOS 10.0, *)
+    @MainActor public static func log(
+        _ titleKey: StaticString,
+        image: ImageResource,
+        role: ButtonRole?,
+        action: @escaping @MainActor () -> Void,
+        fileID: String = #fileID,
+        line: Int = #line,
+        column: Int = #column
+    ) -> Button<SwiftUI.Label<Text, Image>> {
+        let logName = autoLogButtonName(titleKey)
+        return Button(LocalizedStringKey(logName), image: image, role: role) {
+            AutoLogInteraction.button(logName).log(
+                fileID: fileID,
+                line: line,
+                column: column
+            ) {
+                action()
+            }
+        }
+    }
+
+    /// Creates a role-based dynamic-string label-style button with an image resource.
+    @available(iOS 17.0, macOS 14.0, tvOS 17.0, watchOS 10.0, *)
+    @_disfavoredOverload
     @MainActor public static func log<S>(
         _ title: S,
         image: ImageResource,
@@ -872,6 +1113,31 @@ extension Button where Label == SwiftUI.Label<Text, Image> {
 
     /// Async label-style button with an image resource and logged interaction.
     @available(iOS 17.0, macOS 14.0, tvOS 17.0, watchOS 10.0, *)
+    @MainActor public static func log(
+        _ titleKey: StaticString,
+        image: ImageResource,
+        action: @escaping @Sendable () async -> Void,
+        fileID: String = #fileID,
+        line: Int = #line,
+        column: Int = #column
+    ) -> Button<SwiftUI.Label<Text, Image>> {
+        let logName = autoLogButtonName(titleKey)
+        return Button(LocalizedStringKey(logName), image: image) {
+            Task {
+                await AutoLogInteraction.button(logName).log(
+                    fileID: fileID,
+                    line: line,
+                    column: column
+                ) { @Sendable in
+                    await action()
+                }
+            }
+        }
+    }
+
+    /// Async dynamic-string label-style button with an image resource.
+    @available(iOS 17.0, macOS 14.0, tvOS 17.0, watchOS 10.0, *)
+    @_disfavoredOverload
     @MainActor public static func log<S>(
         _ title: S,
         image: ImageResource,
@@ -944,6 +1210,32 @@ extension Button where Label == SwiftUI.Label<Text, Image> {
 
     /// Async role-based label-style button with an image resource and logged interaction.
     @available(iOS 17.0, macOS 14.0, tvOS 17.0, watchOS 10.0, *)
+    @MainActor public static func log(
+        _ titleKey: StaticString,
+        image: ImageResource,
+        role: ButtonRole?,
+        action: @escaping @Sendable () async -> Void,
+        fileID: String = #fileID,
+        line: Int = #line,
+        column: Int = #column
+    ) -> Button<SwiftUI.Label<Text, Image>> {
+        let logName = autoLogButtonName(titleKey)
+        return Button(LocalizedStringKey(logName), image: image, role: role) {
+            Task {
+                await AutoLogInteraction.button(logName).log(
+                    fileID: fileID,
+                    line: line,
+                    column: column
+                ) { @Sendable in
+                    await action()
+                }
+            }
+        }
+    }
+
+    /// Async role-based dynamic-string label-style button with an image resource.
+    @available(iOS 17.0, macOS 14.0, tvOS 17.0, watchOS 10.0, *)
+    @_disfavoredOverload
     @MainActor public static func log<S>(
         _ title: S,
         image: ImageResource,
