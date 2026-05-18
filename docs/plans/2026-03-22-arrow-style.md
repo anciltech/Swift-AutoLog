@@ -90,7 +90,7 @@ public func encode(to encoder: Encoder) throws {
 **Step 4: Build to confirm zero errors**
 
 ```bash
-cd /path/to/swift-loggable
+cd /path/to/swift-autolog
 swift build --target AutoLog 2>&1 | grep -E "error:|Build complete"
 ```
 Expected: `Build of target: 'AutoLog' complete!`

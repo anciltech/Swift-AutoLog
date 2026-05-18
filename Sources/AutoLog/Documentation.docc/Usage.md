@@ -23,9 +23,7 @@ Opt out of logging and exclude methods from emitting events.
 ## Import the AutoLog library
 
 Add the `https://github.com/anciltech/Swift-AutoLog.git` package at `0.5.1` or
-newer and choose the `AutoLog` product in Xcode or Swift Package Manager. If
-Xcode shows a `Loggable` product, the dependency is pinned to the older `0.4.0`
-release line from before the package was renamed.
+newer and choose the `AutoLog` product in Xcode or Swift Package Manager.
 
 After importing AutoLog for the first time, you will be prompted to enable macros provided by the library.
 ```swift
@@ -81,9 +79,13 @@ extension FavoriteFactsModel {
 }
 ```
 
-This alone is sufficient for debugging. All methods within the `FavoriteFactsModel` scope are now implicitly marked with the ``Log(using:)`` annotation and will emit an `AutoLogEvent` when invoked. Note that `deleteAllFavoriteFacts`, which is defined within an extension to `FavoriteFactsModel`, lies outside the scope of ``AutoLog(using:)`` and thus will not be affected.
+This alone is sufficient for debugging. All methods within the `FavoriteFactsModel` scope are now implicitly marked with the ``Log(using:)`` annotation and will emit an `AutoLogEvent` when invoked. Note that `deleteAllFavoriteFacts`, which is defined within an extension to `FavoriteFactsModel`, lies outside the scope of the type annotation and thus will not be affected.
 
-When you use editor macro expansion, ``AutoLog(using:)`` also emits an empty companion extension for the attached type. That gives Xcode a concrete type-level expansion to show even when the declaration does not gain visible members of its own, while the real logging behavior still comes from the injected ``Log(using:)`` annotations on functions.
+You can also place ``AutoLog()`` on an extension when that extension contains
+the methods you want to instrument. The macro only adds member attributes; it
+does not synthesize a companion extension, so extension annotations also work
+for private or fileprivate implementation-detail types without requiring a
+visibility change.
 
 By default, ``AutoLog(using:)`` uses the ``AutoLogLogger`` instance. Refer to <doc:CreatingCustomAutoLoggerInstance> for more information about incorporating custom loggers.
 

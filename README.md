@@ -88,11 +88,6 @@ In Xcode:
 3. Paste `https://github.com/anciltech/Swift-AutoLog.git`
 4. Add the `AutoLog` product to the app or framework target where you want to use it
 
-If Xcode shows `swift-loggable` as the package name or `Loggable` as the only
-package product, the dependency is resolved to `0.4.0` or earlier. Update the
-package requirement to `0.5.1` or newer, or temporarily point Xcode at the
-`main` branch, to use the renamed `Swift-AutoLog` package and `AutoLog` product.
-
 When you first build after importing the package, Xcode will prompt you to enable macros from the dependency.
 
 ## Add Swift AutoLog to your project

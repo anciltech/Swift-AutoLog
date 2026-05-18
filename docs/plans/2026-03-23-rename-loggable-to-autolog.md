@@ -280,7 +280,7 @@ The only changes in this file are:
 **Step 2:** Perform the renames with sed (or Edit tool):
 
 ```bash
-cd /Users/genesis/Coding/XCode/Other/LoggingExample/LoggableSourceCode/swift-loggable
+cd /Users/genesis/Coding/XCode/Other/LoggingExample/AutoLogSourceCode/swift-autolog
 cp Sources/AutoLog/LoggableFormatter.swift Sources/AutoLog/AutoLogFormatter.swift
 # Then edit AutoLogFormatter.swift: replace LoggableFormatter→AutoLogFormatter, LoggableEvent→AutoLogEvent
 rm Sources/AutoLog/LoggableFormatter.swift
@@ -677,7 +677,7 @@ rm Tests/AutoLogTests/Mocks/Loggable+Mock.swift
 **Step 1: Build all targets**
 
 ```bash
-cd /Users/genesis/Coding/XCode/Other/LoggingExample/LoggableSourceCode/swift-loggable
+cd /Users/genesis/Coding/XCode/Other/LoggingExample/AutoLogSourceCode/swift-autolog
 swift build 2>&1
 ```
 
@@ -714,7 +714,7 @@ If macro tests fail with string mismatches, the `TokenSyntax` case changes in Ta
 ### Task 10: Commit
 
 ```bash
-cd /Users/genesis/Coding/XCode/Other/LoggingExample/LoggableSourceCode/swift-loggable
+cd /Users/genesis/Coding/XCode/Other/LoggingExample/AutoLogSourceCode/swift-autolog
 git add -A
 git status  # verify no unexpected files staged
 git commit -m "$(cat <<'EOF'
