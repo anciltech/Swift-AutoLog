@@ -3,6 +3,60 @@ import SwiftUI
 
 // MARK: - Button.log
 
+extension Button {
+    /// Creates a custom-label button that automatically logs the interaction and
+    /// propagates the source to all downstream `@AutoLog` function calls.
+    ///
+    /// The `name` should be a stable interaction identifier, not localized
+    /// display text from the label.
+    @MainActor public static func log(
+        _ name: String,
+        role: ButtonRole? = nil,
+        fileID: String = #fileID,
+        line: Int = #line,
+        column: Int = #column,
+        action: @escaping @MainActor () -> Void,
+        @ViewBuilder label: () -> Label
+    ) -> Button<Label> {
+        Button(role: role) {
+            AutoLogInteraction.button(name).log(
+                fileID: fileID,
+                line: line,
+                column: column
+            ) {
+                action()
+            }
+        } label: {
+            label()
+        }
+    }
+
+    /// Async variant of ``log(_:role:fileID:line:column:action:label:)``.
+    @MainActor public static func log(
+        _ name: String,
+        role: ButtonRole? = nil,
+        fileID: String = #fileID,
+        line: Int = #line,
+        column: Int = #column,
+        action: @escaping @Sendable () async -> Void,
+        @ViewBuilder label: () -> Label
+    ) -> Button<Label> {
+        Button(role: role) {
+            Task {
+                await AutoLogInteraction.button(name).log(
+                    fileID: fileID,
+                    line: line,
+                    column: column
+                ) { @Sendable in
+                    await action()
+                }
+            }
+        } label: {
+            label()
+        }
+    }
+}
+
 extension Button where Label == Text {
     /// Creates a button that automatically logs the interaction and
     /// propagates the source to all downstream `@AutoLog` function calls.
@@ -71,6 +125,15 @@ extension Button where Label == Text {
         action: @escaping @Sendable () async -> Void
     ) -> some View {
         log(title, role: role, fileID: fileID, line: line, column: column, action: action)
+    }
+}
+
+extension AutoLogInteraction {
+    /// Interaction names should be stable identifiers rather than localized UI
+    /// labels. Pass the localization key's stable source name as a `String`.
+    @available(*, unavailable, message: "Use a stable String interaction name instead of LocalizedStringKey display text.")
+    public static func button(_ title: LocalizedStringKey) -> AutoLogInteraction {
+        .button(nil)
     }
 }
 

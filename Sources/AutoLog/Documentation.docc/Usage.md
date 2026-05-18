@@ -233,6 +233,31 @@ Button.log("Save") {
 }
 ```
 
+For custom-label buttons, keep the first argument as a stable interaction name
+and provide the label separately:
+
+```swift
+Button.log("fitness tracker row", action: {
+  viewModel.openTracker()
+}) {
+  HStack {
+    Image("icon-apple-health")
+    Text("fitness_tracker_apple_health")
+    Spacer()
+    Image("chevron-right")
+  }
+}
+```
+
+Async actions are supported by the same shape. In Swift 6, callbacks that cross
+task boundaries should be `@Sendable`; the async `Button.log` overload keeps the
+logging wrapper in one place so reusable row views do not need to hand-write
+`Task` and `AutoLogInteraction.button(...).log` at every call site.
+
+The interaction name is intentionally a `String`, not a `LocalizedStringKey`.
+Use a stable source identifier such as `"fitness tracker row"` for logs, and
+keep localized display text inside the button label.
+
 Every interaction origin gets a compact source-plus-badge prefix such as
 `👆🏼-🧵A1B`. The origin event becomes a trace root, and downstream calls
 keep that same prefix while using longer branch lengths to hint at

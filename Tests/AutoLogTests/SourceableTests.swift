@@ -1,5 +1,8 @@
 import AutoLog
 import Testing
+#if canImport(SwiftUI)
+import SwiftUI
+#endif
 
 @Suite
 struct SourceableTests {
@@ -122,6 +125,34 @@ struct SourceableTests {
         )
         #expect(event.source == nil)
     }
+
+    #if canImport(SwiftUI)
+    @Test @MainActor func customLabelButtonLog_syncAction_compiles() {
+        let view = Button.log("fitness tracker row", action: {}) {
+            HStack {
+                Text("Tracker")
+                Spacer()
+                Image(systemName: "chevron.right")
+            }
+        }
+
+        _ = view
+    }
+
+    @Test @MainActor func customLabelButtonLog_asyncAction_compiles() {
+        let view = Button.log("fitness tracker row", action: { @Sendable in
+            await Task.yield()
+        }) {
+            HStack {
+                Text("Tracker")
+                Spacer()
+                Image(systemName: "chevron.right")
+            }
+        }
+
+        _ = view
+    }
+    #endif
 }
 
 // MARK: - AutoLogSource Tests
