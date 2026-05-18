@@ -1,5 +1,3 @@
-import Synchronization
-
 /// A time window used to suppress repeated identical log events.
 public struct AutoLogDeduplication: Sendable, Hashable, Codable {
   /// The suppression window in milliseconds.
@@ -65,10 +63,10 @@ struct AutoLogDeduplicationState: Sendable {
 
 /// Suppresses repeated identical events inside a runtime snapshot.
 public final class AutoLogDeduplicator: @unchecked Sendable {
-  private let state: Mutex<AutoLogDeduplicationState>
+  private let state: AutoLogLock<AutoLogDeduplicationState>
 
   public init() {
-    self.state = Mutex(AutoLogDeduplicationState())
+    self.state = AutoLogLock(AutoLogDeduplicationState())
   }
 
   public func shouldEmit(

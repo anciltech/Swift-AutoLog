@@ -1,5 +1,4 @@
 import Foundation
-import Synchronization
 
 private struct UserDefaultsBox: @unchecked Sendable {
   var value: UserDefaults

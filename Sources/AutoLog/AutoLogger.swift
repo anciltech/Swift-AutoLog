@@ -2,8 +2,6 @@
 @_exported public import OSLog
 #endif
 
-import Synchronization
-
 /// A protocol that provides instances of conforming types with the ability to
 /// handle emitted events.
 public protocol AutoLogger: Sendable {
@@ -537,7 +535,7 @@ public struct AutoLogLogger: AutoLogger {
   }
 
   private final class Storage: @unchecked Sendable {
-    let state = Mutex(State())
+    let state = AutoLogLock(State())
   }
 
   /// The logger instance used for logging.

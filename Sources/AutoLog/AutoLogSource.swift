@@ -1,5 +1,4 @@
 import Foundation
-import Synchronization
 
 /// A `Sourceable` wrapper that pairs an interaction source with the call-site
 /// location where it was activated. Stored in `AutoLogSource.current` so that
@@ -75,7 +74,7 @@ public struct SourceContext: Sourceable, Sendable {
 /// Manages the current interaction source via TaskLocal and emits
 /// standalone interaction events when sources are activated.
 public enum AutoLog {
-  private static let runtimeState = Mutex(AutoLogRuntimeState())
+  private static let runtimeState = AutoLogLock(AutoLogRuntimeState())
 
   /// The current interaction source context, automatically propagated
   /// through structured concurrency (async/await, TaskGroup).

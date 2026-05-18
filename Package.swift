@@ -6,7 +6,7 @@ let package = Package(
   name: "Swift-AutoLog",
   platforms: [
     .macOS(.v15),
-    .iOS(.v18),
+    .iOS(.v17),
     .watchOS(.v11),
   ],
   products: [
