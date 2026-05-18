@@ -72,7 +72,9 @@ Then add `AutoLog` to the target that should use the macros:
 
 The `AutoLog` library product supports iOS 17, macOS, and watchOS 11 or newer. The
 runtime uses package-local locking instead of Swift's iOS 18-only
-`Synchronization.Mutex`, so the deployment floor is not tied to that newer API. Tag handling,
+`Synchronization.Mutex`, so the deployment floor is not tied to that newer API.
+Once iOS 18 is old enough to be the minimum supported iOS version, the runtime
+lock can move back to `Synchronization.Mutex`. Tag handling,
 including visible tags and route tags such as `.console`, `.firebase`, or
 `.splunk`, is part of the portable runtime behavior and is available in watch
 app targets that depend on `AutoLog`.

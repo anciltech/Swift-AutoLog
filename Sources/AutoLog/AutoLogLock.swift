@@ -1,5 +1,7 @@
 import Foundation
 
+// TODO: Reconsider `Synchronization.Mutex` once iOS 18 is old enough to become
+// the package's minimum supported iOS version.
 final class AutoLogLock<Value>: @unchecked Sendable {
   private let lock = NSLock()
   private var value: Value

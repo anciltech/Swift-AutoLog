@@ -5,7 +5,9 @@ A set of macros that support type-wide and per-function logging with ability to 
 ## Overview
 The `AutoLog` library product supports iOS 17, macOS, and watchOS 11 or newer. Runtime
 state is protected by a package-local lock rather than Swift's iOS 18-only
-`Synchronization.Mutex`. The same
+`Synchronization.Mutex`; when iOS 18 is old enough to become the minimum
+supported iOS version, that compatibility lock can be replaced with
+`Synchronization.Mutex` again. The same
 macro-generated events, visible tags, and route tags are available in watch app
 targets that depend on `AutoLog`; the companion settings UI remains development
 tooling and is not part of the watchOS runtime surface.
