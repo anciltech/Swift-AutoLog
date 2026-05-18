@@ -12,21 +12,3 @@ extension OSLoggedMacro: AutoLogAttributeMacro {
     introducedAttribute(from: node, named: .OSLog, preservingArguments: false)
   }
 }
-
-extension OSLoggedMacro: ExtensionMacro {
-  public static func expansion(
-    of node: AttributeSyntax,
-    attachedTo declaration: some DeclGroupSyntax,
-    providingExtensionsOf type: some TypeSyntaxProtocol,
-    conformingTo protocols: [TypeSyntax],
-    in context: some MacroExpansionContext
-  ) throws -> [ExtensionDeclSyntax] {
-    self.conformance {
-      // Keep editor expansion parity with @AutoLog by emitting a concrete
-      // type-level result even when only member attributes are introduced.
-      ExtensionDeclSyntax(
-        extendedType: type
-      ) {}
-    }
-  }
-}

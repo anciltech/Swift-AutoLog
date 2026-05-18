@@ -53,9 +53,6 @@ struct OSLoggedMacroTests {
           }
         }
       }
-
-      extension Foo {
-      }
       """
     }
   }
@@ -103,15 +100,12 @@ struct OSLoggedMacroTests {
           }
         }
       }
-
-      extension Foo {
-      }
       """
     }
   }
 
   @Test
-  func finalClass_withoutMembers_expandsToEmptyExtension() throws {
+  func finalClass_withoutMembers_doesNotEmitCompanionExtension() throws {
     assertMacro {
       """
       @OSLogged
@@ -120,9 +114,6 @@ struct OSLoggedMacroTests {
     } expansion: {
       """
       final class Foo {}
-
-      extension Foo {
-      }
       """
     }
   }
@@ -175,9 +166,6 @@ struct OSLoggedMacroTests {
           }
         }
       }
-
-      extension Foo {
-      }
       """
     }
   }
@@ -208,9 +196,6 @@ struct OSLoggedMacroTests {
         static func _bar() -> Foo { 
           Foo.bar(.example)
         }
-      }
-
-      extension Foo {
       }
       """
     }
@@ -245,9 +230,6 @@ struct OSLoggedMacroTests {
         static func quaz(quuaz: Quuaz) -> Self { 
           Self(bar: nil, quuaz: quaaz)
         }
-      }
-
-      extension Foo {
       }
       """
     }

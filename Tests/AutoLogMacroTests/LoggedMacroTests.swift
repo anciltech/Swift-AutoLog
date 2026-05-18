@@ -53,9 +53,6 @@ struct LoggedMacroTests {
           }
         }
       }
-
-      extension Foo {
-      }
       """
     }
   }
@@ -102,9 +99,6 @@ struct LoggedMacroTests {
             print(data)
           }
         }
-      }
-
-      extension Foo {
       }
       """
     }
@@ -153,9 +147,6 @@ struct LoggedMacroTests {
           }
         }
       }
-
-      extension Foo {
-      }
       """
     }
   }
@@ -203,15 +194,12 @@ struct LoggedMacroTests {
           }
         }
       }
-
-      extension Foo {
-      }
       """
     }
   }
 
   @Test
-  func finalClass_withoutMembers_expandsToEmptyExtension() throws {
+  func finalClass_withoutMembers_doesNotEmitCompanionExtension() throws {
     assertMacro {
       """
       @Logged
@@ -220,9 +208,6 @@ struct LoggedMacroTests {
     } expansion: {
       """
       final class Foo {}
-
-      extension Foo {
-      }
       """
     }
   }
@@ -275,9 +260,6 @@ struct LoggedMacroTests {
           }
         }
       }
-
-      extension Foo {
-      }
       """
     }
   }
@@ -308,9 +290,6 @@ struct LoggedMacroTests {
         static func _bar() -> Foo { 
           Foo.bar(.example)
         }
-      }
-
-      extension Foo {
       }
       """
     }
@@ -346,8 +325,63 @@ struct LoggedMacroTests {
           Self(bar: nil, quuaz: quaaz)
         }
       }
+      """
+    }
+  }
 
-      extension Foo {
+  @Test
+  func privateNestedStruct_doesNotEmitCompanionExtension() throws {
+    assertMacro {
+      #"""
+      actor ErrorReporter {
+        @Logged
+        private struct ReportedError: Error {
+          let code: String
+
+          func reportCode() -> String {
+            code
+          }
+        }
+      }
+      """#
+    } expansion: {
+      """
+      actor ErrorReporter {
+        private struct ReportedError: Error {
+          let code: String
+          @Log
+
+          func reportCode() -> String {
+            code
+          }
+        }
+      }
+      """
+    }
+  }
+
+  @Test
+  func fileprivateStruct_doesNotEmitCompanionExtension() throws {
+    assertMacro {
+      #"""
+      @Logged
+      fileprivate struct ChallengeBody: Encodable {
+        let challenge: String
+
+        func encodedChallenge() -> String {
+          challenge
+        }
+      }
+      """#
+    } expansion: {
+      """
+      fileprivate struct ChallengeBody: Encodable {
+        let challenge: String
+        @Log
+
+        func encodedChallenge() -> String {
+          challenge
+        }
       }
       """
     }
@@ -370,9 +404,6 @@ struct LoggedMacroTests {
         var isCreating: Bool {
           dragState?.mode == .create
         }
-      }
-
-      extension Foo {
       }
       """
     }
@@ -397,9 +428,6 @@ struct LoggedMacroTests {
         var isCreating: Bool {
           dragState?.mode == .create
         }
-      }
-
-      extension Foo {
       }
       """
     }
