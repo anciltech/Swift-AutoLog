@@ -125,7 +125,7 @@ extension AutoLogMacro {
           CodeBlockItemSyntax.try {
             CodeBlockItemSyntax.call(function)
             if !omitTraits.contains(where: \.isOmitResult) {
-              self.capture(.result)
+              self.capture(.result, boxesValue: function.returnsOptionalLike)
             }
             if shouldMeasure { self.captureTimingEnd() }
             self.emit(when: resultFilterTrait)
@@ -141,7 +141,7 @@ extension AutoLogMacro {
           CodeBlockItemSyntax(instrumentedPlain)
           CodeBlockItemSyntax.call(function)
           if !omitTraits.contains(where: \.isOmitResult) {
-            self.capture(.result)
+            self.capture(.result, boxesValue: function.returnsOptionalLike)
           }
           if shouldMeasure { self.captureTimingEnd() }
           self.emit(when: resultFilterTrait)
@@ -315,7 +315,7 @@ extension AutoLogMacro {
                           capturedParameters.map { parameter in
                             return DictionaryElementSyntax(
                               key: StringLiteralExprSyntax(content: parameter.name.text),
-                              value: DeclReferenceExprSyntax(baseName: parameter.name.trimmed),
+                              value: parameterMetadataExpression(for: parameter),
                               trailingComma: .commaToken(
                                 presence: capturedParameters.last == parameter ? .missing : .present
                               ),
@@ -443,7 +443,36 @@ extension AutoLogMacro {
     )
   }
 
-  static func capture(_ baseName: TokenSyntax.Predefined) -> CodeBlockItemSyntax {
+  static func parameterMetadataExpression(
+    for parameter: FunctionSyntax.Signature.Parameter
+  ) -> ExprSyntax {
+    let value = DeclReferenceExprSyntax(baseName: parameter.name.trimmed)
+    guard parameter.isOptionalLike else { return ExprSyntax(value) }
+    return metadataBoxExpression(value)
+  }
+
+  static func metadataBoxExpression(_ expression: some ExprSyntaxProtocol) -> ExprSyntax {
+    ExprSyntax(
+      FunctionCallExprSyntax(
+        calledExpression: MemberAccessExprSyntax(
+          base: DeclReferenceExprSyntax(baseName: .identifier("AutoLogMetadata")),
+          period: .periodToken(),
+          name: .identifier("box")
+        ),
+        leftParen: .leftParenToken(),
+        arguments: LabeledExprListSyntax {
+          LabeledExprSyntax(expression: expression)
+        },
+        rightParen: .rightParenToken()
+      )
+    )
+  }
+
+  static func capture(
+    _ baseName: TokenSyntax.Predefined,
+    boxesValue: Bool = false
+  ) -> CodeBlockItemSyntax {
+    let capturedValue = DeclReferenceExprSyntax(baseName: baseName.identifier)
     return CodeBlockItemSyntax(
       InfixOperatorExprSyntax(
         leftOperand: MemberAccessExprSyntax(
@@ -458,7 +487,9 @@ extension AutoLogMacro {
           leftParen: .leftParenToken(),
           arguments: LabeledExprListSyntax {
             LabeledExprSyntax(
-              expression: DeclReferenceExprSyntax(baseName: baseName.identifier)
+              expression: boxesValue
+                ? metadataBoxExpression(capturedValue)
+                : ExprSyntax(capturedValue)
             )
           },
           rightParen: .rightParenToken()

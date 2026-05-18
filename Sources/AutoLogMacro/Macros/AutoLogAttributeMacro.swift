@@ -6,6 +6,37 @@ protocol AutoLogAttributeMacro: MemberAttributeMacro {
   static func ignore(_ attribute: AttributeSyntax) -> Bool
 }
 
+private enum FrameworkCallbackSkips {
+  static let representableProtocols: Set<String> = [
+    "UIViewRepresentable",
+    "UIViewControllerRepresentable",
+    "NSViewRepresentable",
+    "NSViewControllerRepresentable"
+  ]
+
+  static let representableLifecycleMethods: Set<String> = [
+    "makeUIView",
+    "updateUIView",
+    "dismantleUIView",
+    "makeUIViewController",
+    "updateUIViewController",
+    "dismantleUIViewController",
+    "makeNSView",
+    "updateNSView",
+    "dismantleNSView",
+    "makeNSViewController",
+    "updateNSViewController",
+    "dismantleNSViewController",
+    "makeCoordinator"
+  ]
+
+  static let webKitDelegateProtocols: Set<String> = [
+    "WKNavigationDelegate",
+    "WKUIDelegate",
+    "WKScriptMessageHandler"
+  ]
+}
+
 extension AutoLogAttributeMacro {
   public static func expansion(
     of node: AttributeSyntax,
@@ -14,6 +45,10 @@ extension AutoLogAttributeMacro {
     in context: some MacroExpansionContext
   ) throws -> [AttributeSyntax] {
     guard let member = FunctionDeclSyntax(member) else {
+      return self.attributes()
+    }
+
+    guard !shouldSkipFrameworkCallback(member, in: declaration) else {
       return self.attributes()
     }
 
@@ -27,6 +62,33 @@ extension AutoLogAttributeMacro {
       : self.attributes {
         self.introduce(for: node)
       }
+  }
+
+  private static func shouldSkipFrameworkCallback(
+    _ member: FunctionDeclSyntax,
+    in declaration: some DeclGroupSyntax
+  ) -> Bool {
+    let memberName = member.name.text
+
+    if FrameworkCallbackSkips.representableLifecycleMethods.contains(memberName),
+       declaration.inherits(anyOf: FrameworkCallbackSkips.representableProtocols)
+    {
+      return true
+    }
+
+    if memberName == "webView",
+       declaration.inherits(anyOf: FrameworkCallbackSkips.webKitDelegateProtocols)
+    {
+      return true
+    }
+
+    if memberName == "userContentController",
+       declaration.inherits(anyOf: FrameworkCallbackSkips.webKitDelegateProtocols)
+    {
+      return true
+    }
+
+    return false
   }
 
   static func ignoresExistingInstrumentation(

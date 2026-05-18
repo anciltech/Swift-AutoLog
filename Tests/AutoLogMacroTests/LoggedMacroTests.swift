@@ -388,6 +388,84 @@ struct LoggedMacroTests {
   }
 
   @Test
+  func viewRepresentable_skipsFrameworkLifecycleMethods() throws {
+    assertMacro {
+      #"""
+      @Logged
+      struct RegistrationWebView: UIViewRepresentable {
+        func makeUIView(context: Context) -> WKWebView {
+          WKWebView()
+        }
+
+        func updateUIView(_ uiView: WKWebView, context: Context) {
+          uiView.stopLoading()
+        }
+
+        func userStartedRegistration() {
+          print("started")
+        }
+      }
+      """#
+    } expansion: {
+      """
+      struct RegistrationWebView: UIViewRepresentable {
+        func makeUIView(context: Context) -> WKWebView {
+          WKWebView()
+        }
+
+        func updateUIView(_ uiView: WKWebView, context: Context) {
+          uiView.stopLoading()
+        }
+        @Log
+
+        func userStartedRegistration() {
+          print("started")
+        }
+      }
+      """
+    }
+  }
+
+  @Test
+  func webKitDelegate_skipsDelegateCallbacksWithIUOParameters() throws {
+    assertMacro {
+      #"""
+      @Logged
+      class Coordinator: NSObject, WKNavigationDelegate {
+        func webView(
+          _ webView: WKWebView,
+          didFail navigation: WKNavigation!,
+          withError error: Error
+        ) {
+          webView.stopLoading()
+        }
+
+        func userRequestedReload() {
+          print("reload")
+        }
+      }
+      """#
+    } expansion: {
+      """
+      class Coordinator: NSObject, WKNavigationDelegate {
+        func webView(
+          _ webView: WKWebView,
+          didFail navigation: WKNavigation!,
+          withError error: Error
+        ) {
+          webView.stopLoading()
+        }
+        @Log
+
+        func userRequestedReload() {
+          print("reload")
+        }
+      }
+      """
+    }
+  }
+
+  @Test
   func struct_getOnlyComputedProperty_isNotAutoLogged() throws {
     assertMacro {
       #"""

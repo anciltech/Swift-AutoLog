@@ -6,6 +6,13 @@ import Testing
 struct AutoLoggerTests {
   static let mock = MockLogger()
 
+  private func requireSendable<T: Sendable>(_ type: T.Type) {}
+
+  @Test
+  func autoLogEvent_isSendableForActorLoggingBoundaries() {
+    requireSendable(AutoLogEvent.self)
+  }
+
   @Test
   func whenLoggerAttachedToType_expectedToCaptureAllEvent() async throws {
     // Workaround: @AutoLog(using: MockLogger) triggers a Swift compiler ICE due to

@@ -87,6 +87,17 @@ does not synthesize a companion extension, so extension annotations also work
 for private or fileprivate implementation-detail types without requiring a
 visibility change.
 
+Type-level ``AutoLog()`` intentionally skips common framework callbacks on
+SwiftUI representable adapters and WebKit delegate bridges, such as
+`makeUIView`, `updateUIView`, `makeCoordinator`, and `webView(_:didFail:withError:)`.
+Those methods tend to be lifecycle noise and can include Objective-C-shaped
+signatures such as implicitly unwrapped optionals. Add ``Log()`` directly to a
+specific callback only when that framework method is useful signal in your app.
+
+Actors can use type-level ``AutoLog()`` as well. Generated event snapshots are
+safe to pass through the sendable logger boundary, while the actor-isolated
+method body remains isolated in the original declaration.
+
 By default, ``AutoLog(using:)`` uses the ``AutoLogLogger`` instance. Refer to <doc:CreatingCustomAutoLoggerInstance> for more information about incorporating custom loggers.
 
 For app-wide setup, install a process-local runtime snapshot with

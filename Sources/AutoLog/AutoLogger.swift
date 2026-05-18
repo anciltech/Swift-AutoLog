@@ -147,8 +147,21 @@ public struct AutoLogErrorContextEntry: Sendable, Hashable, CustomStringConverti
   }
 }
 
+/// Type-erases captured metadata without triggering optional-to-`Any` warnings
+/// in macro-generated dictionaries and result payloads.
+public enum AutoLogMetadata {
+  public static func box<T>(_ value: T) -> Any {
+    value
+  }
+}
+
 /// A type representing captured metadata from an invoked function.
-public struct AutoLogEvent: CustomStringConvertible, CustomDebugStringConvertible {
+///
+/// Captured parameters and results are intentionally type-erased so loggers and
+/// formatters can inspect arbitrary application values. The event is therefore
+/// unchecked-sendable: generated wrappers snapshot values synchronously, then
+/// pass the snapshot through the configured sendable logger.
+public struct AutoLogEvent: @unchecked Sendable, CustomStringConvertible, CustomDebugStringConvertible {
   /// The logging level associated with the event.
   public let level: (any Levelable)?
 

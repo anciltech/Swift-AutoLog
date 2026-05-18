@@ -301,7 +301,7 @@ struct LogMacroTests {
           return flag ? 42 : nil
         }
         let result = _selectedValue(flag: flag)
-        event.result = .success(result)
+        event.result = .success(AutoLogMetadata.box(result))
         if let __logStart {
           event.duration = ContinuousClock.now - __logStart
         }
@@ -681,7 +681,7 @@ struct LogMacroTests {
           location: "TestModule/Test.swift:1:1",
           declaration: "func refresh(sessionToken: String?)",
           parameters: [
-            "sessionToken": sessionToken
+            "sessionToken": AutoLogMetadata.box(sessionToken)
           ]
         )
         autoLogger.emitStart(event: event, runtime: runtime)
@@ -2294,7 +2294,7 @@ struct LogMacroTests {
           return nil
         }
         let result = _getOptionalValue()
-        event.result = .success(result)
+        event.result = .success(AutoLogMetadata.box(result))
         if let __logStart {
           event.duration = ContinuousClock.now - __logStart
         }
@@ -2451,7 +2451,7 @@ struct LogMacroTests {
           location: "TestModule/Test.swift:1:1",
           declaration: "func optionalTest(value: String?) -> String",
           parameters: [
-            "value": value
+            "value": AutoLogMetadata.box(value)
           ]
         )
         autoLogger.emitStart(event: event, runtime: runtime)
@@ -2537,7 +2537,7 @@ struct LogMacroTests {
           location: "TestModule/Test.swift:1:1",
           declaration: "func perform(action: (() -> Void)? = nil)",
           parameters: [
-            "action": action
+            "action": AutoLogMetadata.box(action)
           ]
         )
         autoLogger.emitStart(event: event, runtime: runtime)

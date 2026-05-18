@@ -78,6 +78,13 @@ public struct FunctionSyntax {
     /// Returns `true` if the function signature does not include a return clause, otherwise returns `false`.
     var isVoid: Bool { self.syntax.returnClause == nil }
 
+    /// Returns `true` if the function returns an optional or implicitly
+    /// unwrapped optional value.
+    var returnsOptionalLike: Bool {
+      guard let returnType = self.syntax.returnClause?.type else { return false }
+      return Self.isOptionalLike(returnType)
+    }
+
     /// Returns `true` if the function is marked `async`, otherwise, returns `false`.
     var isAsync: Bool { self.syntax.effectSpecifiers?.asyncSpecifier != nil }
 
@@ -137,6 +144,13 @@ public struct FunctionSyntax {
         }
       }
 
+      /// Returns `true` if parameter type is optional or implicitly unwrapped
+      /// optional. Macro-generated metadata boxes those explicitly to avoid
+      /// optional-to-`Any` warnings at expansion sites.
+      var isOptionalLike: Bool {
+        FunctionSyntax.Signature.isOptionalLike(self.syntax.type)
+      }
+
       func asLabeledExprSyntax(trailingComma presence: SourcePresence) -> LabeledExprSyntax {
         switch (self.isInout, self.isAutoclosure) {
         case (true, false):
@@ -194,6 +208,20 @@ public struct FunctionSyntax {
     init(syntax: FunctionSignatureSyntax) {
       self.syntax = syntax
       self.parameters = syntax.parameterClause.parameters.map(Parameter.init)
+    }
+
+    private static func isOptionalLike(_ type: TypeSyntax) -> Bool {
+      let type = type.trimmed
+
+      if type.is(OptionalTypeSyntax.self) || type.is(ImplicitlyUnwrappedOptionalTypeSyntax.self) {
+        return true
+      }
+
+      if let attributedType = type.as(AttributedTypeSyntax.self) {
+        return isOptionalLike(attributedType.baseType)
+      }
+
+      return false
     }
   }
 
