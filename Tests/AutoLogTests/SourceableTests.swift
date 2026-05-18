@@ -139,6 +139,18 @@ struct SourceableTests {
         _ = view
     }
 
+    @Test @MainActor func customLabelButtonLog_roleActionLabel_compiles() {
+        let view = Button.log("delete tracker row", role: .destructive, action: {}) {
+            HStack {
+                Text("Delete")
+                Spacer()
+                Image(systemName: "trash")
+            }
+        }
+
+        _ = view
+    }
+
     @Test @MainActor func customLabelButtonLog_asyncAction_compiles() {
         let view = Button.log("fitness tracker row", action: { @Sendable in
             await Task.yield()
@@ -151,6 +163,105 @@ struct SourceableTests {
         }
 
         _ = view
+    }
+
+    @Test @MainActor func textButtonLog_mirrorsTitleActionInitializers() {
+        let stringTitle = Button.log("Continue", action: {})
+        let localizedTitle = Button.log(
+            LocalizedStringKey("fitness_tracker_apple_health"),
+            logName: "fitness tracker apple health",
+            action: {}
+        )
+        let resourceTitle = Button.log(
+            LocalizedStringResource("continue_button_title"),
+            logName: "continue button",
+            action: {}
+        )
+        let roleTitle = Button.log("Delete", role: .destructive, action: {})
+
+        _ = stringTitle
+        _ = localizedTitle
+        _ = resourceTitle
+        _ = roleTitle
+    }
+
+    @Test @MainActor func textButtonLog_mirrorsAsyncTitleActionInitializers() {
+        let stringTitle = Button.log("Continue", action: { @Sendable in
+            await Task.yield()
+        })
+        let localizedTitle = Button.log(
+            LocalizedStringKey("fitness_tracker_apple_health"),
+            logName: "fitness tracker apple health",
+            action: { @Sendable in await Task.yield() }
+        )
+        let resourceTitle = Button.log(
+            LocalizedStringResource("continue_button_title"),
+            logName: "continue button",
+            action: { @Sendable in await Task.yield() }
+        )
+        let roleTitle = Button.log("Delete", role: .destructive, action: { @Sendable in
+            await Task.yield()
+        })
+
+        _ = stringTitle
+        _ = localizedTitle
+        _ = resourceTitle
+        _ = roleTitle
+    }
+
+    @Test @MainActor func imageLabelButtonLog_mirrorsSystemImageInitializers() {
+        let stringTitle = Button.log("Continue", systemImage: "arrow.right", action: {})
+        let localizedTitle = Button.log(
+            LocalizedStringKey("continue_button_title"),
+            systemImage: "arrow.right",
+            logName: "continue button",
+            action: {}
+        )
+        let resourceTitle = Button.log(
+            LocalizedStringResource("continue_button_title"),
+            systemImage: "arrow.right",
+            logName: "continue button",
+            action: {}
+        )
+        let roleTitle = Button.log(
+            "Delete",
+            systemImage: "trash",
+            role: .destructive,
+            action: {}
+        )
+
+        _ = stringTitle
+        _ = localizedTitle
+        _ = resourceTitle
+        _ = roleTitle
+    }
+
+    @Test @MainActor func imageLabelButtonLog_mirrorsImageResourceInitializers() {
+        let image = ImageResource(name: "icon-apple-health", bundle: .main)
+        let stringTitle = Button.log("Tracker", image: image, action: {})
+        let localizedTitle = Button.log(
+            LocalizedStringKey("fitness_tracker_apple_health"),
+            image: image,
+            logName: "fitness tracker apple health",
+            action: {}
+        )
+        let resourceTitle = Button.log(
+            LocalizedStringResource("fitness_tracker_apple_health"),
+            image: image,
+            logName: "fitness tracker apple health",
+            action: {}
+        )
+        let roleTitle = Button.log(
+            "Delete",
+            image: image,
+            role: .destructive,
+            action: {}
+        )
+
+        _ = stringTitle
+        _ = localizedTitle
+        _ = resourceTitle
+        _ = roleTitle
     }
     #endif
 }

@@ -244,8 +244,9 @@ Button.log("Save") {
 }
 ```
 
-For custom-label buttons, keep the first argument as a stable interaction name
-and provide the label separately:
+`Button.log` mirrors SwiftUI's button initializer families. For custom-label
+buttons, keep the first argument as a stable interaction name and use the
+native `action:label:` order:
 
 ```swift
 Button.log("fitness tracker row", action: {
@@ -258,6 +259,35 @@ Button.log("fitness tracker row", action: {
     Image("chevron-right")
   }
 }
+```
+
+Role-based buttons follow the same order as `Button(role:action:label:)`:
+
+```swift
+Button.log("delete tracker row", role: .destructive, action: {
+  viewModel.deleteTracker()
+}) {
+  Label("Delete", systemImage: "trash")
+}
+```
+
+Text and image-label buttons mirror SwiftUI's title, `systemImage`, and
+asset-image initializers. Localized titles and `LocalizedStringResource` values
+take an explicit `logName` so logs stay stable while UI copy localizes:
+
+```swift
+Button.log("Continue", action: {
+  viewModel.continue()
+})
+
+Button.log(
+  LocalizedStringKey("fitness_tracker_apple_health"),
+  systemImage: "heart.fill",
+  logName: "fitness tracker apple health",
+  action: {
+    viewModel.openTracker()
+  }
+)
 ```
 
 Async actions are supported by the same shape. In Swift 6, callbacks that cross
