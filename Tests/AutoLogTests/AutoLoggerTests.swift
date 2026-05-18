@@ -14,6 +14,34 @@ struct AutoLoggerTests {
   }
 
   @Test
+  func conditionTrace_preservesAndReportsShortCircuitFailures() {
+    var evaluatedRightSide = false
+
+    let trace = AutoLogConditionTrace.evaluate("left && right") { condition in
+      condition.term("left", false)
+        && condition.term("right", {
+          evaluatedRightSide = true
+          return true
+        }())
+    }
+
+    #expect(trace.passed == false)
+    #expect(trace.terms.map(\.condition) == ["left"])
+    #expect(trace.failingDescription == "left")
+    #expect(evaluatedRightSide == false)
+  }
+
+  @Test
+  func conditionTrace_reportsAllFailedOrTerms() {
+    let trace = AutoLogConditionTrace.evaluate("success || notFound") { condition in
+      condition.term("success", false) || condition.term("notFound", false)
+    }
+
+    #expect(trace.passed == false)
+    #expect(trace.failingDescription == "success, notFound")
+  }
+
+  @Test
   func whenLoggerAttachedToType_expectedToCaptureAllEvent() async throws {
     // Workaround: @AutoLog(using: MockLogger) triggers a Swift compiler ICE due to
     // existential boxing in macro argument type-checking (ResolveMacroRequest crash).

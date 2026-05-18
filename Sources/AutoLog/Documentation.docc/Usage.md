@@ -479,6 +479,21 @@ func deleteActiveLayout(from collection: LayoutCollection) -> Bool {
 
 In this example, the emitted event still contains the final result (`.success(false)`), duration, tags, and any other captured metadata. In addition, the event records that the function took an early-exit path from a `guard` branch and stores the effective predicate state that led into that exit. The compact formatter renders that annotation as a short visual detail line such as `└── ↘️ !(collection.layouts.count > 1)`.
 
+For composite boolean `guard` expressions, the macro traces the evaluated boolean terms once and preserves Swift's normal short-circuit behavior. When the guard fails, the early-exit annotation shows the failed term or terms instead of repeating the whole condition:
+
+```swift
+@Log
+func remove(status: OSStatus) -> Bool {
+  guard status == errSecSuccess || status == errSecItemNotFound else {
+    return false
+  }
+
+  return true
+}
+```
+
+If `status` is neither accepted value, the detail line focuses on the comparisons that failed, such as `└── ↘️ status == errSecSuccess, status == errSecItemNotFound`.
+
 ### Add explicit intent to an early exit
 
 When the early exit is expected and meaningful to your domain, you can annotate it with intent metadata using ``AutoLog/earlyExit(_:_:)``.

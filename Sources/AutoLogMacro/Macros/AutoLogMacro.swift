@@ -19,6 +19,65 @@ struct EarlyExitContext {
   let kind: Kind
   let branchCondition: String?
   let effectiveCondition: String?
+  let branchConditionExpression: ExprSyntax?
+  let effectiveConditionExpression: ExprSyntax?
+
+  init(
+    kind: Kind,
+    branchCondition: String?,
+    effectiveCondition: String?,
+    branchConditionExpression: ExprSyntax? = nil,
+    effectiveConditionExpression: ExprSyntax? = nil
+  ) {
+    self.kind = kind
+    self.branchCondition = branchCondition
+    self.effectiveCondition = effectiveCondition
+    self.branchConditionExpression = branchConditionExpression
+    self.effectiveConditionExpression = effectiveConditionExpression
+  }
+}
+
+struct AutoLogConditionTracePlan {
+  let variableName: String
+  let originalCondition: String
+  let tracedConditionExpression: String
+
+  var declaration: CodeBlockItemSyntax {
+    CodeBlockItemSyntax(
+      stringLiteral: "var \(variableName) = AutoLogConditionTrace.Evaluator()"
+    )
+  }
+
+  var passedCondition: ConditionElementListSyntax {
+    ConditionElementListSyntax {
+      ConditionElementSyntax(
+        condition: .expression(
+          ExprSyntax(stringLiteral: tracedConditionExpression)
+        )
+      )
+    }
+  }
+
+  var passingDescriptionExpression: ExprSyntax {
+    descriptionExpression(member: "passingDescription", fallback: originalCondition)
+  }
+
+  var failingDescriptionExpression: ExprSyntax {
+    descriptionExpression(member: "failingDescription", fallback: "!(\(originalCondition))")
+  }
+
+  private func descriptionExpression(member: String, fallback: String) -> ExprSyntax {
+    let passed = member == "passingDescription" ? "true" : "false"
+    return ExprSyntax(
+      stringLiteral: "AutoLogConditionTrace(expression: \"\(Self.escaped(originalCondition))\", passed: \(passed), terms: \(variableName).terms).\(member) ?? \"\(Self.escaped(fallback))\""
+    )
+  }
+
+  static func escaped(_ value: String) -> String {
+    value
+      .replacingOccurrences(of: "\\", with: "\\\\")
+      .replacingOccurrences(of: "\"", with: "\\\"")
+  }
 }
 
 extension AutoLogMacro {
@@ -781,9 +840,11 @@ extension AutoLogMacro {
   ) -> [CodeBlockItemSyntax] {
     guard let body = function.syntax.body else { return function.body }
     var yieldCaptureIndex = 0
+    var conditionTraceIndex = 0
     return rewriteStatements(
       Array(body.statements),
-      yieldCaptureIndex: &yieldCaptureIndex
+      yieldCaptureIndex: &yieldCaptureIndex,
+      conditionTraceIndex: &conditionTraceIndex
     )
   }
 
@@ -793,10 +854,12 @@ extension AutoLogMacro {
     var plain = function.plain
     guard var body = plain.body else { return plain }
     var yieldCaptureIndex = 0
+    var conditionTraceIndex = 0
     body.statements = CodeBlockItemListSyntax(
       rewriteStatements(
         Array(body.statements),
-        yieldCaptureIndex: &yieldCaptureIndex
+        yieldCaptureIndex: &yieldCaptureIndex,
+        conditionTraceIndex: &conditionTraceIndex
       )
     )
     plain.body = body
@@ -806,6 +869,7 @@ extension AutoLogMacro {
   static func rewriteStatements(
     _ statements: [CodeBlockItemSyntax],
     yieldCaptureIndex: inout Int,
+    conditionTraceIndex: inout Int,
     earlyExitContext: EarlyExitContext? = nil
   ) -> [CodeBlockItemSyntax] {
     var sawExplicitEarlyExit = false
@@ -816,6 +880,7 @@ extension AutoLogMacro {
         contentsOf: rewriteStatementItem(
           statement,
           yieldCaptureIndex: &yieldCaptureIndex,
+          conditionTraceIndex: &conditionTraceIndex,
           earlyExitContext: earlyExitContext,
           sawExplicitEarlyExit: &sawExplicitEarlyExit
         )
@@ -828,6 +893,7 @@ extension AutoLogMacro {
   static func rewriteStatementItem(
     _ item: CodeBlockItemSyntax,
     yieldCaptureIndex: inout Int,
+    conditionTraceIndex: inout Int,
     earlyExitContext: EarlyExitContext? = nil,
     sawExplicitEarlyExit: inout Bool
   ) -> [CodeBlockItemSyntax] {
@@ -869,6 +935,7 @@ extension AutoLogMacro {
       expressionStmt.expression = rewriteExpression(
         expressionStmt.expression,
         yieldCaptureIndex: &yieldCaptureIndex,
+        conditionTraceIndex: &conditionTraceIndex,
         earlyExitContext: earlyExitContext
       )
       return [CodeBlockItemSyntax(expressionStmt)]
@@ -879,6 +946,7 @@ extension AutoLogMacro {
         rewriteStatements(
           Array(forStmt.body.statements),
           yieldCaptureIndex: &yieldCaptureIndex,
+          conditionTraceIndex: &conditionTraceIndex,
           earlyExitContext: earlyExitContext
         )
       )
@@ -890,6 +958,7 @@ extension AutoLogMacro {
         rewriteStatements(
           Array(whileStmt.body.statements),
           yieldCaptureIndex: &yieldCaptureIndex,
+          conditionTraceIndex: &conditionTraceIndex,
           earlyExitContext: earlyExitContext
         )
       )
@@ -901,6 +970,7 @@ extension AutoLogMacro {
         rewriteStatements(
           Array(repeatStmt.body.statements),
           yieldCaptureIndex: &yieldCaptureIndex,
+          conditionTraceIndex: &conditionTraceIndex,
           earlyExitContext: earlyExitContext
         )
       )
@@ -909,18 +979,35 @@ extension AutoLogMacro {
 
     if var guardStmt = statement.as(GuardStmtSyntax.self) {
       let guardCondition = guardStmt.conditions.trimmedDescription
+      let tracePlan = conditionTracePlan(
+        for: guardStmt.conditions,
+        variableName: "__logCondition\(conditionTraceIndex)"
+      )
+      if tracePlan != nil {
+        conditionTraceIndex += 1
+      }
+
       let guardFailureContext = EarlyExitContext(
         kind: .guard,
         branchCondition: guardCondition,
-        effectiveCondition: negateConditionString(guardCondition)
+        effectiveCondition: negateConditionString(guardCondition),
+        branchConditionExpression: tracePlan?.passingDescriptionExpression,
+        effectiveConditionExpression: tracePlan?.failingDescriptionExpression
       )
+      if let tracePlan {
+        guardStmt.conditions = tracePlan.passedCondition
+      }
       guardStmt.body.statements = CodeBlockItemListSyntax(
         rewriteStatements(
           Array(guardStmt.body.statements),
           yieldCaptureIndex: &yieldCaptureIndex,
+          conditionTraceIndex: &conditionTraceIndex,
           earlyExitContext: guardFailureContext
         )
       )
+      if let tracePlan {
+        return [tracePlan.declaration, CodeBlockItemSyntax(guardStmt.trimmed)]
+      }
       return [CodeBlockItemSyntax(guardStmt)]
     }
 
@@ -929,6 +1016,7 @@ extension AutoLogMacro {
         rewriteStatements(
           Array(doStmt.body.statements),
           yieldCaptureIndex: &yieldCaptureIndex,
+          conditionTraceIndex: &conditionTraceIndex,
           earlyExitContext: earlyExitContext
         )
       )
@@ -939,6 +1027,7 @@ extension AutoLogMacro {
         let rewrittenStatements = rewriteStatements(
           Array(clause.body.statements),
           yieldCaptureIndex: &yieldCaptureIndex,
+          conditionTraceIndex: &conditionTraceIndex,
           earlyExitContext: earlyExitContext
         )
         let errorExpression = catchErrorExpression(in: clause)
@@ -958,6 +1047,7 @@ extension AutoLogMacro {
   static func rewriteExpression(
     _ expression: ExprSyntax,
     yieldCaptureIndex: inout Int,
+    conditionTraceIndex: inout Int,
     earlyExitContext: EarlyExitContext? = nil,
     isElseIfBranch: Bool = false,
     priorFalseConditions: [String] = []
@@ -966,7 +1056,8 @@ extension AutoLogMacro {
       closure.statements = CodeBlockItemListSyntax(
         rewriteStatements(
           Array(closure.statements),
-          yieldCaptureIndex: &yieldCaptureIndex
+          yieldCaptureIndex: &yieldCaptureIndex,
+          conditionTraceIndex: &conditionTraceIndex
         )
       )
       return ExprSyntax(closure)
@@ -976,6 +1067,7 @@ extension AutoLogMacro {
       functionCall.calledExpression = rewriteExpression(
         functionCall.calledExpression,
         yieldCaptureIndex: &yieldCaptureIndex,
+        conditionTraceIndex: &conditionTraceIndex,
         earlyExitContext: earlyExitContext
       )
 
@@ -985,6 +1077,7 @@ extension AutoLogMacro {
         argument.expression = rewriteExpression(
           argument.expression,
           yieldCaptureIndex: &yieldCaptureIndex,
+          conditionTraceIndex: &conditionTraceIndex,
           earlyExitContext: earlyExitContext
         )
         arguments[index] = argument
@@ -995,7 +1088,8 @@ extension AutoLogMacro {
         trailingClosure.statements = CodeBlockItemListSyntax(
           rewriteStatements(
             Array(trailingClosure.statements),
-            yieldCaptureIndex: &yieldCaptureIndex
+            yieldCaptureIndex: &yieldCaptureIndex,
+            conditionTraceIndex: &conditionTraceIndex
           )
         )
         functionCall.trailingClosure = trailingClosure
@@ -1008,7 +1102,8 @@ extension AutoLogMacro {
         closure.statements = CodeBlockItemListSyntax(
           rewriteStatements(
             Array(closure.statements),
-            yieldCaptureIndex: &yieldCaptureIndex
+            yieldCaptureIndex: &yieldCaptureIndex,
+            conditionTraceIndex: &conditionTraceIndex
           )
         )
         closureElement.closure = closure
@@ -1023,6 +1118,7 @@ extension AutoLogMacro {
       switchExpr.subject = rewriteExpression(
         switchExpr.subject,
         yieldCaptureIndex: &yieldCaptureIndex,
+        conditionTraceIndex: &conditionTraceIndex,
         earlyExitContext: earlyExitContext
       )
 
@@ -1037,6 +1133,7 @@ extension AutoLogMacro {
           rewriteConditionalBranchStatements(
             Array(switchCase.statements),
             yieldCaptureIndex: &yieldCaptureIndex,
+            conditionTraceIndex: &conditionTraceIndex,
             earlyExitContext: context
           )
         )
@@ -1055,6 +1152,7 @@ extension AutoLogMacro {
         rewriteConditionalBranchStatements(
           Array(ifExpr.body.statements),
           yieldCaptureIndex: &yieldCaptureIndex,
+          conditionTraceIndex: &conditionTraceIndex,
           earlyExitContext: EarlyExitContext(
             kind: isElseIfBranch ? .elseif : .if,
             branchCondition: condition,
@@ -1070,6 +1168,7 @@ extension AutoLogMacro {
             rewriteConditionalBranchStatements(
               Array(codeBlock.statements),
               yieldCaptureIndex: &yieldCaptureIndex,
+              conditionTraceIndex: &conditionTraceIndex,
               earlyExitContext: EarlyExitContext(
                 kind: .else,
                 branchCondition: condition,
@@ -1083,6 +1182,7 @@ extension AutoLogMacro {
           let rewrittenNested = rewriteExpression(
             ExprSyntax(nestedIf),
             yieldCaptureIndex: &yieldCaptureIndex,
+            conditionTraceIndex: &conditionTraceIndex,
             earlyExitContext: earlyExitContext,
             isElseIfBranch: true,
             priorFalseConditions: priorFalseConditions + [failedCondition]
@@ -1102,6 +1202,7 @@ extension AutoLogMacro {
   static func rewriteConditionalBranchStatements(
     _ statements: [CodeBlockItemSyntax],
     yieldCaptureIndex: inout Int,
+    conditionTraceIndex: inout Int,
     earlyExitContext: EarlyExitContext
   ) -> [CodeBlockItemSyntax] {
     [
@@ -1109,6 +1210,7 @@ extension AutoLogMacro {
     ] + rewriteStatements(
       statements,
       yieldCaptureIndex: &yieldCaptureIndex,
+      conditionTraceIndex: &conditionTraceIndex,
       earlyExitContext: earlyExitContext
     )
   }
@@ -1228,7 +1330,7 @@ extension AutoLogMacro {
       ?? (explicitArguments.shouldDefaultMessageToUnknown
         ? ExprSyntax(StringLiteralExprSyntax(content: "unknown"))
         : ExprSyntax(NilLiteralExprSyntax(nilKeyword: .keyword(.nil))))
-    let conditionExpression: ExprSyntax = context.effectiveCondition.map {
+    let conditionExpression: ExprSyntax = context.effectiveConditionExpression ?? context.effectiveCondition.map {
       ExprSyntax(StringLiteralExprSyntax(content: $0))
     } ?? ExprSyntax(NilLiteralExprSyntax(nilKeyword: .keyword(.nil)))
 
@@ -1279,7 +1381,7 @@ extension AutoLogMacro {
   static func captureBranchDecision(
     _ context: EarlyExitContext
   ) -> CodeBlockItemSyntax {
-    let conditionExpression: ExprSyntax = context.branchCondition.map {
+    let conditionExpression: ExprSyntax = context.branchConditionExpression ?? context.branchCondition.map {
       ExprSyntax(StringLiteralExprSyntax(content: $0))
     } ?? ExprSyntax(NilLiteralExprSyntax(nilKeyword: .keyword(.nil)))
 
@@ -1346,6 +1448,113 @@ extension AutoLogMacro {
 
     guard !normalized.isEmpty else { return nil }
     return normalized.joined(separator: ", ")
+  }
+
+  static func conditionTracePlan(
+    for conditions: ConditionElementListSyntax,
+    variableName: String
+  ) -> AutoLogConditionTracePlan? {
+    let elements = Array(conditions)
+    guard elements.count == 1,
+          let first = elements.first,
+          case .expression = first.condition else {
+      return nil
+    }
+
+    let originalCondition = conditions.trimmedDescription
+    guard !originalCondition.contains(" try "),
+          !originalCondition.hasPrefix("try "),
+          !originalCondition.contains(" await "),
+          !originalCondition.hasPrefix("await "),
+          let components = booleanConditionComponents(from: originalCondition) else {
+      return nil
+    }
+    guard !components.operators.isEmpty else { return nil }
+
+    let tracedCondition = components.terms.enumerated().map { index, term in
+      let expression = "\(variableName).term(\"\(AutoLogConditionTracePlan.escaped(term))\", \(term))"
+      guard index > 0 else { return expression }
+      return "\(components.operators[index - 1]) \(expression)"
+    }.joined(separator: " ")
+
+    return AutoLogConditionTracePlan(
+      variableName: variableName,
+      originalCondition: originalCondition,
+      tracedConditionExpression: tracedCondition
+    )
+  }
+
+  static func booleanConditionComponents(
+    from condition: String
+  ) -> (terms: [String], operators: [String])? {
+    var terms: [String] = []
+    var operators: [String] = []
+    var current = ""
+    var depth = 0
+    var inString = false
+    var isEscaped = false
+    var index = condition.startIndex
+
+    func appendCurrentTerm() {
+      let term = current.trimmingCharacters(in: .whitespacesAndNewlines)
+      if !term.isEmpty {
+        terms.append(term)
+      }
+      current = ""
+    }
+
+    while index < condition.endIndex {
+      let character = condition[index]
+
+      if inString {
+        current.append(character)
+        if isEscaped {
+          isEscaped = false
+        } else if character == "\\" {
+          isEscaped = true
+        } else if character == "\"" {
+          inString = false
+        }
+        index = condition.index(after: index)
+        continue
+      }
+
+      if character == "\"" {
+        inString = true
+        current.append(character)
+        index = condition.index(after: index)
+        continue
+      }
+
+      switch character {
+      case "(", "[", "{":
+        depth += 1
+      case ")", "]", "}":
+        depth = max(0, depth - 1)
+      default:
+        break
+      }
+
+      if depth == 0 {
+        let next = condition.index(after: index)
+        if next < condition.endIndex {
+          let pair = String(condition[index...next])
+          if pair == "&&" || pair == "||" {
+            appendCurrentTerm()
+            operators.append(pair)
+            index = condition.index(after: next)
+            continue
+          }
+        }
+      }
+
+      current.append(character)
+      index = condition.index(after: index)
+    }
+
+    appendCurrentTerm()
+    guard !terms.isEmpty, operators.count == terms.count - 1 else { return nil }
+    return (terms, operators)
   }
 
   static func negateConditionString(_ condition: String) -> String {

@@ -658,6 +658,56 @@ struct LogMacroTests {
   }
 
   @Test
+  func boolFunction_logsFailingGuardConditionTerms() throws {
+    assertMacro {
+      #"""
+      @Log
+      func removed(status: OSStatus) -> Bool {
+        guard status == errSecSuccess || status == errSecItemNotFound else {
+          return false
+        }
+
+        return true
+      }
+      """#
+    } expansion: {
+      """
+      func removed(status: OSStatus) -> Bool {
+        let runtime = AutoLog.runtimeSnapshot()
+        let autoLogger: any AutoLogger = runtime.logger
+        var event = AutoLogEvent(
+          source: AutoLogSource.current,
+
+          location: "TestModule/Test.swift:1:1",
+          declaration: "func removed(status: OSStatus) -> Bool",
+          parameters: [
+            "status": status
+          ]
+        )
+        autoLogger.emitStart(event: event, runtime: runtime)
+        let __logStart = autoLogger.shouldMeasureTiming(for: event, runtime: runtime) ? ContinuousClock.now : nil
+        func _removed(status: OSStatus) -> Bool {
+          var __logCondition0 = AutoLogConditionTrace.Evaluator()
+          guard __logCondition0.term("status == errSecSuccess", status == errSecSuccess) || __logCondition0.term("status == errSecItemNotFound", status == errSecItemNotFound) else {
+            event.earlyExit = AutoLogEarlyExit(kind: AutoLogEarlyExit.Kind.guard, intent: .unknown, condition: AutoLogConditionTrace(expression: "status == errSecSuccess || status == errSecItemNotFound", passed: false, terms: __logCondition0.terms).failingDescription ?? "!(status == errSecSuccess || status == errSecItemNotFound)", message: nil)
+            return false
+            }
+
+            return true
+        }
+        let result = _removed(status: status)
+        event.result = .success(result)
+        if let __logStart {
+          event.duration = ContinuousClock.now - __logStart
+        }
+        autoLogger.emitIfEnabled(event: event, runtime: runtime)
+        return result
+      }
+      """
+    }
+  }
+
+  @Test
   func voidFunction_logsGuardBareReturn() throws {
     assertMacro {
       #"""

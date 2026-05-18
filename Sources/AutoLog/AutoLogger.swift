@@ -114,6 +114,76 @@ public struct AutoLogBranchDecision: Sendable, Hashable, CustomStringConvertible
   }
 }
 
+/// Captures the boolean terms evaluated while deciding a logged branch.
+public struct AutoLogConditionTrace: Sendable, Hashable {
+  /// One boolean term that participated in the evaluated condition.
+  public struct Term: Sendable, Hashable {
+    public let condition: String
+    public let passed: Bool
+
+    public init(condition: String, passed: Bool) {
+      self.condition = condition
+      self.passed = passed
+    }
+  }
+
+  /// Evaluates boolean terms while preserving Swift's normal short-circuit behavior.
+  public struct Evaluator {
+    public private(set) var terms: [Term] = []
+
+    public init() {}
+
+    public mutating func term(_ condition: String, _ value: @autoclosure () -> Bool) -> Bool {
+      let passed = value()
+      terms.append(Term(condition: condition, passed: passed))
+      return passed
+    }
+  }
+
+  public let expression: String
+  public let passed: Bool
+  public let terms: [Term]
+
+  public init(expression: String, passed: Bool, terms: [Term]) {
+    self.expression = expression
+    self.passed = passed
+    self.terms = terms
+  }
+
+  public static func evaluate(
+    _ expression: String,
+    _ body: (inout Evaluator) -> Bool
+  ) -> AutoLogConditionTrace {
+    var evaluator = Evaluator()
+    let passed = body(&evaluator)
+    return AutoLogConditionTrace(
+      expression: expression,
+      passed: passed,
+      terms: evaluator.terms
+    )
+  }
+
+  /// Terms that evaluated to false, used to explain a failed guard condition.
+  public var failingDescription: String? {
+    joinedDescription(for: false)
+  }
+
+  /// Terms that evaluated to true, used to explain a branch that was entered.
+  public var passingDescription: String? {
+    joinedDescription(for: true)
+  }
+
+  private func joinedDescription(for passed: Bool) -> String? {
+    let matchingTerms = terms
+      .filter { $0.passed == passed }
+      .map(\.condition)
+      .filter { !$0.isEmpty }
+
+    guard !matchingTerms.isEmpty else { return nil }
+    return matchingTerms.joined(separator: ", ")
+  }
+}
+
 /// Structured metadata describing a locally handled error inside a logged function.
 public struct AutoLogHandledError: Sendable, Hashable, CustomStringConvertible {
   public static let defaultMessage = "caught and handled locally"
