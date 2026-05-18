@@ -1,5 +1,6 @@
 #if canImport(SwiftUI)
 import SwiftUI
+import Combine
 
 // MARK: - Button.log
 
@@ -1361,6 +1362,398 @@ extension AutoLogInteraction {
     @available(*, unavailable, message: "Use a stable String interaction name instead of LocalizedStringKey display text.")
     public static func button(_ title: LocalizedStringKey) -> AutoLogInteraction {
         .button(nil)
+    }
+}
+
+// MARK: - View lifecycle and callback modifiers
+
+extension View {
+    /// Runs `action` from `onAppear` with a system interaction source.
+    ///
+    /// Use this for view lifecycle work that should become a trace root for
+    /// downstream `@AutoLog` calls.
+    @MainActor public func onAppearLog(
+        _ name: String,
+        fileID: String = #fileID,
+        line: Int = #line,
+        column: Int = #column,
+        perform action: @escaping @MainActor () -> Void
+    ) -> some View {
+        onAppearLog(
+            AutoLogInteraction.system(name),
+            fileID: fileID,
+            line: line,
+            column: column,
+            perform: action
+        )
+    }
+
+    /// Runs `action` from `onAppear` with a built-in interaction source.
+    @MainActor public func onAppearLog(
+        _ source: AutoLogInteraction,
+        fileID: String = #fileID,
+        line: Int = #line,
+        column: Int = #column,
+        perform action: @escaping @MainActor () -> Void
+    ) -> some View {
+        onAppearLog(
+            source as any Sourceable,
+            fileID: fileID,
+            line: line,
+            column: column,
+            perform: action
+        )
+    }
+
+    /// Runs `action` from `onAppear` with a custom interaction source.
+    @MainActor public func onAppearLog(
+        _ source: any Sourceable,
+        fileID: String = #fileID,
+        line: Int = #line,
+        column: Int = #column,
+        perform action: @escaping @MainActor () -> Void
+    ) -> some View {
+        onAppear {
+            source.log(fileID: fileID, line: line, column: column) {
+                action()
+            }
+        }
+    }
+
+    /// Runs SwiftUI `.task` work with a system interaction source.
+    @available(iOS 15.0, macOS 12.0, tvOS 15.0, watchOS 8.0, *)
+    @MainActor public func taskLog(
+        _ name: String,
+        priority: TaskPriority = .userInitiated,
+        fileID: String = #fileID,
+        line: Int = #line,
+        column: Int = #column,
+        _ action: @escaping @Sendable () async -> Void
+    ) -> some View {
+        taskLog(
+            AutoLogInteraction.system(name),
+            priority: priority,
+            fileID: fileID,
+            line: line,
+            column: column,
+            action
+        )
+    }
+
+    /// Runs SwiftUI `.task` work with a built-in interaction source.
+    @available(iOS 15.0, macOS 12.0, tvOS 15.0, watchOS 8.0, *)
+    @MainActor public func taskLog(
+        _ source: AutoLogInteraction,
+        priority: TaskPriority = .userInitiated,
+        fileID: String = #fileID,
+        line: Int = #line,
+        column: Int = #column,
+        _ action: @escaping @Sendable () async -> Void
+    ) -> some View {
+        taskLog(
+            source as any Sourceable,
+            priority: priority,
+            fileID: fileID,
+            line: line,
+            column: column,
+            action
+        )
+    }
+
+    /// Runs SwiftUI `.task` work with a custom interaction source.
+    @available(iOS 15.0, macOS 12.0, tvOS 15.0, watchOS 8.0, *)
+    @MainActor public func taskLog(
+        _ source: any Sourceable,
+        priority: TaskPriority = .userInitiated,
+        fileID: String = #fileID,
+        line: Int = #line,
+        column: Int = #column,
+        _ action: @escaping @Sendable () async -> Void
+    ) -> some View {
+        task(priority: priority) {
+            await source.log(fileID: fileID, line: line, column: column) { @Sendable in
+                await action()
+            }
+        }
+    }
+
+    /// Runs SwiftUI `.task(id:)` work with a system interaction source.
+    @available(iOS 15.0, macOS 12.0, tvOS 15.0, watchOS 8.0, *)
+    @MainActor public func taskLog<ID: Equatable>(
+        _ name: String,
+        id value: ID,
+        priority: TaskPriority = .userInitiated,
+        fileID: String = #fileID,
+        line: Int = #line,
+        column: Int = #column,
+        _ action: @escaping @Sendable () async -> Void
+    ) -> some View {
+        taskLog(
+            AutoLogInteraction.system(name),
+            id: value,
+            priority: priority,
+            fileID: fileID,
+            line: line,
+            column: column,
+            action
+        )
+    }
+
+    /// Runs SwiftUI `.task(id:)` work with a built-in interaction source.
+    @available(iOS 15.0, macOS 12.0, tvOS 15.0, watchOS 8.0, *)
+    @MainActor public func taskLog<ID: Equatable>(
+        _ source: AutoLogInteraction,
+        id value: ID,
+        priority: TaskPriority = .userInitiated,
+        fileID: String = #fileID,
+        line: Int = #line,
+        column: Int = #column,
+        _ action: @escaping @Sendable () async -> Void
+    ) -> some View {
+        taskLog(
+            source as any Sourceable,
+            id: value,
+            priority: priority,
+            fileID: fileID,
+            line: line,
+            column: column,
+            action
+        )
+    }
+
+    /// Runs SwiftUI `.task(id:)` work with a custom interaction source.
+    @available(iOS 15.0, macOS 12.0, tvOS 15.0, watchOS 8.0, *)
+    @MainActor public func taskLog<ID: Equatable>(
+        _ source: any Sourceable,
+        id value: ID,
+        priority: TaskPriority = .userInitiated,
+        fileID: String = #fileID,
+        line: Int = #line,
+        column: Int = #column,
+        _ action: @escaping @Sendable () async -> Void
+    ) -> some View {
+        task(id: value, priority: priority) {
+            await source.log(fileID: fileID, line: line, column: column) { @Sendable in
+                await action()
+            }
+        }
+    }
+
+    /// Runs SwiftUI `.onChange(of:)` callbacks with a system interaction source.
+    @MainActor public func onChangeLog<Value: Equatable>(
+        _ name: String,
+        of value: Value,
+        fileID: String = #fileID,
+        line: Int = #line,
+        column: Int = #column,
+        perform action: @escaping @MainActor (Value) -> Void
+    ) -> some View {
+        onChangeLog(
+            AutoLogInteraction.system(name),
+            of: value,
+            fileID: fileID,
+            line: line,
+            column: column,
+            perform: action
+        )
+    }
+
+    /// Runs SwiftUI `.onChange(of:)` callbacks with a built-in interaction source.
+    @MainActor public func onChangeLog<Value: Equatable>(
+        _ source: AutoLogInteraction,
+        of value: Value,
+        fileID: String = #fileID,
+        line: Int = #line,
+        column: Int = #column,
+        perform action: @escaping @MainActor (Value) -> Void
+    ) -> some View {
+        onChangeLog(
+            source as any Sourceable,
+            of: value,
+            fileID: fileID,
+            line: line,
+            column: column,
+            perform: action
+        )
+    }
+
+    /// Runs SwiftUI `.onChange(of:)` callbacks with a custom interaction source.
+    @MainActor public func onChangeLog<Value: Equatable>(
+        _ source: any Sourceable,
+        of value: Value,
+        fileID: String = #fileID,
+        line: Int = #line,
+        column: Int = #column,
+        perform action: @escaping @MainActor (Value) -> Void
+    ) -> some View {
+        onChange(of: value) { newValue in
+            source.log(fileID: fileID, line: line, column: column) {
+                action(newValue)
+            }
+        }
+    }
+
+    /// Runs SwiftUI `.onReceive` callbacks with a system interaction source.
+    @MainActor public func onReceiveLog<P: Publisher>(
+        _ name: String,
+        _ publisher: P,
+        fileID: String = #fileID,
+        line: Int = #line,
+        column: Int = #column,
+        perform action: @escaping @MainActor (P.Output) -> Void
+    ) -> some View where P.Failure == Never {
+        onReceiveLog(
+            AutoLogInteraction.system(name),
+            publisher,
+            fileID: fileID,
+            line: line,
+            column: column,
+            perform: action
+        )
+    }
+
+    /// Runs SwiftUI `.onReceive` callbacks with a built-in interaction source.
+    @MainActor public func onReceiveLog<P: Publisher>(
+        _ source: AutoLogInteraction,
+        _ publisher: P,
+        fileID: String = #fileID,
+        line: Int = #line,
+        column: Int = #column,
+        perform action: @escaping @MainActor (P.Output) -> Void
+    ) -> some View where P.Failure == Never {
+        onReceiveLog(
+            source as any Sourceable,
+            publisher,
+            fileID: fileID,
+            line: line,
+            column: column,
+            perform: action
+        )
+    }
+
+    /// Runs SwiftUI `.onReceive` callbacks with a custom interaction source.
+    @MainActor public func onReceiveLog<P: Publisher>(
+        _ source: any Sourceable,
+        _ publisher: P,
+        fileID: String = #fileID,
+        line: Int = #line,
+        column: Int = #column,
+        perform action: @escaping @MainActor (P.Output) -> Void
+    ) -> some View where P.Failure == Never {
+        onReceive(publisher) { output in
+            source.log(fileID: fileID, line: line, column: column) {
+                action(output)
+            }
+        }
+    }
+
+    /// Runs SwiftUI `.refreshable` work with a system interaction source.
+    @available(iOS 15.0, macOS 12.0, tvOS 15.0, watchOS 8.0, *)
+    @MainActor public func refreshableLog(
+        _ name: String,
+        fileID: String = #fileID,
+        line: Int = #line,
+        column: Int = #column,
+        action: @escaping @Sendable () async -> Void
+    ) -> some View {
+        refreshableLog(
+            AutoLogInteraction.system(name),
+            fileID: fileID,
+            line: line,
+            column: column,
+            action: action
+        )
+    }
+
+    /// Runs SwiftUI `.refreshable` work with a built-in interaction source.
+    @available(iOS 15.0, macOS 12.0, tvOS 15.0, watchOS 8.0, *)
+    @MainActor public func refreshableLog(
+        _ source: AutoLogInteraction,
+        fileID: String = #fileID,
+        line: Int = #line,
+        column: Int = #column,
+        action: @escaping @Sendable () async -> Void
+    ) -> some View {
+        refreshableLog(
+            source as any Sourceable,
+            fileID: fileID,
+            line: line,
+            column: column,
+            action: action
+        )
+    }
+
+    /// Runs SwiftUI `.refreshable` work with a custom interaction source.
+    @available(iOS 15.0, macOS 12.0, tvOS 15.0, watchOS 8.0, *)
+    @MainActor public func refreshableLog(
+        _ source: any Sourceable,
+        fileID: String = #fileID,
+        line: Int = #line,
+        column: Int = #column,
+        action: @escaping @Sendable () async -> Void
+    ) -> some View {
+        refreshable {
+            await source.log(fileID: fileID, line: line, column: column) { @Sendable in
+                await action()
+            }
+        }
+    }
+
+    /// Runs SwiftUI `.onSubmit` callbacks with a system interaction source.
+    @available(iOS 15.0, macOS 12.0, tvOS 15.0, watchOS 8.0, *)
+    @MainActor public func onSubmitLog(
+        _ name: String,
+        of triggers: SubmitTriggers = .text,
+        fileID: String = #fileID,
+        line: Int = #line,
+        column: Int = #column,
+        _ action: @escaping @MainActor () -> Void
+    ) -> some View {
+        onSubmitLog(
+            AutoLogInteraction.system(name),
+            of: triggers,
+            fileID: fileID,
+            line: line,
+            column: column,
+            action
+        )
+    }
+
+    /// Runs SwiftUI `.onSubmit` callbacks with a built-in interaction source.
+    @available(iOS 15.0, macOS 12.0, tvOS 15.0, watchOS 8.0, *)
+    @MainActor public func onSubmitLog(
+        _ source: AutoLogInteraction,
+        of triggers: SubmitTriggers = .text,
+        fileID: String = #fileID,
+        line: Int = #line,
+        column: Int = #column,
+        _ action: @escaping @MainActor () -> Void
+    ) -> some View {
+        onSubmitLog(
+            source as any Sourceable,
+            of: triggers,
+            fileID: fileID,
+            line: line,
+            column: column,
+            action
+        )
+    }
+
+    /// Runs SwiftUI `.onSubmit` callbacks with a custom interaction source.
+    @available(iOS 15.0, macOS 12.0, tvOS 15.0, watchOS 8.0, *)
+    @MainActor public func onSubmitLog(
+        _ source: any Sourceable,
+        of triggers: SubmitTriggers = .text,
+        fileID: String = #fileID,
+        line: Int = #line,
+        column: Int = #column,
+        _ action: @escaping @MainActor () -> Void
+    ) -> some View {
+        onSubmit(of: triggers) {
+            source.log(fileID: fileID, line: line, column: column) {
+                action()
+            }
+        }
     }
 }
 

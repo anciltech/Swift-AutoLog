@@ -1,6 +1,7 @@
 import AutoLog
 import Testing
 #if canImport(SwiftUI)
+import Combine
 import SwiftUI
 #endif
 
@@ -269,6 +270,33 @@ struct SourceableTests {
         _ = localizedTitle
         _ = resourceTitle
         _ = roleTitle
+    }
+
+    @Test @MainActor func lifecycleViewLogModifiers_compile() {
+        let timer = Just(Date())
+        let view = EmptyView()
+            .onAppearLog("Screen Appeared") {}
+            .onAppearLog(.system("Custom Source Appeared")) {}
+            .onChangeLog("Selected Tab", of: 1) { _ in }
+            .onReceiveLog(.timer("Refresh Timer"), timer) { _ in }
+
+        _ = view
+    }
+
+    @Test @MainActor func asyncLifecycleViewLogModifiers_compile() {
+        let view = EmptyView()
+            .taskLog("Initial Load") {
+                await Task.yield()
+            }
+            .taskLog(.api("Reload"), id: "reload") {
+                await Task.yield()
+            }
+            .refreshableLog("Pull to Refresh") {
+                await Task.yield()
+            }
+            .onSubmitLog(.keyboard("Search Submit")) {}
+
+        _ = view
     }
     #endif
 }

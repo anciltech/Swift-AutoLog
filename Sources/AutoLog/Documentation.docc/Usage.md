@@ -304,6 +304,43 @@ The interaction name is intentionally a `String`, not a `LocalizedStringKey`.
 Use a stable source identifier such as `"fitness tracker row"` for logs, and
 keep localized display text inside the button label.
 
+SwiftUI lifecycle and callback modifiers can also become trace roots without
+hand-wrapping the closure:
+
+```swift
+.taskLog("Initial Load") {
+  await viewModel.load()
+}
+
+.taskLog("Reload Search", id: query) {
+  await viewModel.search(query)
+}
+
+.onAppearLog("Screen Appeared") {
+  viewModel.screenAppeared()
+}
+
+.onChangeLog("Scene Phase", of: scenePhase) { phase in
+  viewModel.scenePhaseChanged(phase)
+}
+
+.onReceiveLog(.timer("Refresh Timer"), timer) { _ in
+  viewModel.refreshFromTimer()
+}
+
+.refreshableLog("Pull to Refresh") {
+  await viewModel.refresh()
+}
+
+.onSubmitLog(.keyboard("Search Submit")) {
+  viewModel.submitSearch()
+}
+```
+
+String-based lifecycle helpers use ``AutoLogInteraction/system(_:)`` by
+default. Pass any ``Sourceable`` value when the origin is better described as
+an API callback, timer, keyboard event, gesture, or app-specific custom source.
+
 Every interaction origin gets a compact source-plus-badge prefix such as
 `👆🏼-🧵A1B`. The origin event becomes a trace root, and downstream calls
 keep that same prefix while using longer branch lengths to hint at
