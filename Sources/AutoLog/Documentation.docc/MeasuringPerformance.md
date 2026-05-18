@@ -95,12 +95,14 @@ The next hot-path targets worth exploring are:
 
 ## Latest local evaluation
 
-The 2026-05-09 project audit reran the benchmark suite in both debug and
-release modes. On that machine, the release helper reported roughly `8-14us`
-of added sync overhead per logged call depending on tag shape, with route-only
-calls cheapest, no-tag calls in the middle, and visible/mixed tag output higher
-because those scenarios render more user-facing text. The logged `TaskGroup`
-scenario added roughly `31us` per measured call against the async baseline.
+The 2026-05-18 architecture review reran the release benchmark helper and
+appended the result to the project history. On that machine, the release helper
+reported roughly `8-11us` of added sync overhead per logged call with the
+benchmark logger depending on tag shape, with route-only calls cheapest,
+no-tag calls in the middle, and visible/mixed tag output higher because those
+scenarios render more user-facing text. The normal `AutoLogLogger` no-tag path
+added roughly `15us` per sync call, while the logged `TaskGroup` scenario added
+roughly `32us` per measured call against the async baseline.
 
 Those numbers support the same practical guidance as the benchmark design:
 `@Log` is appropriate for interaction workflows, service boundaries,
