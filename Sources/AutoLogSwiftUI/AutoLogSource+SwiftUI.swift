@@ -1,4 +1,5 @@
 #if canImport(SwiftUI)
+@_exported import AutoLog
 import SwiftUI
 import Combine
 

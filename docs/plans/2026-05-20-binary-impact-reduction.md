@@ -9,19 +9,19 @@ without removing the SwiftUI convenience APIs that make the demo ergonomic.
 
 ## Todos
 
-- [ ] Split SwiftUI helpers into a dedicated `AutoLogSwiftUI` product so
+- [x] Split SwiftUI helpers into a dedicated `AutoLogSwiftUI` product so
   non-UI consumers can depend on core `AutoLog` without linking SwiftUI,
   Combine, and the button/lifecycle helper extensions.
-- [ ] Keep the public SwiftUI call shapes intact for opt-in consumers:
+- [x] Keep the public SwiftUI call shapes intact for opt-in consumers:
   `Button.log`, `Binding.log`, `.onAppearLog`, `.taskLog`, `.onChangeLog`,
   `.onReceiveLog`, `.refreshableLog`, and `.onSubmitLog`.
-- [ ] Update the demo app to import `AutoLogSwiftUI` in SwiftUI files that use
+- [x] Update the demo app to import `AutoLogSwiftUI` in SwiftUI files that use
   those helpers while keeping macro/runtime imports on `AutoLog`.
-- [ ] Update package docs to explain when to import `AutoLog` versus
+- [x] Update package docs to explain when to import `AutoLog` versus
   `AutoLogSwiftUI`.
-- [ ] Extend the impact probe so it measures core `AutoLog` separately from the
+- [x] Extend the impact probe so it measures core `AutoLog` separately from the
   opt-in SwiftUI helper product.
-- [ ] Rerun package metadata, tests, and the impact probe to capture the new
+- [x] Rerun package metadata, tests, and the impact probe to capture the new
   size/build numbers.
 - [ ] Consider a follow-up split for formatter/failure-context/settings code if
   the core product still has too much fixed footprint.

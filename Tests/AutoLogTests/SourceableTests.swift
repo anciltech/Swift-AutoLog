@@ -1,6 +1,7 @@
 import AutoLog
 import Testing
 #if canImport(SwiftUI)
+import AutoLogSwiftUI
 import Combine
 import SwiftUI
 #endif

@@ -15,6 +15,7 @@ Builds equivalent release executables and records binary-size impact:
   - BaselineProbe: plain Swift control-flow probe
   - DirectOSLogProbe: same probe with manual OSLog calls
   - AutoLogProbe: same probe using @AutoLog from this checkout
+  - AutoLogSwiftUIProbe: imports the opt-in SwiftUI helper product
   - AutoLogFailuresOnlyProbe: @AutoLog with output configured for failures only
   - AutoLogTypeFilteredProbe: @AutoLog with output filtered to another type
 
@@ -95,6 +96,7 @@ write_autolog_probe_package() {
 
   mkdir -p \
     "$dir/Sources/AutoLogProbe" \
+    "$dir/Sources/AutoLogSwiftUIProbe" \
     "$dir/Sources/AutoLogFailuresOnlyProbe" \
     "$dir/Sources/AutoLogTypeFilteredProbe"
 
@@ -107,6 +109,7 @@ let package = Package(
   platforms: [.macOS(.v15)],
   products: [
     .executable(name: "AutoLogProbe", targets: ["AutoLogProbe"]),
+    .executable(name: "AutoLogSwiftUIProbe", targets: ["AutoLogSwiftUIProbe"]),
     .executable(name: "AutoLogFailuresOnlyProbe", targets: ["AutoLogFailuresOnlyProbe"]),
     .executable(name: "AutoLogTypeFilteredProbe", targets: ["AutoLogTypeFilteredProbe"]),
   ],
@@ -118,6 +121,12 @@ let package = Package(
       name: "AutoLogProbe",
       dependencies: [
         .product(name: "AutoLog", package: "Swift-AutoLog"),
+      ]
+    ),
+    .executableTarget(
+      name: "AutoLogSwiftUIProbe",
+      dependencies: [
+        .product(name: "AutoLogSwiftUI", package: "Swift-AutoLog"),
       ]
     ),
     .executableTarget(
@@ -203,6 +212,34 @@ let result = (0..<100).reduce(0) { total, value in
   total + worker.compute(value)
 }
 print(result)
+EOF
+}
+
+write_autolog_swiftui_source() {
+  local file="$1"
+  cat > "$file" <<'EOF'
+import AutoLogSwiftUI
+import SwiftUI
+
+@AutoLog
+struct ImpactWorker {
+  func compute(_ value: Int) -> Int {
+    if value.isMultiple(of: 2) {
+      return value / 2
+    }
+    return value * 3 + 1
+  }
+}
+
+let worker = ImpactWorker()
+let result = (0..<100).reduce(0) { total, value in
+  total + worker.compute(value)
+}
+let button = Button.log("Run") {
+  _ = worker.compute(result)
+}
+print(result)
+_ = button
 EOF
 }
 
@@ -362,6 +399,7 @@ write_direct_oslog_source "$direct_dir/Sources/DirectOSLogProbe/main.swift"
 
 write_autolog_probe_package "$autolog_dir"
 write_autolog_source "$autolog_dir/Sources/AutoLogProbe/main.swift"
+write_autolog_swiftui_source "$autolog_dir/Sources/AutoLogSwiftUIProbe/main.swift"
 write_autolog_failures_only_source "$autolog_dir/Sources/AutoLogFailuresOnlyProbe/main.swift"
 write_autolog_type_filtered_source "$autolog_dir/Sources/AutoLogTypeFilteredProbe/main.swift"
 
@@ -372,6 +410,7 @@ EOF
 build_and_measure "baseline" "BaselineProbe" "$baseline_dir"
 build_and_measure "direct-oslog" "DirectOSLogProbe" "$direct_dir"
 build_and_measure "autolog" "AutoLogProbe" "$autolog_dir"
+build_and_measure "autolog-swiftui" "AutoLogSwiftUIProbe" "$autolog_dir"
 build_and_measure "autolog-failures-only-output" "AutoLogFailuresOnlyProbe" "$autolog_dir"
 build_and_measure "autolog-type-filtered-output" "AutoLogTypeFilteredProbe" "$autolog_dir"
 
@@ -398,6 +437,7 @@ awk -F, '
     printf "- AutoLog vs direct OSLog executable delta: %+d bytes\n", executable["autolog"] - executable["direct-oslog"]
     printf "- AutoLog vs baseline __TEXT delta: %+d bytes\n", text["autolog"] - text["baseline"]
     printf "- AutoLog vs direct OSLog __TEXT delta: %+d bytes\n", text["autolog"] - text["direct-oslog"]
+    printf "- AutoLogSwiftUI vs AutoLog executable delta: %+d bytes\n", executable["autolog-swiftui"] - executable["autolog"]
     printf "- AutoLog failures-only output vs AutoLog executable delta: %+d bytes\n", executable["autolog-failures-only-output"] - executable["autolog"]
     printf "- AutoLog type-filtered output vs AutoLog executable delta: %+d bytes\n", executable["autolog-type-filtered-output"] - executable["autolog"]
   }

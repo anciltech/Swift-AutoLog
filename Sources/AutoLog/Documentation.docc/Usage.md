@@ -278,6 +278,13 @@ profiles under the same workload.
 origin is a button tap, toggle change, timer, API callback, or your own custom
 ``Sourceable`` type.
 
+SwiftUI helpers live in the opt-in `AutoLogSwiftUI` product. Import it in files
+that use `Button.log`, `Binding.log`, or lifecycle callback modifiers:
+
+```swift
+import AutoLogSwiftUI
+```
+
 ```swift
 Button.log("Save") {
   viewModel.saveTapped()

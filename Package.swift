@@ -15,6 +15,10 @@ let package = Package(
       targets: ["AutoLog"]
     ),
     .library(
+      name: "AutoLogSwiftUI",
+      targets: ["AutoLogSwiftUI"]
+    ),
+    .library(
       name: "AutoLogSettingsUI",
       targets: ["AutoLogSettingsUI"]
     ),
@@ -57,6 +61,12 @@ let package = Package(
         "AutoLogMacro"
       ]
     ),
+    .target(
+      name: "AutoLogSwiftUI",
+      dependencies: [
+        "AutoLog"
+      ]
+    ),
     .testTarget(
       name: "AutoLogMacroTests",
       dependencies: [
@@ -75,6 +85,7 @@ let package = Package(
       name: "AutoLogTests",
       dependencies: [
         "AutoLog",
+        "AutoLogSwiftUI",
       ]
     ),
     .target(

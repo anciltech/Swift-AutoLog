@@ -70,6 +70,19 @@ Then add `AutoLog` to the target that should use the macros:
 )
 ```
 
+SwiftUI convenience APIs such as `Button.log`, `Binding.log`,
+`.onAppearLog`, and `.taskLog` live in the separate `AutoLogSwiftUI` product:
+
+```swift
+.target(
+  name: "MyApp",
+  dependencies: [
+    .product(name: "AutoLog", package: "Swift-AutoLog"),
+    .product(name: "AutoLogSwiftUI", package: "Swift-AutoLog")
+  ]
+)
+```
+
 The `AutoLog` library product supports iOS 17, macOS, and watchOS 11 or newer. The
 runtime uses package-local locking instead of Swift's iOS 18-only
 `Synchronization.Mutex`, so the deployment floor is not tied to that newer API.
@@ -378,7 +391,13 @@ function already in flight keeps using the snapshot it captured when it began.
 
 ## SwiftUI auto-logging
 
-Swift AutoLog also includes lightweight SwiftUI helpers for common UI interaction logging.
+Swift AutoLog also includes lightweight SwiftUI helpers for common UI
+interaction logging. Add the `AutoLogSwiftUI` product and import it in SwiftUI
+files that use these helpers:
+
+```swift
+import AutoLogSwiftUI
+```
 
 ### `Button.log(...)`
 
