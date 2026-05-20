@@ -149,6 +149,25 @@ That script runs the same performance suite with `--configuration release` so
 formatter, event construction, routing, and timing-capture changes are easier
 to compare between commits.
 
+## Measure binary and build impact
+
+Runtime benchmarks do not answer the whole adoption question. To compare fixed
+binary footprint and clean build cost, run the impact probe:
+
+```bash
+AutoLogSourceCode/swift-autolog/scripts/measure-impact.sh
+```
+
+The probe builds three release executables with equivalent control flow: a
+plain Swift baseline, a direct `OSLog.Logger` variant, and an `@AutoLog`
+variant. It writes `summary.csv`, `summary.md`, build logs, and linked-dylib
+lists under `.build/impact-runs/`.
+
+Treat this as a small-probe fixed-cost measurement. It is useful for spotting
+package-level footprint movement, but production apps should still measure
+their own app binary because SwiftUI, Foundation, and OSLog may already be
+linked before AutoLog is added.
+
 ## Profile the benchmark with Instruments
 
 Start with **Time Profiler**. It is the best first-pass Instruments template for
