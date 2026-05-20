@@ -12,6 +12,23 @@ public enum AutoLogOutputEventType: String, Sendable, Codable, CaseIterable, Has
   case failure
 }
 
+public enum AutoLogParameterPrivacy: Sendable, Codable, Equatable, Hashable {
+  case include
+  case omit
+  case allowList(Set<String>)
+
+  public func filteredParameters(_ parameters: [String: Any]) -> [String: Any] {
+    switch self {
+    case .include:
+      return parameters
+    case .omit:
+      return [:]
+    case .allowList(let allowedKeys):
+      return parameters.filter { allowedKeys.contains($0.key) }
+    }
+  }
+}
+
 public struct AutoLogOutput: Sendable, Codable, Equatable, Identifiable {
   public var id: String
   public var name: String
@@ -29,6 +46,8 @@ public struct AutoLogOutput: Sendable, Codable, Equatable, Identifiable {
   public var errorContextLimit: Int
   public var failureContextTriggerLimit: Int
   public var logFormat: LogFormat
+  public var parameterPrivacy: AutoLogParameterPrivacy
+  public var metadataKeyAllowList: Set<String>?
 
   public init(
     id: String = UUID().uuidString,
@@ -42,7 +61,9 @@ public struct AutoLogOutput: Sendable, Codable, Equatable, Identifiable {
     normalizedTiming: Bool = false,
     errorContextLimit: Int = 5,
     failureContextTriggerLimit: Int = 0,
-    logFormat: LogFormat = .default
+    logFormat: LogFormat = .default,
+    parameterPrivacy: AutoLogParameterPrivacy? = nil,
+    metadataKeyAllowList: Set<String>? = nil
   ) {
     self.id = id
     self.name = name
@@ -56,9 +77,18 @@ public struct AutoLogOutput: Sendable, Codable, Equatable, Identifiable {
     self.errorContextLimit = max(0, errorContextLimit)
     self.failureContextTriggerLimit = max(0, failureContextTriggerLimit)
     self.logFormat = logFormat
+    self.parameterPrivacy = parameterPrivacy ?? Self.defaultParameterPrivacy(for: route)
+    self.metadataKeyAllowList = metadataKeyAllowList
   }
 
-  public static let `default` = AutoLogOutput(name: "Console")
+  public static let consoleDefault = AutoLogOutput(
+    name: "Console",
+    route: .console,
+    eventTypes: [.interaction, .start, .success, .failure, .warning],
+    typeNameFilters: []
+  )
+
+  public static let `default` = AutoLogOutput.consoleDefault
 
   private enum CodingKeys: String, CodingKey {
     case id
@@ -73,6 +103,8 @@ public struct AutoLogOutput: Sendable, Codable, Equatable, Identifiable {
     case errorContextLimit
     case failureContextTriggerLimit
     case logFormat
+    case parameterPrivacy
+    case metadataKeyAllowList
   }
 
   public init(from decoder: Decoder) throws {
@@ -95,6 +127,9 @@ public struct AutoLogOutput: Sendable, Codable, Equatable, Identifiable {
       try container.decodeIfPresent(Int.self, forKey: .failureContextTriggerLimit) ?? 0
     )
     logFormat = try container.decodeIfPresent(LogFormat.self, forKey: .logFormat) ?? .default
+    parameterPrivacy = try container.decodeIfPresent(AutoLogParameterPrivacy.self, forKey: .parameterPrivacy)
+      ?? Self.defaultParameterPrivacy(for: route)
+    metadataKeyAllowList = try container.decodeIfPresent(Set<String>.self, forKey: .metadataKeyAllowList)
   }
 
   public func encode(to encoder: Encoder) throws {
@@ -111,6 +146,8 @@ public struct AutoLogOutput: Sendable, Codable, Equatable, Identifiable {
     try container.encode(errorContextLimit, forKey: .errorContextLimit)
     try container.encode(failureContextTriggerLimit, forKey: .failureContextTriggerLimit)
     try container.encode(logFormat, forKey: .logFormat)
+    try container.encode(parameterPrivacy, forKey: .parameterPrivacy)
+    try container.encodeIfPresent(metadataKeyAllowList, forKey: .metadataKeyAllowList)
   }
 
   /// Returns `true` when this output profile should receive the supplied event.
@@ -122,6 +159,16 @@ public struct AutoLogOutput: Sendable, Codable, Equatable, Identifiable {
     guard routeMatches(eventRoutes: event.routes) else { return false }
     guard eventTypes.contains(event.outputEventType) else { return false }
 
+    return typeNameMatches(event)
+  }
+
+  public func canReceiveTiming(for event: AutoLogEvent) -> Bool {
+    guard isEnabled, measureTiming else { return false }
+    guard routeMatches(eventRoutes: event.routes) else { return false }
+    return typeNameMatches(event)
+  }
+
+  private func typeNameMatches(_ event: AutoLogEvent) -> Bool {
     guard !typeNameFilters.isEmpty else { return true }
 
     return typeNameFilters.contains { token in
@@ -130,11 +177,7 @@ public struct AutoLogOutput: Sendable, Codable, Equatable, Identifiable {
   }
 
   private func routeMatches(eventRoutes: Set<AutoLogRoute>) -> Bool {
-    if route == .console {
-      return eventRoutes.isEmpty || eventRoutes.contains(.console)
-    }
-
-    return eventRoutes.contains(route)
+    eventRoutes.isEmpty || eventRoutes.contains(route)
   }
 
   private static func normalizedTypeNameFilters(_ filters: [String]) -> [String] {
@@ -142,11 +185,18 @@ public struct AutoLogOutput: Sendable, Codable, Equatable, Identifiable {
       .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
       .filter { !$0.isEmpty }
   }
+
+  private static func defaultParameterPrivacy(for route: AutoLogRoute) -> AutoLogParameterPrivacy {
+    route == .console ? .include : .omit
+  }
 }
 
 /// Live-tunable logging behavior shared across app processes.
 public struct AutoLogConfiguration: Sendable, Codable, Equatable {
-  /// Whether the macro should emit a 🔵 start event before a function executes.
+  /// Legacy compatibility flag for persisted configurations.
+  ///
+  /// New code should include or omit ``AutoLogOutputEventType/start`` in each
+  /// ``AutoLogOutput/eventTypes`` set instead.
   public var emitStartEvents: Bool
 
   /// Whether `@AutoLog` functions should display timing by default.
@@ -172,9 +222,7 @@ public struct AutoLogConfiguration: Sendable, Codable, Equatable {
 
   /// Optional per-destination output profiles.
   ///
-  /// When empty, runtime behavior falls back to the legacy single-output fields
-  /// above (`emitStartEvents`, `measureTimingDefault`, `measureTimingDepths`,
-  /// and `logFormat`).
+  /// When empty, runtime behavior falls back to ``AutoLogOutput/consoleDefault``.
   public var outputs: [AutoLogOutput]
 
   public init(
@@ -236,18 +284,13 @@ public struct AutoLogConfiguration: Sendable, Codable, Equatable {
 
   public var effectiveOutputs: [AutoLogOutput] {
     guard !outputs.isEmpty else {
-      return [
-        AutoLogOutput(
-          name: "Console",
-          route: .console,
-          measureTiming: measureTimingDefault,
-          timingDepths: measureTimingDepths,
-          normalizedTiming: normalizedTiming,
-          errorContextLimit: 5,
-          failureContextTriggerLimit: failureContextTriggerLimit,
-          logFormat: logFormat
-        )
-      ]
+      var output = AutoLogOutput.consoleDefault
+      output.measureTiming = measureTimingDefault
+      output.timingDepths = measureTimingDepths
+      output.normalizedTiming = normalizedTiming
+      output.failureContextTriggerLimit = failureContextTriggerLimit
+      output.logFormat = logFormat
+      return [output]
     }
 
     return outputs
@@ -266,6 +309,14 @@ public struct AutoLogConfiguration: Sendable, Codable, Equatable {
 
   public var maxErrorContextLimit: Int {
     max(effectiveOutputs.map(\.errorContextLimit).max() ?? 0, 5)
+  }
+
+  public func shouldEmit(_ event: AutoLogEvent) -> Bool {
+    effectiveOutputs.contains { $0.matches(event) }
+  }
+
+  public func shouldMeasureTiming(for event: AutoLogEvent) -> Bool {
+    event.isMeasuredExplicitly || effectiveOutputs.contains { $0.canReceiveTiming(for: event) }
   }
 }
 

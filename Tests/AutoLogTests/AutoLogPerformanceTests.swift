@@ -7,8 +7,14 @@ import XCTest
 
 final class AutoLogPerformanceTests: XCTestCase {
   fileprivate static let configuration = AutoLogConfiguration(
-    emitStartEvents: false,
-    measureTimingDefault: false
+    outputs: [
+      AutoLogOutput(
+        name: "Console",
+        route: .console,
+        eventTypes: [.interaction, .success, .failure, .warning],
+        measureTiming: false
+      )
+    ]
   )
   fileprivate static let iterations = 20_000
   fileprivate static let taskGroupIterations = 2_000

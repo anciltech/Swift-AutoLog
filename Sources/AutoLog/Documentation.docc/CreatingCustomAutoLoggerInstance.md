@@ -101,11 +101,14 @@ struct SentryLogger: AutoLogger {
 }
 ```
 
-### Listen only for explicitly routed events
+### Add output sinks
 
-If you want a backend to receive only a subset of events, conform it to
-``AutoLogEventSink`` and give it a route name. `AutoLogLogger` continues to
-handle Console output and forwards only matching events to the extra sink.
+If you want a backend to receive a subset of events, conform it to
+``AutoLogEventSink`` and give it a route name. ``AutoLogOutput`` is the source
+of truth for which events reach the destination: route, event types, type-name
+filters, timing settings, failure context, formatting, and parameter privacy all
+live on the output profile. Untagged events are eligible for every configured
+output, so ordinary app code does not need backend-specific route tags.
 
 ```swift
 // SplunkSink.swift
@@ -120,10 +123,30 @@ struct SplunkSink: AutoLogEventSink {
   }
 }
 
-let logger = AutoLogLogger(
-  formatter: CompactFormatter(),
-  sinks: [SplunkSink()]
+AutoLog.start(
+  configuration: AutoLogConfiguration(
+    outputs: [
+      .consoleDefault,
+      AutoLogOutput(
+        name: "Splunk",
+        route: .splunk,
+        eventTypes: [.interaction, .failure, .warning],
+        typeNameFilters: ["ViewModel"],
+        errorContextLimit: 10,
+        parameterPrivacy: .omit
+      )
+    ]
+  ),
+  sinks: [
+    SplunkSink()
+  ]
 )
+```
+
+Explicit route tags still work when a function should go only to a narrow route:
+
+```swift
+let logger = AutoLogLogger(sinks: [SplunkSink()])
 
 @AutoLog(using: logger)
 struct AuditTrailService {
@@ -141,9 +164,67 @@ struct AuditTrailService {
 
 You can determine whether the attached function emitted a success or failure event by checking `event.result`.
 
-On failure, we use `SentrySDK.capture(error:)`, passing in the error that triggered the event. Before sending the error to Sentry, we attach relevant metadata to the scope, providing additional context. Upon success, we simply add a breadcrumb that will be sent along with an error.
 If your backend supports its own breadcrumb or trail concept, `event.errorContext`
 gives you the recent console-ready summaries that immediately preceded the failure.
+
+### Firebase Crashlytics sink example
+
+Crashlytics can be modeled as a normal sink selected by a `.firebase` output.
+The package does not need a `.crashlyticsAndConsole` logger identity or any
+Firebase-specific macros.
+
+```swift
+#if canImport(FirebaseCrashlytics)
+import AutoLog
+import FirebaseCrashlytics
+
+struct CrashlyticsAutoLogSink: AutoLogEventSink {
+  let route: AutoLogRoute = .firebase
+
+  func emit(event: AutoLogEvent, configuration: AutoLogConfiguration) {
+    let crashlytics = Crashlytics.crashlytics()
+    crashlytics.setCustomValue(event.inferredTypeName, forKey: "autolog.type")
+    crashlytics.setCustomValue(event.functionName, forKey: "autolog.function")
+    crashlytics.setCustomValue(event.shortLocation, forKey: "autolog.location")
+
+    if case .failure(let error) = event.result {
+      crashlytics.record(error: error)
+      return
+    }
+
+    crashlytics.log("\(event.outputEventType.rawValue): \(event.inferredTypeName).\(event.functionName)")
+  }
+}
+#endif
+```
+
+Configure the output to decide what Crashlytics receives:
+
+```swift
+AutoLog.start(
+  configuration: AutoLogConfiguration(
+    outputs: [
+      AutoLogOutput.consoleDefault,
+      AutoLogOutput(
+        name: "Crashlytics",
+        route: .firebase,
+        eventTypes: [.interaction, .failure, .warning],
+        typeNameFilters: ["ViewModel"],
+        errorContextLimit: 10,
+        parameterPrivacy: .omit,
+        metadataKeyAllowList: [
+          "autolog.type",
+          "autolog.function",
+          "autolog.location"
+        ]
+      )
+    ]
+  ),
+  sinks: [
+    CrashlyticsAutoLogSink()
+  ]
+)
+```
 
 ### AutoLogger extension
 

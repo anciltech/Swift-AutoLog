@@ -20,7 +20,7 @@ public protocol AutoLogger: Sendable {
 
 public extension AutoLogger {
   func shouldMeasureTiming(for event: AutoLogEvent, configuration: AutoLogConfiguration) -> Bool {
-    event.isMeasuredExplicitly || configuration.measureTimingDefault
+    configuration.shouldMeasureTiming(for: event)
   }
 }
 
@@ -529,6 +529,12 @@ public struct AutoLogEvent: @unchecked Sendable, CustomStringConvertible, Custom
     return copy
   }
 
+  public func applyingPrivacy(_ output: AutoLogOutput) -> Self {
+    var copy = self
+    copy.parameters = output.parameterPrivacy.filteredParameters(parameters)
+    return copy
+  }
+
   private static func extractTypeName(from location: String) -> String {
     let filenameStart = location.lastIndex(of: "/").map { location.index(after: $0) } ?? location.startIndex
     let filenameWithSuffix = location[filenameStart...]
@@ -634,6 +640,8 @@ public struct AutoLogLogger: AutoLogger {
   /// - ``OSLogType.info`` for successful function executions.
   /// - ``OSLogType.error`` for functions that throw errors.
   public func emit(event: AutoLogEvent, configuration: AutoLogConfiguration) {
+    guard configuration.shouldEmit(event) else { return }
+
     let outputs = resolveOutputs(for: event, configuration: configuration)
     let preferredContextConfiguration = configuration.applying(
       output: outputs.preferredContextOutput
@@ -651,7 +659,7 @@ public struct AutoLogLogger: AutoLogger {
         configuration.applying(output: output)
       }
       let enrichedEvent = enrichFailureContextIfNeeded(
-        for: event,
+        for: event.applyingPrivacy(output),
         snapshot: failureContextSnapshot,
         contextLimit: output.errorContextLimit,
         triggerLimit: output.failureContextTriggerLimit
@@ -668,13 +676,16 @@ public struct AutoLogLogger: AutoLogger {
     }
 
     if snapshot == nil {
-      snapshot = makeContextEntry(for: event, configuration: preferredContextConfiguration)
+      snapshot = makeContextEntry(
+        for: event.applyingPrivacy(outputs.preferredContextOutput),
+        configuration: preferredContextConfiguration
+      )
     }
 
     for output in outputs.matchedOutputs where output.route != .console {
       let outputConfiguration = configuration.applying(output: output)
       let enrichedEvent = enrichFailureContextIfNeeded(
-        for: event,
+        for: event.applyingPrivacy(output),
         snapshot: failureContextSnapshot,
         contextLimit: output.errorContextLimit,
         triggerLimit: output.failureContextTriggerLimit
@@ -838,6 +849,7 @@ extension AutoLogger {
   ) {
     var enrichedEvent = event
     enrichedEvent.executionContext = .capture()
+    guard configuration.shouldEmit(enrichedEvent) else { return }
     guard deduplicator.shouldEmit(event: enrichedEvent, configuration: configuration) else { return }
     emit(event: enrichedEvent, configuration: configuration)
   }
@@ -861,8 +873,9 @@ extension AutoLogger {
     event: AutoLogEvent,
     configuration: AutoLogConfiguration
   ) {
-    guard configuration.emitStartEvents else { return }
-    emit(event: event.asStartEvent, configuration: configuration)
+    let startEvent = event.asStartEvent
+    guard configuration.shouldEmit(startEvent) else { return }
+    emit(event: startEvent, configuration: configuration)
   }
 
   /// Emits a start event while honoring the runtime's deduplication settings.
@@ -871,7 +884,6 @@ extension AutoLogger {
     configuration: AutoLogConfiguration,
     deduplicator: AutoLogDeduplicator
   ) {
-    guard configuration.emitStartEvents else { return }
     emitIfEnabled(
       event: event.asStartEvent,
       configuration: configuration,

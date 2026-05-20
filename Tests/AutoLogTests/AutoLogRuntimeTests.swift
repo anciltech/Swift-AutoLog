@@ -201,8 +201,14 @@ struct AutoLogRuntimeTests {
     let runtime = AutoLogRuntime(
       logger: logger,
       configuration: AutoLogConfiguration(
-        emitStartEvents: false,
-        measureTimingDefault: false
+        outputs: [
+          AutoLogOutput(
+            name: "Console",
+            route: .console,
+            eventTypes: [.interaction, .success, .failure, .warning],
+            measureTiming: false
+          )
+        ]
       )
     )
 
@@ -220,8 +226,14 @@ struct AutoLogRuntimeTests {
     let runtime = AutoLogRuntime(
       logger: logger,
       configuration: AutoLogConfiguration(
-        emitStartEvents: false,
-        measureTimingDefault: false
+        outputs: [
+          AutoLogOutput(
+            name: "Console",
+            route: .console,
+            eventTypes: [.interaction, .success, .failure, .warning],
+            measureTiming: false
+          )
+        ]
       )
     )
 
@@ -260,7 +272,7 @@ struct AutoLogRuntimeTests {
     let logger = MockLogger()
     let runtime = AutoLogRuntime(
       logger: logger,
-      configuration: AutoLogConfiguration(emitStartEvents: false)
+      configuration: .testConsoleWithoutStart
     )
 
     AutoLog.withRuntime(runtime) {

@@ -109,7 +109,6 @@ structured concurrency.
 ```swift
 AutoLog.start(
   configuration: AutoLogConfiguration(
-    emitStartEvents: false,
     deduplicateWithin: .seconds(1),
     measureTimingDepths: [2, 3],
     normalizedTiming: true,
@@ -130,7 +129,7 @@ AutoLog.start(
       AutoLogOutput(
         name: "Firebase Errors",
         route: .firebase,
-        eventTypes: [.failure],
+        eventTypes: [.interaction, .failure, .warning],
         typeNameFilters: ["ViewModel", "Service"],
         measureTiming: true,
         timingDepths: [2, 3, 4],
@@ -138,7 +137,8 @@ AutoLog.start(
         errorContextLimit: 10,
         logFormat: LogFormat(
           mainLine: [.statusEmoji, .typeName, .dotSeparator, .functionName, .parameters, .timing, .lineNumber]
-        )
+        ),
+        parameterPrivacy: .omit
       )
     ]
   )
@@ -158,8 +158,13 @@ If you ship a companion settings screen, matching presets such as "all depths",
 understandable while still mapping directly to the runtime configuration.
 When you need more than one destination or view of the same runtime events, add
 `outputs`. Each output can target a route like `.console` or `.firebase`,
-choose its own `LogFormat`, exclude start events, filter type names, and attach
-its own amount of recent failure context. When that `LogFormat` includes
+choose its own `LogFormat`, include or exclude `.start` through `eventTypes`,
+filter type names, redact parameters, and attach its own amount of recent
+failure context. Untagged events are eligible for every configured output, so a
+Crashlytics, Splunk, Datadog, or Sentry sink can receive matching failures and
+interactions without Firebase-specific annotations at every call site. Explicit
+route tags still narrow a specific function to the tagged route when needed.
+When that `LogFormat` includes
 `.lineNumber`, the `:42` suffix applies to both standard compact lines and the
 interaction trace-tree lines rendered under a source badge.
 The companion settings preview uses the same `AutoLogOutput.matches(_:)`
@@ -178,6 +183,41 @@ layout the next time the shared configuration store is loaded.
 Likewise, `.timing` is now controlled entirely by the `mainLine` element list:
 keep it to render elapsed durations, or remove it when a destination should log
 the same events without inline timing text.
+
+`AutoLog.start()` installs a console-only default output:
+
+```swift
+AutoLogOutput.consoleDefault
+```
+
+That default includes `.interaction`, `.start`, `.success`, `.failure`, and
+`.warning`. To omit start rows for one destination, remove `.start` from that
+destination's `eventTypes` instead of changing a global runtime switch:
+
+```swift
+AutoLog.start(
+  configuration: AutoLogConfiguration(
+    outputs: [
+      AutoLogOutput(
+        name: "Console",
+        route: .console,
+        eventTypes: [.interaction, .success, .failure, .warning]
+      ),
+      AutoLogOutput(
+        name: "Crashlytics",
+        route: .firebase,
+        eventTypes: [.interaction, .failure, .warning],
+        typeNameFilters: ["ViewModel"],
+        errorContextLimit: 10,
+        parameterPrivacy: .omit
+      )
+    ]
+  ),
+  sinks: [
+    CrashlyticsAutoLogSink()
+  ]
+)
+```
 
 If a single hot path is too noisy, add ``Deduplicate(_:)`` to that function
 while leaving the rest of the type untouched:

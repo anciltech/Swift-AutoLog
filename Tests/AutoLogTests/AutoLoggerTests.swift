@@ -48,7 +48,7 @@ struct AutoLoggerTests {
     // Use @AutoLog (no-arg) with a scoped runtime override instead.
     let runtime = AutoLogRuntime(
       logger: Self.mock,
-      configuration: AutoLogConfiguration(emitStartEvents: false)
+      configuration: .testConsoleWithoutStart
     )
 
     await AutoLog.withRuntime(runtime) {
@@ -223,6 +223,137 @@ struct AutoLoggerTests {
   }
 
   @Test
+  func untaggedEventsForwardToMatchingOutputSinks() {
+    let sink = MockEventSink(route: .firebase)
+    let logger = AutoLogLogger(formatter: MockFormatter(), sinks: [sink])
+    let configuration = AutoLogConfiguration(
+      outputs: [
+        AutoLogOutput(
+          name: "Firebase ViewModel Failures",
+          route: .firebase,
+          eventTypes: [.failure],
+          typeNameFilters: ["ViewModel"]
+        )
+      ]
+    )
+
+    logger.emit(
+      event: AutoLogEvent(
+        location: "App/AuthViewModel.swift:1:1",
+        declaration: "func login()",
+        result: .failure(Failure.mock)
+      ),
+      configuration: configuration
+    )
+
+    #expect(sink.events.count == 1)
+  }
+
+  @Test
+  func interactionHelpersForwardThroughMatchingOutputsWithoutRouteTags() {
+    let sink = MockEventSink(route: .firebase)
+    let runtime = AutoLogRuntime(
+      logger: AutoLogLogger(formatter: MockFormatter(), sinks: [sink]),
+      configuration: AutoLogConfiguration(
+        outputs: [
+          AutoLogOutput(
+            name: "Firebase Interactions",
+            route: .firebase,
+            eventTypes: [.interaction]
+          )
+        ]
+      )
+    )
+
+    AutoLog.withRuntime(runtime) {
+      AutoLog.run(AutoLogInteraction.button("Save")) {}
+    }
+
+    #expect(sink.events.count == 1)
+    #expect(sink.events.first?.outputEventType == .interaction)
+    #expect(sink.events.first?.routes.isEmpty == true)
+  }
+
+  @Test
+  func startEventsAreControlledByOutputEventTypes() {
+    let sink = MockEventSink(route: .firebase)
+    let logger = AutoLogLogger(formatter: MockFormatter(), sinks: [sink])
+    let configuration = AutoLogConfiguration(
+      outputs: [
+        AutoLogOutput(
+          name: "Firebase Results",
+          route: .firebase,
+          eventTypes: [.success]
+        )
+      ]
+    )
+    let event = AutoLogEvent(
+      location: "App/AuthViewModel.swift:1:1",
+      declaration: "func login()"
+    )
+
+    logger.emitStart(event: event, configuration: configuration)
+    logger.emit(event: event, configuration: configuration)
+
+    #expect(sink.events.count == 1)
+    #expect(sink.events.first?.outputEventType == .success)
+  }
+
+  @Test
+  func explicitRouteTagsNarrowOtherwiseGenericOutputMatching() {
+    let firebaseSink = MockEventSink(route: .firebase)
+    let splunkSink = MockEventSink(route: .splunk)
+    let logger = AutoLogLogger(formatter: MockFormatter(), sinks: [firebaseSink, splunkSink])
+    let configuration = AutoLogConfiguration(
+      outputs: [
+        AutoLogOutput(name: "Firebase", route: .firebase),
+        AutoLogOutput(name: "Splunk", route: .splunk)
+      ]
+    )
+
+    logger.emit(
+      event: AutoLogEvent(
+        location: "App/AuditViewModel.swift:1:1",
+        declaration: "func uploadAuditTrail()",
+        tags: [AutoLogRoute.firebase]
+      ),
+      configuration: configuration
+    )
+
+    #expect(firebaseSink.events.count == 1)
+    #expect(splunkSink.events.isEmpty)
+  }
+
+  @Test
+  func externalOutputsOmitParametersByDefaultAndCanAllowListThem() {
+    let defaultSink = MockEventSink(route: .firebase)
+    let allowListSink = MockEventSink(route: .splunk)
+    let logger = AutoLogLogger(formatter: MockFormatter(), sinks: [defaultSink, allowListSink])
+    let configuration = AutoLogConfiguration(
+      outputs: [
+        AutoLogOutput(name: "Firebase", route: .firebase),
+        AutoLogOutput(
+          name: "Splunk",
+          route: .splunk,
+          parameterPrivacy: .allowList(["userID"])
+        )
+      ]
+    )
+    let event = AutoLogEvent(
+      location: "App/AuthViewModel.swift:1:1",
+      declaration: "func login(userID:token:)",
+      parameters: ["userID": 42, "token": "secret"]
+    )
+
+    logger.emit(event: event, configuration: configuration)
+
+    #expect(defaultSink.events.first?.parameters.isEmpty == true)
+    #expect(defaultSink.events.first?.parameterLabels.isEmpty == true)
+    #expect(allowListSink.events.first?.parameters["userID"] as? Int == 42)
+    #expect(allowListSink.events.first?.parameters["token"] == nil)
+  }
+
+  @Test
   func consoleOutput_reusesRenderedLineForContextSnapshot() {
     let formatter = CountingFormatter()
     let logger = AutoLogLogger(formatter: formatter)
@@ -247,16 +378,18 @@ struct AutoLoggerTests {
         AutoLogOutput(
           name: "Splunk",
           route: .splunk,
-          eventTypes: [.start, .failure],
+          eventTypes: [.interaction, .start, .failure],
           errorContextLimit: 2
         )
       ]
     )
+    let interaction = AutoLogInteraction.button("Run")
 
     logger.emit(
       event: AutoLogEvent(
+        source: interaction,
         location: "App/AsyncExamplesView.swift:10:1",
-        declaration: "Run"
+        declaration: interaction.description
       ),
       configuration: configuration
     )
@@ -283,7 +416,7 @@ struct AutoLoggerTests {
 
     let failure = sink.events.last
     #expect(failure?.errorContext.count == 2)
-    #expect(failure?.errorContext[0].summary.contains("Run()") == true)
+    #expect(failure?.errorContext[0].summary.contains("Run") == true)
     #expect(failure?.errorContext[1].summary.contains("processPayment() async") == true)
   }
 
@@ -344,7 +477,7 @@ struct AutoLoggerTests {
         AutoLogOutput(
           name: "Splunk Errors",
           route: .splunk,
-          eventTypes: [.failure],
+          eventTypes: [.start, .success, .failure],
           errorContextLimit: 3
         )
       ]

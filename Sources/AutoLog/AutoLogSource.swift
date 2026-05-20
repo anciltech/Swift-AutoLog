@@ -107,6 +107,25 @@ public enum AutoLog {
     )
   }
 
+  /// Starts the default ``AutoLogLogger`` with additional route-based event sinks.
+  ///
+  /// Configured ``AutoLogOutput`` values decide which events reach each sink.
+  /// Untagged events are eligible for every matching output; explicit route tags
+  /// remain available when a call site needs narrower routing.
+  public static func start(
+    configuration: AutoLogConfiguration = .default,
+    sinks: [any AutoLogEventSink],
+    configurationStore: AutoLogConfigurationStore = .shared,
+    refreshInterval: Duration = .seconds(2)
+  ) {
+    start(
+      logger: AutoLogLogger(sinks: sinks),
+      configuration: configuration,
+      configurationStore: configurationStore,
+      refreshInterval: refreshInterval
+    )
+  }
+
   /// Starts the process-local logger and live configuration store using an
   /// explicit bootstrap payload.
   ///

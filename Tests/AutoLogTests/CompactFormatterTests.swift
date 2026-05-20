@@ -886,7 +886,7 @@ struct CompactFormatterIntegrationTests {
         }
         let runtime = AutoLogRuntime(
             logger: AutoLogLogger(formatter: CapturingFormatter(box: box)),
-            configuration: AutoLogConfiguration(emitStartEvents: false)
+            configuration: .testConsoleWithoutStart
         )
 
         struct Subject {

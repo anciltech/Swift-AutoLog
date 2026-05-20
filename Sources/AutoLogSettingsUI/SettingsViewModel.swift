@@ -227,7 +227,6 @@ final class SettingsViewModel {
     return """
     AutoLog.start(
       configuration: AutoLogConfiguration(
-        emitStartEvents: \(configuration.emitStartEvents),
         measureTimingDefault: \(configuration.measureTimingDefault),
         deduplicateWithin: \(renderDeduplication(configuration.deduplicateWithin)),
         measureTimingDepths: \(renderDepths(configuration.measureTimingDepths)),
@@ -324,7 +323,8 @@ final class SettingsViewModel {
       measureTiming: \(output.measureTiming),
       timingDepths: \(renderDepths(output.timingDepths)),
       errorContextLimit: \(output.errorContextLimit),
-      logFormat: \(renderLogFormat(output.logFormat))
+      logFormat: \(renderLogFormat(output.logFormat)),
+      parameterPrivacy: \(renderParameterPrivacy(output.parameterPrivacy))
     )
     """
   }
@@ -351,6 +351,18 @@ final class SettingsViewModel {
     guard let deduplication else { return "nil" }
     let seconds = Double(deduplication.milliseconds) / 1_000
     return ".seconds(\(seconds.formatted(.number.precision(.fractionLength(0...3)))))"
+  }
+
+  private func renderParameterPrivacy(_ privacy: AutoLogParameterPrivacy) -> String {
+    switch privacy {
+    case .include:
+      return ".include"
+    case .omit:
+      return ".omit"
+    case .allowList(let keys):
+      let renderedKeys = keys.sorted().map(literal).joined(separator: ", ")
+      return ".allowList([\(renderedKeys)])"
+    }
   }
 
   private func renderArrowStyle(_ style: LogFormat.ArrowStyle) -> String {

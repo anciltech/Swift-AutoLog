@@ -20,3 +20,17 @@ extension AutoLogger where Self == MockLogger {
     MockLogger()
   }
 }
+
+extension AutoLogConfiguration {
+  static var testConsoleWithoutStart: AutoLogConfiguration {
+    AutoLogConfiguration(
+      outputs: [
+        AutoLogOutput(
+          name: "Console",
+          route: .console,
+          eventTypes: [.interaction, .success, .failure, .warning]
+        )
+      ]
+    )
+  }
+}
