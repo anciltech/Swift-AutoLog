@@ -159,14 +159,18 @@ AutoLogSourceCode/swift-autolog/scripts/measure-impact.sh
 ```
 
 The probe builds three release executables with equivalent control flow: a
-plain Swift baseline, a direct `OSLog.Logger` variant, and an `@AutoLog`
-variant. It writes `summary.csv`, `summary.md`, build logs, and linked-dylib
-lists under `.build/impact-runs/`.
+plain Swift baseline, a direct `OSLog.Logger` variant, an `@AutoLog` variant,
+an `@AutoLog` failures-only output variant, and an `@AutoLog` type-filtered
+output variant. It writes `summary.csv`, `summary.md`, build logs, and
+linked-dylib lists under `.build/impact-runs/`.
 
 Treat this as a small-probe fixed-cost measurement. It is useful for spotting
 package-level footprint movement, but production apps should still measure
 their own app binary because SwiftUI, Foundation, and OSLog may already be
 linked before AutoLog is added.
+Runtime output filters are expected to reduce emitted log volume and sink work,
+not the linked footprint: the AutoLog runtime and macro-generated wrapper code
+are already present before output matching runs.
 
 ## Profile the benchmark with Instruments
 

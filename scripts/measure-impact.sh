@@ -11,10 +11,12 @@ usage() {
   cat <<'USAGE'
 Usage: measure-impact.sh [--output DIR] [--keep-workdir]
 
-Builds three equivalent release executables and records binary-size impact:
+Builds equivalent release executables and records binary-size impact:
   - BaselineProbe: plain Swift control-flow probe
   - DirectOSLogProbe: same probe with manual OSLog calls
   - AutoLogProbe: same probe using @AutoLog from this checkout
+  - AutoLogFailuresOnlyProbe: @AutoLog with output configured for failures only
+  - AutoLogTypeFilteredProbe: @AutoLog with output filtered to another type
 
 The output directory receives summary.csv, summary.md, per-build logs, and
 linked-dylib lists.
@@ -88,6 +90,53 @@ $target_dependencies
 EOF
 }
 
+write_autolog_probe_package() {
+  local dir="$1"
+
+  mkdir -p \
+    "$dir/Sources/AutoLogProbe" \
+    "$dir/Sources/AutoLogFailuresOnlyProbe" \
+    "$dir/Sources/AutoLogTypeFilteredProbe"
+
+  cat > "$dir/Package.swift" <<EOF
+// swift-tools-version: 6.0
+import PackageDescription
+
+let package = Package(
+  name: "AutoLogImpactProbes",
+  platforms: [.macOS(.v15)],
+  products: [
+    .executable(name: "AutoLogProbe", targets: ["AutoLogProbe"]),
+    .executable(name: "AutoLogFailuresOnlyProbe", targets: ["AutoLogFailuresOnlyProbe"]),
+    .executable(name: "AutoLogTypeFilteredProbe", targets: ["AutoLogTypeFilteredProbe"]),
+  ],
+  dependencies: [
+    .package(path: "$PACKAGE_DIR"),
+  ],
+  targets: [
+    .executableTarget(
+      name: "AutoLogProbe",
+      dependencies: [
+        .product(name: "AutoLog", package: "Swift-AutoLog"),
+      ]
+    ),
+    .executableTarget(
+      name: "AutoLogFailuresOnlyProbe",
+      dependencies: [
+        .product(name: "AutoLog", package: "Swift-AutoLog"),
+      ]
+    ),
+    .executableTarget(
+      name: "AutoLogTypeFilteredProbe",
+      dependencies: [
+        .product(name: "AutoLog", package: "Swift-AutoLog"),
+      ]
+    ),
+  ]
+)
+EOF
+}
+
 write_baseline_source() {
   local file="$1"
   cat > "$file" <<'EOF'
@@ -138,6 +187,84 @@ write_autolog_source() {
   local file="$1"
   cat > "$file" <<'EOF'
 import AutoLog
+
+@AutoLog
+struct ImpactWorker {
+  func compute(_ value: Int) -> Int {
+    if value.isMultiple(of: 2) {
+      return value / 2
+    }
+    return value * 3 + 1
+  }
+}
+
+let worker = ImpactWorker()
+let result = (0..<100).reduce(0) { total, value in
+  total + worker.compute(value)
+}
+print(result)
+EOF
+}
+
+write_autolog_failures_only_source() {
+  local file="$1"
+  cat > "$file" <<'EOF'
+import AutoLog
+
+AutoLog.start(
+  configuration: AutoLogConfiguration(
+    outputs: [
+      AutoLogOutput(
+        name: "Failures",
+        route: .console,
+        eventTypes: [.failure],
+        measureTiming: false,
+        errorContextLimit: 0
+      )
+    ]
+  )
+)
+
+enum ImpactError: Error {
+  case oddValue
+}
+
+@AutoLog
+struct ImpactWorker {
+  func compute(_ value: Int) throws -> Int {
+    if value.isMultiple(of: 2) {
+      return value / 2
+    }
+    throw ImpactError.oddValue
+  }
+}
+
+let worker = ImpactWorker()
+let result = (0..<100).reduce(0) { total, value in
+  total + ((try? worker.compute(value)) ?? 0)
+}
+print(result)
+EOF
+}
+
+write_autolog_type_filtered_source() {
+  local file="$1"
+  cat > "$file" <<'EOF'
+import AutoLog
+
+AutoLog.start(
+  configuration: AutoLogConfiguration(
+    outputs: [
+      AutoLogOutput(
+        name: "Filtered",
+        route: .console,
+        typeNameFilters: ["OtherType"],
+        measureTiming: false,
+        errorContextLimit: 0
+      )
+    ]
+  )
+)
 
 @AutoLog
 struct ImpactWorker {
@@ -225,7 +352,7 @@ build_and_measure() {
 
 baseline_dir="$WORK_ROOT/BaselineProbe"
 direct_dir="$WORK_ROOT/DirectOSLogProbe"
-autolog_dir="$WORK_ROOT/AutoLogProbe"
+autolog_dir="$WORK_ROOT/AutoLogImpactProbes"
 
 write_probe_package "$baseline_dir" "BaselineProbe" "" ""
 write_baseline_source "$baseline_dir/Sources/BaselineProbe/main.swift"
@@ -233,12 +360,10 @@ write_baseline_source "$baseline_dir/Sources/BaselineProbe/main.swift"
 write_probe_package "$direct_dir" "DirectOSLogProbe" "" ""
 write_direct_oslog_source "$direct_dir/Sources/DirectOSLogProbe/main.swift"
 
-write_probe_package \
-  "$autolog_dir" \
-  "AutoLogProbe" \
-  "    .package(path: \"$PACKAGE_DIR\")," \
-  "        .product(name: \"AutoLog\", package: \"Swift-AutoLog\"),"
+write_autolog_probe_package "$autolog_dir"
 write_autolog_source "$autolog_dir/Sources/AutoLogProbe/main.swift"
+write_autolog_failures_only_source "$autolog_dir/Sources/AutoLogFailuresOnlyProbe/main.swift"
+write_autolog_type_filtered_source "$autolog_dir/Sources/AutoLogTypeFilteredProbe/main.swift"
 
 cat > "$OUTPUT_DIR/summary.csv" <<'EOF'
 scenario,product,executable_bytes,text_segment_bytes,data_const_segment_bytes,data_segment_bytes,linkedit_segment_bytes,linked_dylib_count,build_seconds
@@ -247,6 +372,8 @@ EOF
 build_and_measure "baseline" "BaselineProbe" "$baseline_dir"
 build_and_measure "direct-oslog" "DirectOSLogProbe" "$direct_dir"
 build_and_measure "autolog" "AutoLogProbe" "$autolog_dir"
+build_and_measure "autolog-failures-only-output" "AutoLogFailuresOnlyProbe" "$autolog_dir"
+build_and_measure "autolog-type-filtered-output" "AutoLogTypeFilteredProbe" "$autolog_dir"
 
 awk -F, '
   NR == 1 { next }
@@ -271,6 +398,8 @@ awk -F, '
     printf "- AutoLog vs direct OSLog executable delta: %+d bytes\n", executable["autolog"] - executable["direct-oslog"]
     printf "- AutoLog vs baseline __TEXT delta: %+d bytes\n", text["autolog"] - text["baseline"]
     printf "- AutoLog vs direct OSLog __TEXT delta: %+d bytes\n", text["autolog"] - text["direct-oslog"]
+    printf "- AutoLog failures-only output vs AutoLog executable delta: %+d bytes\n", executable["autolog-failures-only-output"] - executable["autolog"]
+    printf "- AutoLog type-filtered output vs AutoLog executable delta: %+d bytes\n", executable["autolog-type-filtered-output"] - executable["autolog"]
   }
 ' "$OUTPUT_DIR/summary.csv" > "$OUTPUT_DIR/summary.md"
 
