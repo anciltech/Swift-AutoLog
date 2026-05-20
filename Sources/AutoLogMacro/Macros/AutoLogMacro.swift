@@ -80,6 +80,12 @@ struct AutoLogConditionTracePlan {
   }
 }
 
+struct AutoLogDeclarationMetadata {
+  let location: StringLiteralExprSyntax
+  let description: String
+  let parameters: [FunctionSyntax.Signature.Parameter]
+}
+
 extension AutoLogMacro {
   public static func initialize(for node: AttributeSyntax) -> ExprSyntax {
     if let expression = node.extract(argument: .architecture, as: ExprSyntax.self) {
@@ -106,8 +112,30 @@ extension AutoLogMacro {
     providingBodyFor declaration: some DeclSyntaxProtocol & WithOptionalCodeBlockSyntax,
     in context: some MacroExpansionContext
   ) throws -> [CodeBlockItemSyntax] {
-    guard let function = FunctionSyntax(from: declaration)
-    else { return self.body() }
+    if let function = FunctionSyntax(from: declaration) {
+      return self.expansion(
+        of: node,
+        providingBodyFor: function,
+        in: context
+      )
+    }
+
+    if let initializer = InitializerSyntax(from: declaration) {
+      return self.expansion(
+        of: node,
+        providingBodyFor: initializer,
+        in: context
+      )
+    }
+
+    return self.body()
+  }
+
+  static func expansion(
+    of node: AttributeSyntax,
+    providingBodyFor function: FunctionSyntax,
+    in context: some MacroExpansionContext
+  ) -> [CodeBlockItemSyntax] {
     if function.syntax.attributes.hasBareOmitMarker {
       return function.body
     }
@@ -134,14 +162,18 @@ extension AutoLogMacro {
     let resultFilterTrait = function.syntax.attributes.extractTraits(for: .when).first
     let omitRuleTraits = function.syntax.attributes.extractOmitRuleTraits()
     let instrumentedPlain = self.instrumentedPlain(of: function)
+    let metadata = AutoLogDeclarationMetadata(
+      location: self.location(of: function, in: context),
+      description: function.description,
+      parameters: function.parameters
+    )
 
     return body {
       self.captureRuntime()
       self.hook(for: node)
       self.event(
         for: node,
-        in: context,
-        of: function,
+        of: metadata,
         levelTrait: levelTrait,
         taggableTraits: tagTraits,
         omittableTraits: omitTraits,
@@ -209,12 +241,89 @@ extension AutoLogMacro {
     }
   }
 
+  static func expansion(
+    of node: AttributeSyntax,
+    providingBodyFor initializer: InitializerSyntax,
+    in context: some MacroExpansionContext
+  ) -> [CodeBlockItemSyntax] {
+    if initializer.syntax.attributes.hasBareOmitMarker {
+      return initializer.body
+    }
+
+    let measureTrait = node.extract(argument: .measure, as: BooleanLiteralExprSyntax.self)
+    let shouldMeasure: Bool
+    let isMeasuredExplicitly: Bool
+    if let measureTrait {
+      shouldMeasure = measureTrait.literal.tokenKind == .keyword(.true)
+      isMeasuredExplicitly = shouldMeasure
+    } else {
+      shouldMeasure = true
+      isMeasuredExplicitly = false
+    }
+
+    let tagTraits = initializer.syntax.attributes.extractTagTraitsInSourceOrder()
+    let omitTraits = initializer.syntax.attributes.extractTraits(for: .omit)
+    let levelTrait = initializer.syntax.attributes.extractTraits(for: .level).first
+    let deduplicationTrait = initializer.syntax.attributes.extractTraits(for: .deduplicate).first
+    let omitRuleTraits = initializer.syntax.attributes.extractOmitRuleTraits()
+    let metadata = AutoLogDeclarationMetadata(
+      location: self.location(of: initializer, in: context),
+      description: initializer.description,
+      parameters: initializer.parameters
+    )
+
+    return body {
+      self.captureRuntime()
+      self.hook(for: node)
+      self.event(
+        for: node,
+        of: metadata,
+        levelTrait: levelTrait,
+        taggableTraits: tagTraits,
+        omittableTraits: omitTraits,
+        deduplicationTrait: deduplicationTrait,
+        omitRuleTraits: omitRuleTraits
+      )
+
+      if isMeasuredExplicitly {
+        self.captureExplicitMeasure()
+      }
+
+      self.emitStart()
+
+      if shouldMeasure {
+        self.captureTimingStart()
+      }
+
+      if initializer.isThrowing {
+        CodeBlockItemSyntax(stringLiteral: "var __logError: (any Error)?")
+      }
+
+      self.emitOnInitializerExit(shouldMeasure: shouldMeasure, capturesError: initializer.isThrowing)
+
+      if initializer.isThrowing {
+        self.throwingInitializerBody(of: initializer)
+      } else {
+        self.instrumentedBody(of: initializer)
+      }
+    }
+  }
+
   static func location(
     of function: FunctionSyntax,
     in context: some MacroExpansionContext
   ) -> StringLiteralExprSyntax {
     StringLiteralExprSyntax(
       content: context.location(of: function.syntax)?.findable ?? ""
+    )
+  }
+
+  static func location(
+    of initializer: InitializerSyntax,
+    in context: some MacroExpansionContext
+  ) -> StringLiteralExprSyntax {
+    StringLiteralExprSyntax(
+      content: context.location(of: initializer.syntax)?.findable ?? ""
     )
   }
 
@@ -275,8 +384,7 @@ extension AutoLogMacro {
 
   static func event(
     for node: AttributeSyntax,
-    in context: some MacroExpansionContext,
-    of declaration: FunctionSyntax,
+    of declaration: AutoLogDeclarationMetadata,
     levelTrait: (any ExprSyntaxProtocol)?,
     taggableTraits: [ExprSyntax],
     omittableTraits: [any ExprSyntaxProtocol],
@@ -338,10 +446,7 @@ extension AutoLogMacro {
                     leadingTrivia: .newline,
                     label: .predefined(.location),
                     colon: .colonToken(),
-                    expression: self.location(
-                      of: declaration,
-                      in: context
-                    ),
+                    expression: declaration.location,
                     trailingComma: .commaToken(),
                     trailingTrivia: .newline
                   )
@@ -651,6 +756,45 @@ extension AutoLogMacro {
     )
   }
 
+  static func emitOnInitializerExit(
+    shouldMeasure: Bool,
+    capturesError: Bool
+  ) -> CodeBlockItemSyntax {
+    var statements: [String] = []
+    if capturesError {
+      statements.append(
+        """
+        if let __logError {
+          event.result = .failure(__logError)
+        }
+        """
+      )
+    }
+
+    if shouldMeasure {
+      statements.append(
+        """
+        if let __logStart {
+          event.duration = ContinuousClock.now - __logStart
+        }
+        """
+      )
+    }
+
+    statements.append("autoLogger.emitIfEnabled(event: event, runtime: runtime)")
+
+    let body = statements
+      .map { statement in
+        statement
+          .split(separator: "\n", omittingEmptySubsequences: false)
+          .map { "  \($0)" }
+          .joined(separator: "\n")
+      }
+      .joined(separator: "\n")
+
+    return CodeBlockItemSyntax(stringLiteral: "defer {\n\(body)\n}")
+  }
+
   /// Generates: `event.isMeasuredExplicitly = true`
   ///
   /// Injected when `@Log(measure: true)` is used, so the formatter shows timing
@@ -864,6 +1008,43 @@ extension AutoLogMacro {
     )
     plain.body = body
     return plain
+  }
+
+  static func instrumentedBody(
+    of initializer: InitializerSyntax
+  ) -> [CodeBlockItemSyntax] {
+    guard let body = initializer.syntax.body else { return initializer.body }
+    var yieldCaptureIndex = 0
+    var conditionTraceIndex = 0
+    return rewriteStatements(
+      Array(body.statements),
+      yieldCaptureIndex: &yieldCaptureIndex,
+      conditionTraceIndex: &conditionTraceIndex
+    )
+  }
+
+  static func throwingInitializerBody(
+    of initializer: InitializerSyntax
+  ) -> CodeBlockItemSyntax {
+    CodeBlockItemSyntax(
+      DoStmtSyntax(
+        body: CodeBlockSyntax(
+          statements: CodeBlockItemListSyntax(
+            self.instrumentedBody(of: initializer)
+          )
+        ),
+        catchClauses: CatchClauseListSyntax(
+          arrayLiteral: CatchClauseSyntax(
+            body: CodeBlockSyntax(
+              statements: CodeBlockItemListSyntax {
+                CodeBlockItemSyntax(stringLiteral: "__logError = error")
+                CodeBlockItemSyntax.rethrow
+              }
+            )
+          )
+        )
+      )
+    )
   }
 
   static func rewriteStatements(

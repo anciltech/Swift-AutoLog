@@ -11,6 +11,161 @@ import Testing
 )
 struct LogMacroTests {
   @Test
+  func initializer_default_logsCompletion() throws {
+    assertMacro {
+      #"""
+      struct Project {
+        let name: String
+
+        @Log
+        init(name: String) {
+          self.name = name
+        }
+      }
+      """#
+    } expansion: {
+      """
+      struct Project {
+        let name: String
+        init(name: String) {
+          let runtime = AutoLog.runtimeSnapshot()
+          let autoLogger: any AutoLogger = runtime.logger
+          var event = AutoLogEvent(
+            source: AutoLogSource.current,
+
+            location: "TestModule/Test.swift:4:3",
+            declaration: "init(name: String)",
+            parameters: [
+              "name": name
+            ]
+          )
+          autoLogger.emitStart(event: event, runtime: runtime)
+          let __logStart = autoLogger.shouldMeasureTiming(for: event, runtime: runtime) ? ContinuousClock.now : nil
+          defer {
+            if let __logStart {
+              event.duration = ContinuousClock.now - __logStart
+            }
+            autoLogger.emitIfEnabled(event: event, runtime: runtime)
+          }
+          self.name = name
+        }
+      }
+      """
+    }
+  }
+
+  @Test
+  func throwingInitializer_default_logsThrownError() throws {
+    assertMacro {
+      #"""
+      struct Project {
+        let name: String
+
+        @Log
+        init(name: String) throws {
+          guard !name.isEmpty else {
+            throw ProjectError.emptyName
+          }
+          self.name = name
+        }
+      }
+      """#
+    } expansion: {
+      """
+      struct Project {
+        let name: String
+        init(name: String) throws {
+          let runtime = AutoLog.runtimeSnapshot()
+          let autoLogger: any AutoLogger = runtime.logger
+          var event = AutoLogEvent(
+            source: AutoLogSource.current,
+
+            location: "TestModule/Test.swift:4:3",
+            declaration: "init(name: String) throws",
+            parameters: [
+              "name": name
+            ]
+          )
+          autoLogger.emitStart(event: event, runtime: runtime)
+          let __logStart = autoLogger.shouldMeasureTiming(for: event, runtime: runtime) ? ContinuousClock.now : nil
+          var __logError: (any Error)?
+          defer {
+            if let __logError {
+              event.result = .failure(__logError)
+            }
+            if let __logStart {
+              event.duration = ContinuousClock.now - __logStart
+            }
+            autoLogger.emitIfEnabled(event: event, runtime: runtime)
+          }
+          do {
+              guard !name.isEmpty else {
+                event.earlyExit = AutoLogEarlyExit(kind: AutoLogEarlyExit.Kind.guard, intent: .unknown, condition: "name.isEmpty", message: nil)
+                throw ProjectError.emptyName
+              }
+              self.name = name
+          } catch {
+            __logError = error
+            throw error
+          }
+        }
+      }
+      """
+    }
+  }
+
+  @Test
+  func failableInitializer_default_logsEarlyNilReturn() throws {
+    assertMacro {
+      #"""
+      struct Project {
+        let name: String
+
+        @Log
+        init?(name: String) {
+          guard !name.isEmpty else {
+            return nil
+          }
+          self.name = name
+        }
+      }
+      """#
+    } expansion: {
+      """
+      struct Project {
+        let name: String
+        init?(name: String) {
+          let runtime = AutoLog.runtimeSnapshot()
+          let autoLogger: any AutoLogger = runtime.logger
+          var event = AutoLogEvent(
+            source: AutoLogSource.current,
+
+            location: "TestModule/Test.swift:4:3",
+            declaration: "init?(name: String)",
+            parameters: [
+              "name": name
+            ]
+          )
+          autoLogger.emitStart(event: event, runtime: runtime)
+          let __logStart = autoLogger.shouldMeasureTiming(for: event, runtime: runtime) ? ContinuousClock.now : nil
+          defer {
+            if let __logStart {
+              event.duration = ContinuousClock.now - __logStart
+            }
+            autoLogger.emitIfEnabled(event: event, runtime: runtime)
+          }
+          guard !name.isEmpty else {
+            event.earlyExit = AutoLogEarlyExit(kind: AutoLogEarlyExit.Kind.guard, intent: .unknown, condition: "name.isEmpty", message: nil)
+            return nil
+              }
+          self.name = name
+        }
+      }
+      """
+    }
+  }
+
+  @Test
   func voidFunction_default_noAdditinalAnnotations() throws {
     assertMacro {
       #"""

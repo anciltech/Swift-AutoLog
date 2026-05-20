@@ -31,9 +31,9 @@ Timing, duration, ordering, and concurrent interleaving stay visible in the emit
 Interaction and system sources such as buttons, toggles, text fields, timers, and API triggers can propagate downstream, so a log line still carries the intent that started the chain.
 Each interaction origin also gets a compact source-plus-badge prefix such as `👆🏼-🧵A1B`, making it easier to visually group one button tap or timer tick from another while concurrent work is interleaving.
 
-* **Annotate all methods within type or extension**
+* **Annotate methods within type or extension**
 
-There is no need to annotate each method individually - simply apply the desired annotation to the declaration, and let the magic happen. Standalone functions can also be annotated.
+There is no need to annotate each method individually - simply apply the desired annotation to the declaration, and let the magic happen. Standalone functions and individual initializers can also be annotated explicitly.
 
 * **Customize how logs are handled**
 

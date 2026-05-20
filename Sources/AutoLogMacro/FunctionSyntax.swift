@@ -247,6 +247,43 @@ public struct FunctionSyntax {
   }
 }
 
+@dynamicMemberLookup
+public struct InitializerSyntax {
+  let syntax: InitializerDeclSyntax
+  let attributes: [FunctionSyntax.Attribute]
+  let signature: FunctionSyntax.Signature
+
+  /// Returns the original body of the called initializer as an array of `CodeBlockItemSyntax`.
+  /// If the initializer body is missing, an empty array is returned.
+  var body: [CodeBlockItemSyntax] {
+    self.syntax.body?.statements.compactMap { $0 } ?? []
+  }
+
+  subscript<T>(dynamicMember keyPath: KeyPath<FunctionSyntax.Signature, T>) -> T {
+    get { signature[keyPath: keyPath] }
+  }
+
+  /// Returns a description of the original initializer's signature.
+  var description: String {
+    var syntax = self.syntax
+    syntax.attributes = []
+    syntax.body = nil
+    return syntax.trimmedDescription
+  }
+
+  init(_ syntax: InitializerDeclSyntax) {
+    self.syntax = syntax
+    self.signature = FunctionSyntax.Signature(syntax: syntax.signature)
+    self.attributes = syntax.attributes.compactMap(\.asFunctionSyntaxAttribute)
+  }
+
+  init?(from syntax: some DeclSyntaxProtocol) {
+    guard let syntax = syntax.as(InitializerDeclSyntax.self)
+    else { return nil }
+    self.init(syntax)
+  }
+}
+
 extension AttributeListSyntax.Element {
   var asFunctionSyntaxAttribute: FunctionSyntax.Attribute? {
     guard

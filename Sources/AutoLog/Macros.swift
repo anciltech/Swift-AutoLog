@@ -109,7 +109,7 @@ public macro OSLog(
 ///
 /// When  `logger` parameter is specified, introdcued``Log(using:)``
 /// macros will use it. In order to override implicit parameter, we must explicity
-/// mark method with ``Log(using:)``
+/// mark a method with ``Log(using:)``
 /// ```swift
 /// @AutoLog
 /// struct Foo {
@@ -416,11 +416,11 @@ public macro Level(_ trait: (any Levelable)? = nil) = #externalMacro(
   type: "LevelMacro"
 )
 
-/// Skips function from being annotated with `Log` or `OSLog` macro.
+/// Skips a function or initializer from being annotated with `Log` or `OSLog` macro.
 ///
 /// ``AutoLog(using:)`` and ``OSLogged()`` implicitly introduces
 /// respectively ``Log(using:)`` and ``OSLog(level:omit:tag:)
-/// to all methods within attached context. Mark method with ``Omit()``
+/// to all methods within attached context. Mark the member with ``Omit()``
 /// to skip it.
 ///
 /// ``Omit()`` can also be attached to a computed property as a marker without

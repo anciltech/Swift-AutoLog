@@ -419,7 +419,11 @@ comparison uses `==`, so optional results and custom `Equatable` return types
 work as long as the filter expression has the same comparable shape as the
 function's result.
 
-> Initializers are not implicitly marked with the ``Log(using:)`` annotation. Marking them explicitly also has no effect.
+Initializers can be logged explicitly with ``Log(using:)``. Successful and
+failable initializer exits emit completion events, while throwing initializers
+also capture thrown errors before rethrowing. Swift's member-attribute macro
+role does not currently auto-mark initializers, so add ``Log(using:)`` directly
+to initializers that should be logged.
 
 ## Overriding @AutoLog behavior
 
@@ -448,7 +452,7 @@ class FavoriteFactsModel: Identifiable {
 ```
 If we invoke both `fetchFavoriteFacts` and `deleteFromFavoriteButtonTapped`, the first will use the default logger, whereas the second will send an event to the `.printer` logger. This behavior can also be reversed. Refer to <doc:CreatingCustomAutoLoggerInstance> for more information about incorporating custom loggers.
 
-> Arguments provided to the `@AutoLog` macro are implicitly propagated to all methods within the declaration scope, unless explicitly opted out.
+> Arguments provided to the `@AutoLog` macro are implicitly propagated to all methods within the declaration scope, unless explicitly opted out. Initializers need an explicit `@Log(...)` annotation.
 
 ## Omit methods from being logged
 

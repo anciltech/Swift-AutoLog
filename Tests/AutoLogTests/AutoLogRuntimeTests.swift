@@ -247,6 +247,45 @@ struct AutoLogRuntimeTests {
   }
 
   @Test
+  func macroGeneratedInitializerEmitsCompletion() {
+    let logger = MockLogger()
+    let runtime = AutoLogRuntime(
+      logger: logger,
+      configuration: .testConsoleWithoutStart
+    )
+
+    AutoLog.withRuntime(runtime) {
+      _ = InitializerFixture(name: "Demo")
+    }
+
+    #expect(logger.events.count == 1)
+    #expect(logger.events.first?.declaration == "init(name: String)")
+    #expect(logger.events.first?.parameters["name"] as? String == "Demo")
+  }
+
+  @Test
+  func macroGeneratedThrowingInitializerEmitsFailure() {
+    let logger = MockLogger()
+    let runtime = AutoLogRuntime(
+      logger: logger,
+      configuration: .testConsoleWithoutStart
+    )
+
+    AutoLog.withRuntime(runtime) {
+      #expect(throws: InitializerFixture.FixtureError.emptyName) {
+        _ = try InitializerFixture(validating: "")
+      }
+    }
+
+    #expect(logger.events.count == 1)
+    #expect(logger.events.first?.declaration == "init(validating name: String) throws")
+    guard case .failure = logger.events.first?.result else {
+      Issue.record("Expected throwing initializer to emit a failure event")
+      return
+    }
+  }
+
+  @Test
   func globalDeduplicationSuppressesRepeatedManualEvents() {
     let logger = MockLogger()
     let runtime = AutoLogRuntime(
@@ -324,4 +363,25 @@ private struct TimingFixture {
 
   @Log(measure: true)
   func explicitMeasured() {}
+}
+
+private struct InitializerFixture {
+  enum FixtureError: Error {
+    case emptyName
+  }
+
+  let name: String
+
+  @Log
+  init(name: String) {
+    self.name = name
+  }
+
+  @Log
+  init(validating name: String) throws {
+    guard !name.isEmpty else {
+      throw FixtureError.emptyName
+    }
+    self.name = name
+  }
 }
