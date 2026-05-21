@@ -328,6 +328,32 @@ struct AutoLogRuntimeTests {
     ])
     #expect((logger.events.first?.deduplicateWithin) == .seconds(1))
   }
+
+  @Test
+  func typedArrayEmission_generatesSelectedPaths() {
+    let logger = MockLogger()
+    let runtime = AutoLogRuntime(
+      logger: logger,
+      configuration: .testConsoleWithoutStart
+    )
+
+    AutoLog.withRuntime(runtime) {
+      let fixture = TypedEmissionFixture()
+      #expect(fixture.succeed() == 42)
+      #expect(throws: TypedEmissionFixture.FixtureError.fatal) {
+        try fixture.failAfterHandlingRecoverableError()
+      }
+    }
+
+    #expect(logger.events.count == 3)
+    #expect(logger.events[0].outputEventType == .success)
+    #expect(logger.events[1].handledError != nil)
+    #expect(logger.events[2].outputEventType == .failure)
+    guard case .failure = logger.events[2].result else {
+      Issue.record("Expected typed failure emission to capture the thrown error")
+      return
+    }
+  }
 }
 
 private struct SnapshotFixture {
@@ -363,6 +389,29 @@ private struct TimingFixture {
 
   @Log(measure: true)
   func explicitMeasured() {}
+}
+
+private struct TypedEmissionFixture {
+  enum FixtureError: Error {
+    case recoverable
+    case fatal
+  }
+
+  @Log(emit: [.successes])
+  func succeed() -> Int {
+    42
+  }
+
+  @Log(emit: [.failures, .warnings])
+  func failAfterHandlingRecoverableError() throws {
+    do {
+      throw FixtureError.recoverable
+    } catch {
+      // The typed `.warnings` emission keeps this handled-error row.
+    }
+
+    throw FixtureError.fatal
+  }
 }
 
 private struct InitializerFixture {

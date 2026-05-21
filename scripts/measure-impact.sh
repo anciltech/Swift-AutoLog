@@ -20,6 +20,7 @@ Builds equivalent release executables and records binary-size impact:
   - AutoLogTypeFilteredProbe: @AutoLog with output filtered to another type
   - AutoLogCompileSuccessesOnlyProbe: @AutoLog(emit: "successesOnly")
   - AutoLogCompileFailuresOnlyProbe: @AutoLog(emit: "failuresOnly")
+  - AutoLogCompileDiagnosticsProbe: @AutoLog(emit: [.failures, .warnings])
 
 The output directory receives summary.csv, summary.md, per-build logs, and
 linked-dylib lists. It also reports a strip -x executable size so local SwiftPM
@@ -103,7 +104,8 @@ write_autolog_probe_package() {
     "$dir/Sources/AutoLogFailuresOnlyProbe" \
     "$dir/Sources/AutoLogTypeFilteredProbe" \
     "$dir/Sources/AutoLogCompileSuccessesOnlyProbe" \
-    "$dir/Sources/AutoLogCompileFailuresOnlyProbe"
+    "$dir/Sources/AutoLogCompileFailuresOnlyProbe" \
+    "$dir/Sources/AutoLogCompileDiagnosticsProbe"
 
   cat > "$dir/Package.swift" <<EOF
 // swift-tools-version: 6.0
@@ -119,6 +121,7 @@ let package = Package(
     .executable(name: "AutoLogTypeFilteredProbe", targets: ["AutoLogTypeFilteredProbe"]),
     .executable(name: "AutoLogCompileSuccessesOnlyProbe", targets: ["AutoLogCompileSuccessesOnlyProbe"]),
     .executable(name: "AutoLogCompileFailuresOnlyProbe", targets: ["AutoLogCompileFailuresOnlyProbe"]),
+    .executable(name: "AutoLogCompileDiagnosticsProbe", targets: ["AutoLogCompileDiagnosticsProbe"]),
   ],
   dependencies: [
     .package(path: "$PACKAGE_DIR"),
@@ -156,6 +159,12 @@ let package = Package(
     ),
     .executableTarget(
       name: "AutoLogCompileFailuresOnlyProbe",
+      dependencies: [
+        .product(name: "AutoLog", package: "Swift-AutoLog"),
+      ]
+    ),
+    .executableTarget(
+      name: "AutoLogCompileDiagnosticsProbe",
       dependencies: [
         .product(name: "AutoLog", package: "Swift-AutoLog"),
       ]
@@ -390,6 +399,42 @@ print(result)
 EOF
 }
 
+write_autolog_compile_diagnostics_source() {
+  local file="$1"
+  cat > "$file" <<'EOF'
+import AutoLog
+
+enum ImpactError: Error {
+  case oddValue
+  case recovered
+}
+
+@AutoLog(emit: [.failures, .warnings])
+struct ImpactWorker {
+  func compute(_ value: Int) throws -> Int {
+    do {
+      if value == 2 {
+        throw ImpactError.recovered
+      }
+    } catch {
+      // Compile-time `.warnings` keeps this handled-error row.
+    }
+
+    if value.isMultiple(of: 2) {
+      return value / 2
+    }
+    throw ImpactError.oddValue
+  }
+}
+
+let worker = ImpactWorker()
+let result = (0..<100).reduce(0) { total, value in
+  total + ((try? worker.compute(value)) ?? 0)
+}
+print(result)
+EOF
+}
+
 segment_bytes() {
   local exe="$1"
   local segment="$2"
@@ -480,6 +525,7 @@ write_autolog_failures_only_source "$autolog_dir/Sources/AutoLogFailuresOnlyProb
 write_autolog_type_filtered_source "$autolog_dir/Sources/AutoLogTypeFilteredProbe/main.swift"
 write_autolog_compile_successes_only_source "$autolog_dir/Sources/AutoLogCompileSuccessesOnlyProbe/main.swift"
 write_autolog_compile_failures_only_source "$autolog_dir/Sources/AutoLogCompileFailuresOnlyProbe/main.swift"
+write_autolog_compile_diagnostics_source "$autolog_dir/Sources/AutoLogCompileDiagnosticsProbe/main.swift"
 
 cat > "$OUTPUT_DIR/summary.csv" <<'EOF'
 scenario,product,executable_bytes,stripped_executable_bytes,text_segment_bytes,data_const_segment_bytes,data_segment_bytes,linkedit_segment_bytes,linked_dylib_count,build_seconds
@@ -493,6 +539,7 @@ build_and_measure "autolog-failures-only-output" "AutoLogFailuresOnlyProbe" "$au
 build_and_measure "autolog-type-filtered-output" "AutoLogTypeFilteredProbe" "$autolog_dir"
 build_and_measure "autolog-compile-successes-only" "AutoLogCompileSuccessesOnlyProbe" "$autolog_dir"
 build_and_measure "autolog-compile-failures-only" "AutoLogCompileFailuresOnlyProbe" "$autolog_dir"
+build_and_measure "autolog-compile-diagnostics" "AutoLogCompileDiagnosticsProbe" "$autolog_dir"
 
 awk -F, '
   NR == 1 { next }
@@ -524,6 +571,7 @@ awk -F, '
     printf "- AutoLog type-filtered output vs AutoLog executable delta: %+d bytes\n", executable["autolog-type-filtered-output"] - executable["autolog"]
     printf "- AutoLog compile successes-only vs AutoLog executable delta: %+d bytes\n", executable["autolog-compile-successes-only"] - executable["autolog"]
     printf "- AutoLog compile failures-only vs AutoLog executable delta: %+d bytes\n", executable["autolog-compile-failures-only"] - executable["autolog"]
+    printf "- AutoLog compile diagnostics vs AutoLog executable delta: %+d bytes\n", executable["autolog-compile-diagnostics"] - executable["autolog"]
   }
 ' "$OUTPUT_DIR/summary.csv" > "$OUTPUT_DIR/summary.md"
 

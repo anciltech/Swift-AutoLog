@@ -375,6 +375,42 @@ struct LogMacroTests {
   }
 
   @Test
+  func stringFunction_emitTypedSuccesses_skipsStartEvent() throws {
+    assertMacro {
+      #"""
+      @Log(emit: [.successes])
+      func foo() -> String {
+        return "Foo"
+      }
+      """#
+    } expansion: {
+      """
+      func foo() -> String {
+        let runtime = AutoLog.runtimeSnapshot()
+        let autoLogger: any AutoLogger = runtime.logger
+        var event = AutoLogEvent(
+          source: AutoLogSource.current,
+
+          location: "TestModule/Test.swift:1:1",
+          declaration: "func foo() -> String"
+        )
+        let __logStart = autoLogger.shouldMeasureTiming(for: event, runtime: runtime) ? ContinuousClock.now : nil
+        func _foo() -> String {
+          return "Foo"
+        }
+        let result = _foo()
+        event.result = .success(result)
+        if let __logStart {
+          event.duration = ContinuousClock.now - __logStart
+        }
+        autoLogger.emitIfEnabled(event: event, runtime: runtime)
+        return result
+      }
+      """
+    }
+  }
+
+  @Test
   func throwingFunction_emitFailuresOnly_skipsStartAndSuccessEvent() throws {
     assertMacro {
       #"""

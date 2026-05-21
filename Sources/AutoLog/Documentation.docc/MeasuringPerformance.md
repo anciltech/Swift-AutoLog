@@ -162,8 +162,9 @@ The probe builds release executables with equivalent control flow: a plain
 Swift baseline, a direct `OSLog.Logger` variant, a core `@AutoLog` variant, an
 `AutoLogSwiftUI` opt-in helper variant, runtime-filtered output variants, and
 compile-time `emit:` variants such as
-`@AutoLog(emit: "failuresOnly")`. It writes `summary.csv`, `summary.md`, build
-logs, and linked-dylib lists under `.build/impact-runs/`.
+`@AutoLog(emit: "failuresOnly")` and
+`@AutoLog(emit: [.failures, .warnings])`. It writes `summary.csv`,
+`summary.md`, build logs, and linked-dylib lists under `.build/impact-runs/`.
 
 Treat this as a small-probe fixed-cost measurement. It is useful for spotting
 package-level footprint movement, but production apps should still measure

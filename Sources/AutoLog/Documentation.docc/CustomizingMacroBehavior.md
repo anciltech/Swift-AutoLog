@@ -49,7 +49,7 @@ Use `emit:` when a function or type should never compile some event paths into
 the wrapper:
 
 ```swift
-@AutoLog(emit: "failuresOnly")
+@AutoLog(emit: [.failures, .warnings])
 struct PaymentService {
   func submit(_ payment: Payment) async throws -> Receipt {
     // ...
@@ -57,8 +57,13 @@ struct PaymentService {
 }
 ```
 
+The typed values are ``AutoLogEmission/all``, ``AutoLogEmission/starts``,
+``AutoLogEmission/successes``, ``AutoLogEmission/failures``,
+``AutoLogEmission/warnings``, and ``AutoLogEmission/completions``.
+`.failures` keeps thrown-error rows, while `.warnings` keeps locally handled
+catch-site diagnostics. The legacy string values remain available:
 `emit: "all"` keeps the default start, success, failure, and handled-error
-behavior. `emit: "completionsOnly"` skips start events,
+behavior, `emit: "completionsOnly"` skips start events,
 `emit: "successesOnly"` keeps only successful completion rows, and
 `emit: "failuresOnly"` keeps thrown and handled-error rows. Prefer runtime
 output filters when you still want the same generated instrumentation available

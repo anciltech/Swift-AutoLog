@@ -1,3 +1,4 @@
+import Foundation
 import SwiftDiagnostics
 import SwiftSyntax
 import SwiftSyntaxMacros
@@ -98,44 +99,45 @@ struct AutoLogEmissionPlan {
   let emitsStart: Bool
   let emitsSuccess: Bool
   let emitsFailure: Bool
+  let emitsHandledErrors: Bool
 
   var emitsCompletion: Bool {
     emitsSuccess || emitsFailure
   }
 
-  var emitsHandledErrors: Bool {
-    emitsFailure
-  }
-
   static let all = AutoLogEmissionPlan(
     emitsStart: true,
     emitsSuccess: true,
-    emitsFailure: true
+    emitsFailure: true,
+    emitsHandledErrors: true
   )
 
   static let completionsOnly = AutoLogEmissionPlan(
     emitsStart: false,
     emitsSuccess: true,
-    emitsFailure: true
+    emitsFailure: true,
+    emitsHandledErrors: true
   )
 
   static let successesOnly = AutoLogEmissionPlan(
     emitsStart: false,
     emitsSuccess: true,
-    emitsFailure: false
+    emitsFailure: false,
+    emitsHandledErrors: false
   )
 
   static let failuresOnly = AutoLogEmissionPlan(
     emitsStart: false,
     emitsSuccess: false,
-    emitsFailure: true
+    emitsFailure: true,
+    emitsHandledErrors: true
   )
 
   struct UnsupportedEmissionDiagnostic: DiagnosticMessage {
     let value: String
 
     var message: String {
-      "AutoLog emit: expects \"all\", \"completionsOnly\", \"successesOnly\", or \"failuresOnly\"; received \(value)"
+      "AutoLog emit: expects \"all\", \"completionsOnly\", \"successesOnly\", \"failuresOnly\", a comma-separated string, or a typed array such as [.failures, .warnings]; received \(value)"
     }
 
     var diagnosticID: MessageID {
@@ -155,27 +157,9 @@ struct AutoLogEmissionPlan {
       return .all
     }
 
-    let value = stringLiteralValue(expression)
-      ?? expression.trimmedDescription.replacingOccurrences(of: " ", with: "")
-
-    switch value {
-    case "all":
-      return .all
-    case "completionsOnly":
-      return .completionsOnly
-    case "successesOnly":
-      return .successesOnly
-    case "failuresOnly":
-      return .failuresOnly
-    case ".all", "AutoLogEmission.all":
-      return .all
-    case ".completionsOnly", "AutoLogEmission.completionsOnly":
-      return .completionsOnly
-    case ".successesOnly", "AutoLogEmission.successesOnly":
-      return .successesOnly
-    case ".failuresOnly", "AutoLogEmission.failuresOnly":
-      return .failuresOnly
-    default:
+    guard let tokens = emissionTokens(from: expression),
+          let plan = plan(for: tokens)
+    else {
       context.diagnose(
         Diagnostic(
           node: Syntax(expression),
@@ -184,6 +168,79 @@ struct AutoLogEmissionPlan {
       )
       return .all
     }
+
+    return plan
+  }
+
+  private static func plan(for tokens: [String]) -> Self? {
+    guard !tokens.isEmpty else { return nil }
+
+    var emitsStart = false
+    var emitsSuccess = false
+    var emitsFailure = false
+    var emitsHandledErrors = false
+
+    for token in tokens {
+      switch normalizedToken(token) {
+      case "all":
+        return .all
+      case "completions", "completion", "completionsonly":
+        emitsSuccess = true
+        emitsFailure = true
+        emitsHandledErrors = true
+      case "successes", "success", "successesonly":
+        emitsSuccess = true
+      case "failuresonly":
+        emitsFailure = true
+        emitsHandledErrors = true
+      case "failures", "failure", "errors", "error":
+        emitsFailure = true
+      case "warnings", "warning":
+        emitsHandledErrors = true
+      case "starts", "start":
+        emitsStart = true
+      default:
+        return nil
+      }
+    }
+
+    return AutoLogEmissionPlan(
+      emitsStart: emitsStart,
+      emitsSuccess: emitsSuccess,
+      emitsFailure: emitsFailure,
+      emitsHandledErrors: emitsHandledErrors
+    )
+  }
+
+  private static func emissionTokens(from expression: ExprSyntax) -> [String]? {
+    if let array = expression.as(ArrayExprSyntax.self) {
+      return array.elements.compactMap { element in
+        tokenValue(element.expression)
+      }
+    }
+
+    guard let value = tokenValue(expression) else { return nil }
+    return value
+      .split(separator: ",", omittingEmptySubsequences: true)
+      .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+  }
+
+  private static func tokenValue(_ expression: ExprSyntax) -> String? {
+    stringLiteralValue(expression)
+      ?? expression.trimmedDescription
+        .replacingOccurrences(of: " ", with: "")
+        .replacingOccurrences(of: "AutoLogEmission.", with: "")
+        .replacingOccurrences(of: ".", with: "")
+  }
+
+  private static func normalizedToken(_ value: String) -> String {
+    value
+      .trimmingCharacters(in: .whitespacesAndNewlines)
+      .replacingOccurrences(of: "AutoLogEmission.", with: "")
+      .replacingOccurrences(of: ".", with: "")
+      .replacingOccurrences(of: "_", with: "")
+      .replacingOccurrences(of: "-", with: "")
+      .lowercased()
   }
 
   private static func stringLiteralValue(_ expression: ExprSyntax) -> String? {

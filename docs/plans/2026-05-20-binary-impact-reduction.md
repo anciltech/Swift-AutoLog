@@ -28,9 +28,15 @@ without removing the SwiftUI convenience APIs that make the demo ergonomic.
 - [x] Add a follow-up error-only macro compile-time option that avoids
   generating success/start event machinery for projects that only want thrown
   error instrumentation.
+- [x] Add typed-array compile-time emission syntax, for example
+  `@AutoLog(emit: [.failures, .warnings])`, so warning and failure paths can be
+  selected without string parsing at call sites.
 - [x] Extend the impact probe with stripped executable bytes and compile-time
   `emit:` variants so runtime filtering and generated-code pruning can be
   compared directly.
+- [ ] Add a build-time profile input that plain `@AutoLog` can read during
+  macro expansion, allowing production targets to inherit a default emission
+  policy without changing every annotation.
 - [ ] Consider a follow-up split for the macro declarations and source helpers
   so non-macro consumers can use interaction propagation without building the
   `swift-syntax` macro plugin.

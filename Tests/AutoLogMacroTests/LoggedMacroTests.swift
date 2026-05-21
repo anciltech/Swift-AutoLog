@@ -128,6 +128,29 @@ struct LoggedMacroTests {
   }
 
   @Test
+  func struct_emitTypedFailuresAndWarnings_preservesCompileTimeEmissionArgument() throws {
+    assertMacro {
+      #"""
+      @Logged(emit: [.failures, .warnings])
+      struct Foo {
+        func bar() {
+          print("bar")
+        }
+      }
+      """#
+    } expansion: {
+      """
+      struct Foo {
+        @Log(emit: [.failures, .warnings])
+        func bar() {
+          print("bar")
+        }
+      }
+      """
+    }
+  }
+
+  @Test
   func class_withAutoLoggerAsInitializer_noAdditionalAnnotations() throws {
     assertMacro {
       #"""
