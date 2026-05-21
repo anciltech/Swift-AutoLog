@@ -461,6 +461,28 @@ If we invoke both `fetchFavoriteFacts` and `deleteFromFavoriteButtonTapped`, the
 
 > Arguments provided to the `@AutoLog` macro are implicitly propagated to all methods within the declaration scope, unless explicitly opted out. Initializers need an explicit `@Log(...)` annotation.
 
+## Prune generated event paths
+
+Runtime output filters are useful when a target wants to keep the same
+instrumentation but route or display fewer events. They do not reduce the
+wrapper code emitted by the macro. Use `emit:` when the source itself should
+compile a narrower wrapper:
+
+```swift
+@AutoLog(emit: "failuresOnly")
+struct PaymentService {
+  func submit(_ payment: Payment) async throws -> Receipt {
+    // Successful completions return normally without start/success event code.
+  }
+}
+```
+
+Use `"completionsOnly"` to skip start rows while keeping successes and
+failures, `"successesOnly"` for success-only probes, or `"failuresOnly"` for
+thrown and handled-error diagnostics. `emit:` is intentionally explicit at the
+macro call site; mutable ``AutoLogConfiguration`` settings still run after an
+event exists and cannot remove generated code from the binary.
+
 ## Omit methods from being logged
 
 Simply change the ``Log(using:)`` annotation to ``Omit()``. In this scenario, an event won’t be emitted when the function is invoked. The ``Omit(_:)`` macro also has an override, which you can learn more about in <doc:CustomizingMacroBehavior>.

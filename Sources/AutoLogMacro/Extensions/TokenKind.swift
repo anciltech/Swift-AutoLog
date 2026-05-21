@@ -19,6 +19,7 @@ extension TokenKind {
     case subsystem
     case category
     case measure
+    case emit
     case deduplicate
     case Deduplicate
     case when
@@ -78,6 +79,9 @@ extension TokenKind {
 
       case .measure:
         return TokenKind.identifier("measure")
+
+      case .emit:
+        return TokenKind.identifier("emit")
 
       case .deduplicate:
         return TokenKind.identifier("deduplicate")

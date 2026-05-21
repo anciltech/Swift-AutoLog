@@ -339,6 +339,82 @@ struct LogMacroTests {
   }
 
   @Test
+  func stringFunction_emitSuccessesOnly_skipsStartEvent() throws {
+    assertMacro {
+      #"""
+      @Log(emit: "successesOnly")
+      func foo() -> String {
+        return "Foo"
+      }
+      """#
+    } expansion: {
+      """
+      func foo() -> String {
+        let runtime = AutoLog.runtimeSnapshot()
+        let autoLogger: any AutoLogger = runtime.logger
+        var event = AutoLogEvent(
+          source: AutoLogSource.current,
+
+          location: "TestModule/Test.swift:1:1",
+          declaration: "func foo() -> String"
+        )
+        let __logStart = autoLogger.shouldMeasureTiming(for: event, runtime: runtime) ? ContinuousClock.now : nil
+        func _foo() -> String {
+          return "Foo"
+        }
+        let result = _foo()
+        event.result = .success(result)
+        if let __logStart {
+          event.duration = ContinuousClock.now - __logStart
+        }
+        autoLogger.emitIfEnabled(event: event, runtime: runtime)
+        return result
+      }
+      """
+    }
+  }
+
+  @Test
+  func throwingFunction_emitFailuresOnly_skipsStartAndSuccessEvent() throws {
+    assertMacro {
+      #"""
+      @Log(emit: "failuresOnly")
+      func foo() throws -> String {
+        try risky()
+      }
+      """#
+    } expansion: {
+      """
+      func foo() throws -> String {
+        let runtime = AutoLog.runtimeSnapshot()
+        let autoLogger: any AutoLogger = runtime.logger
+        var event = AutoLogEvent(
+          source: AutoLogSource.current,
+
+          location: "TestModule/Test.swift:1:1",
+          declaration: "func foo() throws -> String"
+        )
+        let __logStart = autoLogger.shouldMeasureTiming(for: event, runtime: runtime) ? ContinuousClock.now : nil
+        func _foo() throws -> String {
+          try risky()
+        }
+        do {
+          let result = try _foo()
+          return result
+        } catch {
+          event.result = .failure(error)
+          if let __logStart {
+            event.duration = ContinuousClock.now - __logStart
+          }
+          autoLogger.emitIfEnabled(event: event, runtime: runtime)
+          throw error
+        }
+      }
+      """
+    }
+  }
+
+  @Test
   func boolFunction_withDeduplicateTrait_includesPerEventWindow() throws {
     assertMacro {
       #"""

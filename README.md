@@ -162,6 +162,25 @@ struct LayoutEditorService {
 }
 ```
 
+When an entire target only needs a narrower event path, prefer compile-time
+emission pruning over runtime output filtering:
+
+```swift
+import AutoLog
+
+@AutoLog(emit: "failuresOnly")
+struct PaymentService {
+  func submit(_ payment: Payment) async throws -> Receipt {
+    // Successes return normally without generating start/success log code.
+  }
+}
+```
+
+Supported values are `"all"`, `"completionsOnly"`, `"successesOnly"`, and
+`"failuresOnly"`. Runtime `AutoLogConfiguration` filters still decide which
+constructed events reach each output, but `emit:` changes what wrapper code the
+macro generates in the first place.
+
 For hot paths such as hover polling or selection probes, add `@Deduplicate` to
 collapse repeated identical events:
 

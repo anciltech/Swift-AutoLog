@@ -1,6 +1,6 @@
 # Customizing macro behavior 
 
-Customize macro behavior using ``Omit(_:)``, ``Deduplicate(_:)``, ``When(_:)``, ``Tag(_:)`` and ``Level(_:)`` 
+Customize macro behavior using `emit:`, ``Omit(_:)``, ``Deduplicate(_:)``, ``When(_:)``, ``Tag(_:)`` and ``Level(_:)``
 
 ## Overview
 
@@ -12,6 +12,12 @@ In this article, you will learn how to utilize trait macros and their associated
 Trait macros are macros used to pass parameters to an ``AutoLogEvent``. They must always be preceded by either the ``Log(using:)`` or ``OSLog(level:omit:tag:)`` macros - either explicitly, or implicitly when a type is annotated with ``AutoLog(using:)`` or ``OSLogged()``, respectively. Otherwise, an error is emitted.
 
 The trait macros include:
+
+* `emit:`
+
+Controls which event paths `@Log` or `@AutoLog` generate at compile time. This
+is the binary-size-oriented control; runtime output filters run after an event
+has already been constructed.
 
 * ``Omit()``
 
@@ -36,6 +42,27 @@ Suppresses repeated identical events for a single function within a time window.
 * ``When(_:)``
 
 Emits a success event only when the function returns the supplied value.
+
+### Compile-time event emission
+
+Use `emit:` when a function or type should never compile some event paths into
+the wrapper:
+
+```swift
+@AutoLog(emit: "failuresOnly")
+struct PaymentService {
+  func submit(_ payment: Payment) async throws -> Receipt {
+    // ...
+  }
+}
+```
+
+`emit: "all"` keeps the default start, success, failure, and handled-error
+behavior. `emit: "completionsOnly"` skips start events,
+`emit: "successesOnly"` keeps only successful completion rows, and
+`emit: "failuresOnly"` keeps thrown and handled-error rows. Prefer runtime
+output filters when you still want the same generated instrumentation available
+for live settings or per-destination routing.
 
 ### Logging levels
 

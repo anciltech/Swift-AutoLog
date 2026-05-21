@@ -18,9 +18,12 @@ Builds equivalent release executables and records binary-size impact:
   - AutoLogSwiftUIProbe: imports the opt-in SwiftUI helper product
   - AutoLogFailuresOnlyProbe: @AutoLog with output configured for failures only
   - AutoLogTypeFilteredProbe: @AutoLog with output filtered to another type
+  - AutoLogCompileSuccessesOnlyProbe: @AutoLog(emit: "successesOnly")
+  - AutoLogCompileFailuresOnlyProbe: @AutoLog(emit: "failuresOnly")
 
 The output directory receives summary.csv, summary.md, per-build logs, and
-linked-dylib lists.
+linked-dylib lists. It also reports a strip -x executable size so local SwiftPM
+probe binaries can be compared with release-style symbol stripping.
 USAGE
 }
 
@@ -98,7 +101,9 @@ write_autolog_probe_package() {
     "$dir/Sources/AutoLogProbe" \
     "$dir/Sources/AutoLogSwiftUIProbe" \
     "$dir/Sources/AutoLogFailuresOnlyProbe" \
-    "$dir/Sources/AutoLogTypeFilteredProbe"
+    "$dir/Sources/AutoLogTypeFilteredProbe" \
+    "$dir/Sources/AutoLogCompileSuccessesOnlyProbe" \
+    "$dir/Sources/AutoLogCompileFailuresOnlyProbe"
 
   cat > "$dir/Package.swift" <<EOF
 // swift-tools-version: 6.0
@@ -112,6 +117,8 @@ let package = Package(
     .executable(name: "AutoLogSwiftUIProbe", targets: ["AutoLogSwiftUIProbe"]),
     .executable(name: "AutoLogFailuresOnlyProbe", targets: ["AutoLogFailuresOnlyProbe"]),
     .executable(name: "AutoLogTypeFilteredProbe", targets: ["AutoLogTypeFilteredProbe"]),
+    .executable(name: "AutoLogCompileSuccessesOnlyProbe", targets: ["AutoLogCompileSuccessesOnlyProbe"]),
+    .executable(name: "AutoLogCompileFailuresOnlyProbe", targets: ["AutoLogCompileFailuresOnlyProbe"]),
   ],
   dependencies: [
     .package(path: "$PACKAGE_DIR"),
@@ -137,6 +144,18 @@ let package = Package(
     ),
     .executableTarget(
       name: "AutoLogTypeFilteredProbe",
+      dependencies: [
+        .product(name: "AutoLog", package: "Swift-AutoLog"),
+      ]
+    ),
+    .executableTarget(
+      name: "AutoLogCompileSuccessesOnlyProbe",
+      dependencies: [
+        .product(name: "AutoLog", package: "Swift-AutoLog"),
+      ]
+    ),
+    .executableTarget(
+      name: "AutoLogCompileFailuresOnlyProbe",
       dependencies: [
         .product(name: "AutoLog", package: "Swift-AutoLog"),
       ]
@@ -321,6 +340,56 @@ print(result)
 EOF
 }
 
+write_autolog_compile_successes_only_source() {
+  local file="$1"
+  cat > "$file" <<'EOF'
+import AutoLog
+
+@AutoLog(emit: "successesOnly")
+struct ImpactWorker {
+  func compute(_ value: Int) -> Int {
+    if value.isMultiple(of: 2) {
+      return value / 2
+    }
+    return value * 3 + 1
+  }
+}
+
+let worker = ImpactWorker()
+let result = (0..<100).reduce(0) { total, value in
+  total + worker.compute(value)
+}
+print(result)
+EOF
+}
+
+write_autolog_compile_failures_only_source() {
+  local file="$1"
+  cat > "$file" <<'EOF'
+import AutoLog
+
+enum ImpactError: Error {
+  case oddValue
+}
+
+@AutoLog(emit: "failuresOnly")
+struct ImpactWorker {
+  func compute(_ value: Int) throws -> Int {
+    if value.isMultiple(of: 2) {
+      return value / 2
+    }
+    throw ImpactError.oddValue
+  }
+}
+
+let worker = ImpactWorker()
+let result = (0..<100).reduce(0) { total, value in
+  total + ((try? worker.compute(value)) ?? 0)
+}
+print(result)
+EOF
+}
+
 segment_bytes() {
   local exe="$1"
   local segment="$2"
@@ -358,6 +427,7 @@ build_and_measure() {
 
   local exe="$dir/.build/release/$product"
   local executable_bytes
+  local stripped_executable_bytes
   local text_bytes
   local data_const_bytes
   local data_bytes
@@ -366,6 +436,11 @@ build_and_measure() {
   local elapsed
 
   executable_bytes="$(stat -f%z "$exe")"
+  local stripped_exe="$OUTPUT_DIR/${scenario}-stripped-executable"
+  cp "$exe" "$stripped_exe"
+  strip -x "$stripped_exe"
+  stripped_executable_bytes="$(stat -f%z "$stripped_exe")"
+  rm -f "$stripped_exe"
   text_bytes="$(segment_bytes "$exe" "__TEXT")"
   data_const_bytes="$(segment_bytes "$exe" "__DATA_CONST")"
   data_bytes="$(segment_bytes "$exe" "__DATA")"
@@ -374,10 +449,11 @@ build_and_measure() {
   dylib_count="$(wc -l < "$dylib_file" | tr -d ' ')"
   elapsed="$(elapsed_seconds "$start" "$end")"
 
-  printf '%s,%s,%s,%s,%s,%s,%s,%s,%s\n' \
+  printf '%s,%s,%s,%s,%s,%s,%s,%s,%s,%s\n' \
     "$scenario" \
     "$product" \
     "$executable_bytes" \
+    "$stripped_executable_bytes" \
     "$text_bytes" \
     "$data_const_bytes" \
     "$data_bytes" \
@@ -402,9 +478,11 @@ write_autolog_source "$autolog_dir/Sources/AutoLogProbe/main.swift"
 write_autolog_swiftui_source "$autolog_dir/Sources/AutoLogSwiftUIProbe/main.swift"
 write_autolog_failures_only_source "$autolog_dir/Sources/AutoLogFailuresOnlyProbe/main.swift"
 write_autolog_type_filtered_source "$autolog_dir/Sources/AutoLogTypeFilteredProbe/main.swift"
+write_autolog_compile_successes_only_source "$autolog_dir/Sources/AutoLogCompileSuccessesOnlyProbe/main.swift"
+write_autolog_compile_failures_only_source "$autolog_dir/Sources/AutoLogCompileFailuresOnlyProbe/main.swift"
 
 cat > "$OUTPUT_DIR/summary.csv" <<'EOF'
-scenario,product,executable_bytes,text_segment_bytes,data_const_segment_bytes,data_segment_bytes,linkedit_segment_bytes,linked_dylib_count,build_seconds
+scenario,product,executable_bytes,stripped_executable_bytes,text_segment_bytes,data_const_segment_bytes,data_segment_bytes,linkedit_segment_bytes,linked_dylib_count,build_seconds
 EOF
 
 build_and_measure "baseline" "BaselineProbe" "$baseline_dir"
@@ -413,33 +491,39 @@ build_and_measure "autolog" "AutoLogProbe" "$autolog_dir"
 build_and_measure "autolog-swiftui" "AutoLogSwiftUIProbe" "$autolog_dir"
 build_and_measure "autolog-failures-only-output" "AutoLogFailuresOnlyProbe" "$autolog_dir"
 build_and_measure "autolog-type-filtered-output" "AutoLogTypeFilteredProbe" "$autolog_dir"
+build_and_measure "autolog-compile-successes-only" "AutoLogCompileSuccessesOnlyProbe" "$autolog_dir"
+build_and_measure "autolog-compile-failures-only" "AutoLogCompileFailuresOnlyProbe" "$autolog_dir"
 
 awk -F, '
   NR == 1 { next }
   {
     rows[NR - 1] = $0
     executable[$1] = $3
-    text[$1] = $4
-    dylibs[$1] = $8
-    build[$1] = $9
+    stripped[$1] = $4
+    text[$1] = $5
+    dylibs[$1] = $9
+    build[$1] = $10
   }
   END {
     print "# AutoLog Impact Probe"
     print ""
-    print "| Scenario | Executable bytes | __TEXT bytes | Linked dylibs | Build seconds |"
-    print "|---|---:|---:|---:|---:|"
+    print "| Scenario | Executable bytes | Stripped executable bytes | __TEXT bytes | Linked dylibs | Build seconds |"
+    print "|---|---:|---:|---:|---:|---:|"
     for (i = 1; i <= length(rows); i++) {
       split(rows[i], fields, ",")
-      printf "| %s | %d | %d | %d | %.3f |\n", fields[1], fields[3], fields[4], fields[8], fields[9]
+      printf "| %s | %d | %d | %d | %d | %.3f |\n", fields[1], fields[3], fields[4], fields[5], fields[9], fields[10]
     }
     print ""
     printf "- AutoLog vs baseline executable delta: %+d bytes\n", executable["autolog"] - executable["baseline"]
+    printf "- AutoLog vs baseline stripped executable delta: %+d bytes\n", stripped["autolog"] - stripped["baseline"]
     printf "- AutoLog vs direct OSLog executable delta: %+d bytes\n", executable["autolog"] - executable["direct-oslog"]
     printf "- AutoLog vs baseline __TEXT delta: %+d bytes\n", text["autolog"] - text["baseline"]
     printf "- AutoLog vs direct OSLog __TEXT delta: %+d bytes\n", text["autolog"] - text["direct-oslog"]
     printf "- AutoLogSwiftUI vs AutoLog executable delta: %+d bytes\n", executable["autolog-swiftui"] - executable["autolog"]
     printf "- AutoLog failures-only output vs AutoLog executable delta: %+d bytes\n", executable["autolog-failures-only-output"] - executable["autolog"]
     printf "- AutoLog type-filtered output vs AutoLog executable delta: %+d bytes\n", executable["autolog-type-filtered-output"] - executable["autolog"]
+    printf "- AutoLog compile successes-only vs AutoLog executable delta: %+d bytes\n", executable["autolog-compile-successes-only"] - executable["autolog"]
+    printf "- AutoLog compile failures-only vs AutoLog executable delta: %+d bytes\n", executable["autolog-compile-failures-only"] - executable["autolog"]
   }
 ' "$OUTPUT_DIR/summary.csv" > "$OUTPUT_DIR/summary.md"
 

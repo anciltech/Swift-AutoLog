@@ -37,6 +37,14 @@ struct EarlyExitContext {
   }
 }
 
+private extension String {
+  var indentedInitializerExitBranch: String {
+    split(separator: "\n", omittingEmptySubsequences: false)
+      .map { "  \($0)" }
+      .joined(separator: "\n")
+  }
+}
+
 struct AutoLogConditionTracePlan {
   let variableName: String
   let originalCondition: String
@@ -84,6 +92,106 @@ struct AutoLogDeclarationMetadata {
   let location: StringLiteralExprSyntax
   let description: String
   let parameters: [FunctionSyntax.Signature.Parameter]
+}
+
+struct AutoLogEmissionPlan {
+  let emitsStart: Bool
+  let emitsSuccess: Bool
+  let emitsFailure: Bool
+
+  var emitsCompletion: Bool {
+    emitsSuccess || emitsFailure
+  }
+
+  var emitsHandledErrors: Bool {
+    emitsFailure
+  }
+
+  static let all = AutoLogEmissionPlan(
+    emitsStart: true,
+    emitsSuccess: true,
+    emitsFailure: true
+  )
+
+  static let completionsOnly = AutoLogEmissionPlan(
+    emitsStart: false,
+    emitsSuccess: true,
+    emitsFailure: true
+  )
+
+  static let successesOnly = AutoLogEmissionPlan(
+    emitsStart: false,
+    emitsSuccess: true,
+    emitsFailure: false
+  )
+
+  static let failuresOnly = AutoLogEmissionPlan(
+    emitsStart: false,
+    emitsSuccess: false,
+    emitsFailure: true
+  )
+
+  struct UnsupportedEmissionDiagnostic: DiagnosticMessage {
+    let value: String
+
+    var message: String {
+      "AutoLog emit: expects \"all\", \"completionsOnly\", \"successesOnly\", or \"failuresOnly\"; received \(value)"
+    }
+
+    var diagnosticID: MessageID {
+      MessageID(domain: "AutoLogEmission", id: "unsupported")
+    }
+
+    var severity: DiagnosticSeverity {
+      .error
+    }
+  }
+
+  static func resolved(
+    from node: AttributeSyntax,
+    in context: some MacroExpansionContext
+  ) -> Self {
+    guard let expression = node.extract(argument: .emit, as: ExprSyntax.self) else {
+      return .all
+    }
+
+    let value = stringLiteralValue(expression)
+      ?? expression.trimmedDescription.replacingOccurrences(of: " ", with: "")
+
+    switch value {
+    case "all":
+      return .all
+    case "completionsOnly":
+      return .completionsOnly
+    case "successesOnly":
+      return .successesOnly
+    case "failuresOnly":
+      return .failuresOnly
+    case ".all", "AutoLogEmission.all":
+      return .all
+    case ".completionsOnly", "AutoLogEmission.completionsOnly":
+      return .completionsOnly
+    case ".successesOnly", "AutoLogEmission.successesOnly":
+      return .successesOnly
+    case ".failuresOnly", "AutoLogEmission.failuresOnly":
+      return .failuresOnly
+    default:
+      context.diagnose(
+        Diagnostic(
+          node: Syntax(expression),
+          message: UnsupportedEmissionDiagnostic(value: expression.trimmedDescription)
+        )
+      )
+      return .all
+    }
+  }
+
+  private static func stringLiteralValue(_ expression: ExprSyntax) -> String? {
+    guard let literal = expression.as(StringLiteralExprSyntax.self) else { return nil }
+    return literal.segments.compactMap { segment in
+      segment.as(StringSegmentSyntax.self)?.content.text
+    }.joined()
+  }
 }
 
 extension AutoLogMacro {
@@ -155,13 +263,19 @@ extension AutoLogMacro {
       isMeasuredExplicitly = false
     }
 
+    let emission = AutoLogEmissionPlan.resolved(from: node, in: context)
     let tagTraits = function.syntax.attributes.extractTagTraitsInSourceOrder()
     let omitTraits = function.syntax.attributes.extractTraits(for: .omit)
     let levelTrait = function.syntax.attributes.extractTraits(for: .level).first
     let deduplicationTrait = function.syntax.attributes.extractTraits(for: .deduplicate).first
     let resultFilterTrait = function.syntax.attributes.extractTraits(for: .when).first
     let omitRuleTraits = function.syntax.attributes.extractOmitRuleTraits()
-    let instrumentedPlain = self.instrumentedPlain(of: function)
+    let instrumentedPlain = self.instrumentedPlain(
+      of: function,
+      capturesHandledErrors: emission.emitsHandledErrors
+    )
+    let emitsThrownFailure = function.isThrowing && emission.emitsFailure
+    let capturesTiming = shouldMeasure && (emission.emitsSuccess || emitsThrownFailure)
     let metadata = AutoLogDeclarationMetadata(
       location: self.location(of: function, in: context),
       description: function.description,
@@ -181,13 +295,15 @@ extension AutoLogMacro {
         omitRuleTraits: omitRuleTraits
       )
 
-      if isMeasuredExplicitly {
+      if isMeasuredExplicitly && capturesTiming {
         self.captureExplicitMeasure()
       }
 
-      self.emitStart()
+      if emission.emitsStart {
+        self.emitStart()
+      }
 
-      if shouldMeasure {
+      if capturesTiming {
         self.captureTimingStart()
       }
 
@@ -195,19 +311,25 @@ extension AutoLogMacro {
         case false where function.isVoid:
           CodeBlockItemSyntax(instrumentedPlain)
           CodeBlockItemSyntax.call(function)
-          if shouldMeasure { self.captureTimingEnd() }
-          self.emit()
+          if emission.emitsSuccess {
+            if capturesTiming { self.captureTimingEnd() }
+            self.emit()
+          }
 
         case true where function.isVoid:
           CodeBlockItemSyntax(instrumentedPlain)
           CodeBlockItemSyntax.try {
             CodeBlockItemSyntax.call(function)
-            if shouldMeasure { self.captureTimingEnd() }
-            self.emit()
+            if emission.emitsSuccess {
+              if capturesTiming { self.captureTimingEnd() }
+              self.emit()
+            }
           } catch: {
-            self.capture(.error)
-            if shouldMeasure { self.captureTimingEnd() }
-            self.emit()
+            if emission.emitsFailure {
+              self.capture(.error)
+              if capturesTiming { self.captureTimingEnd() }
+              self.emit()
+            }
             CodeBlockItemSyntax.rethrow
           }
 
@@ -215,27 +337,33 @@ extension AutoLogMacro {
           CodeBlockItemSyntax(instrumentedPlain)
           CodeBlockItemSyntax.try {
             CodeBlockItemSyntax.call(function)
-            if !omitTraits.contains(where: \.isOmitResult) {
-              self.capture(.result, boxesValue: function.returnsOptionalLike)
+            if emission.emitsSuccess {
+              if !omitTraits.contains(where: \.isOmitResult) {
+                self.capture(.result, boxesValue: function.returnsOptionalLike)
+              }
+              if capturesTiming { self.captureTimingEnd() }
+              self.emit(when: resultFilterTrait)
             }
-            if shouldMeasure { self.captureTimingEnd() }
-            self.emit(when: resultFilterTrait)
             CodeBlockItemSyntax.return
           } catch: {
-            self.capture(.error)
-            if shouldMeasure { self.captureTimingEnd() }
-            self.emit()
+            if emission.emitsFailure {
+              self.capture(.error)
+              if capturesTiming { self.captureTimingEnd() }
+              self.emit()
+            }
             CodeBlockItemSyntax.rethrow
           }
 
         case false:
           CodeBlockItemSyntax(instrumentedPlain)
           CodeBlockItemSyntax.call(function)
-          if !omitTraits.contains(where: \.isOmitResult) {
-            self.capture(.result, boxesValue: function.returnsOptionalLike)
+          if emission.emitsSuccess {
+            if !omitTraits.contains(where: \.isOmitResult) {
+              self.capture(.result, boxesValue: function.returnsOptionalLike)
+            }
+            if capturesTiming { self.captureTimingEnd() }
+            self.emit(when: resultFilterTrait)
           }
-          if shouldMeasure { self.captureTimingEnd() }
-          self.emit(when: resultFilterTrait)
           CodeBlockItemSyntax.return
       }
     }
@@ -261,11 +389,15 @@ extension AutoLogMacro {
       isMeasuredExplicitly = false
     }
 
+    let emission = AutoLogEmissionPlan.resolved(from: node, in: context)
     let tagTraits = initializer.syntax.attributes.extractTagTraitsInSourceOrder()
     let omitTraits = initializer.syntax.attributes.extractTraits(for: .omit)
     let levelTrait = initializer.syntax.attributes.extractTraits(for: .level).first
     let deduplicationTrait = initializer.syntax.attributes.extractTraits(for: .deduplicate).first
     let omitRuleTraits = initializer.syntax.attributes.extractOmitRuleTraits()
+    let capturesTiming = shouldMeasure && (
+      emission.emitsSuccess || (initializer.isThrowing && emission.emitsFailure)
+    )
     let metadata = AutoLogDeclarationMetadata(
       location: self.location(of: initializer, in: context),
       description: initializer.description,
@@ -285,13 +417,15 @@ extension AutoLogMacro {
         omitRuleTraits: omitRuleTraits
       )
 
-      if isMeasuredExplicitly {
+      if isMeasuredExplicitly && capturesTiming {
         self.captureExplicitMeasure()
       }
 
-      self.emitStart()
+      if emission.emitsStart {
+        self.emitStart()
+      }
 
-      if shouldMeasure {
+      if capturesTiming {
         self.captureTimingStart()
       }
 
@@ -299,12 +433,24 @@ extension AutoLogMacro {
         CodeBlockItemSyntax(stringLiteral: "var __logError: (any Error)?")
       }
 
-      self.emitOnInitializerExit(shouldMeasure: shouldMeasure, capturesError: initializer.isThrowing)
+      if let initializerExit = self.emitOnInitializerExit(
+        shouldMeasure: capturesTiming,
+        capturesError: initializer.isThrowing,
+        emission: emission
+      ) {
+        initializerExit
+      }
 
       if initializer.isThrowing {
-        self.throwingInitializerBody(of: initializer)
+        self.throwingInitializerBody(
+          of: initializer,
+          capturesHandledErrors: emission.emitsHandledErrors
+        )
       } else {
-        self.instrumentedBody(of: initializer)
+        self.instrumentedBody(
+          of: initializer,
+          capturesHandledErrors: emission.emitsHandledErrors
+        )
       }
     }
   }
@@ -758,30 +904,66 @@ extension AutoLogMacro {
 
   static func emitOnInitializerExit(
     shouldMeasure: Bool,
-    capturesError: Bool
-  ) -> CodeBlockItemSyntax {
+    capturesError: Bool,
+    emission: AutoLogEmissionPlan
+  ) -> CodeBlockItemSyntax? {
     var statements: [String] = []
-    if capturesError {
+    let timingAssignment = """
+    if let __logStart {
+      event.duration = ContinuousClock.now - __logStart
+    }
+    """
+
+    if emission.emitsSuccess, emission.emitsFailure {
+      if capturesError {
+        statements.append(
+          """
+          if let __logError {
+            event.result = .failure(__logError)
+          }
+          """
+        )
+      }
+
+      if shouldMeasure {
+        statements.append(timingAssignment)
+      }
+
+      statements.append("autoLogger.emitIfEnabled(event: event, runtime: runtime)")
+    }
+
+    if capturesError, emission.emitsFailure, !emission.emitsSuccess {
       statements.append(
         """
         if let __logError {
           event.result = .failure(__logError)
+        \(shouldMeasure ? timingAssignment.indentedInitializerExitBranch : "")
+          autoLogger.emitIfEnabled(event: event, runtime: runtime)
         }
         """
       )
     }
 
-    if shouldMeasure {
+    if emission.emitsSuccess, !emission.emitsFailure {
+      var successStatements: [String] = []
       statements.append(
-        """
-        if let __logStart {
-          event.duration = ContinuousClock.now - __logStart
-        }
-        """
+        capturesError
+        ? "if __logError == nil {"
+        : "do {"
       )
+      if shouldMeasure {
+        successStatements.append(timingAssignment)
+      }
+      successStatements.append("autoLogger.emitIfEnabled(event: event, runtime: runtime)")
+      statements.append(
+        successStatements
+          .map(\.indentedInitializerExitBranch)
+          .joined(separator: "\n")
+      )
+      statements.append("}")
     }
 
-    statements.append("autoLogger.emitIfEnabled(event: event, runtime: runtime)")
+    guard !statements.isEmpty else { return nil }
 
     let body = statements
       .map { statement in
@@ -980,7 +1162,8 @@ extension AutoLogMacro {
   }
 
   static func instrumentedBody(
-    of function: FunctionSyntax
+    of function: FunctionSyntax,
+    capturesHandledErrors: Bool = true
   ) -> [CodeBlockItemSyntax] {
     guard let body = function.syntax.body else { return function.body }
     var yieldCaptureIndex = 0
@@ -988,12 +1171,14 @@ extension AutoLogMacro {
     return rewriteStatements(
       Array(body.statements),
       yieldCaptureIndex: &yieldCaptureIndex,
-      conditionTraceIndex: &conditionTraceIndex
+      conditionTraceIndex: &conditionTraceIndex,
+      capturesHandledErrors: capturesHandledErrors
     )
   }
 
   static func instrumentedPlain(
-    of function: FunctionSyntax
+    of function: FunctionSyntax,
+    capturesHandledErrors: Bool = true
   ) -> FunctionDeclSyntax {
     var plain = function.plain
     guard var body = plain.body else { return plain }
@@ -1003,7 +1188,8 @@ extension AutoLogMacro {
       rewriteStatements(
         Array(body.statements),
         yieldCaptureIndex: &yieldCaptureIndex,
-        conditionTraceIndex: &conditionTraceIndex
+        conditionTraceIndex: &conditionTraceIndex,
+        capturesHandledErrors: capturesHandledErrors
       )
     )
     plain.body = body
@@ -1011,7 +1197,8 @@ extension AutoLogMacro {
   }
 
   static func instrumentedBody(
-    of initializer: InitializerSyntax
+    of initializer: InitializerSyntax,
+    capturesHandledErrors: Bool = true
   ) -> [CodeBlockItemSyntax] {
     guard let body = initializer.syntax.body else { return initializer.body }
     var yieldCaptureIndex = 0
@@ -1019,18 +1206,23 @@ extension AutoLogMacro {
     return rewriteStatements(
       Array(body.statements),
       yieldCaptureIndex: &yieldCaptureIndex,
-      conditionTraceIndex: &conditionTraceIndex
+      conditionTraceIndex: &conditionTraceIndex,
+      capturesHandledErrors: capturesHandledErrors
     )
   }
 
   static func throwingInitializerBody(
-    of initializer: InitializerSyntax
+    of initializer: InitializerSyntax,
+    capturesHandledErrors: Bool = true
   ) -> CodeBlockItemSyntax {
     CodeBlockItemSyntax(
       DoStmtSyntax(
         body: CodeBlockSyntax(
           statements: CodeBlockItemListSyntax(
-            self.instrumentedBody(of: initializer)
+            self.instrumentedBody(
+              of: initializer,
+              capturesHandledErrors: capturesHandledErrors
+            )
           )
         ),
         catchClauses: CatchClauseListSyntax(
@@ -1051,7 +1243,8 @@ extension AutoLogMacro {
     _ statements: [CodeBlockItemSyntax],
     yieldCaptureIndex: inout Int,
     conditionTraceIndex: inout Int,
-    earlyExitContext: EarlyExitContext? = nil
+    earlyExitContext: EarlyExitContext? = nil,
+    capturesHandledErrors: Bool = true
   ) -> [CodeBlockItemSyntax] {
     var sawExplicitEarlyExit = false
     var rewritten: [CodeBlockItemSyntax] = []
@@ -1063,6 +1256,7 @@ extension AutoLogMacro {
           yieldCaptureIndex: &yieldCaptureIndex,
           conditionTraceIndex: &conditionTraceIndex,
           earlyExitContext: earlyExitContext,
+          capturesHandledErrors: capturesHandledErrors,
           sawExplicitEarlyExit: &sawExplicitEarlyExit
         )
       )
@@ -1076,6 +1270,7 @@ extension AutoLogMacro {
     yieldCaptureIndex: inout Int,
     conditionTraceIndex: inout Int,
     earlyExitContext: EarlyExitContext? = nil,
+    capturesHandledErrors: Bool = true,
     sawExplicitEarlyExit: inout Bool
   ) -> [CodeBlockItemSyntax] {
     if case let .expr(expression) = item.item,
@@ -1117,7 +1312,8 @@ extension AutoLogMacro {
         expressionStmt.expression,
         yieldCaptureIndex: &yieldCaptureIndex,
         conditionTraceIndex: &conditionTraceIndex,
-        earlyExitContext: earlyExitContext
+        earlyExitContext: earlyExitContext,
+        capturesHandledErrors: capturesHandledErrors
       )
       return [CodeBlockItemSyntax(expressionStmt)]
     }
@@ -1128,7 +1324,8 @@ extension AutoLogMacro {
           Array(forStmt.body.statements),
           yieldCaptureIndex: &yieldCaptureIndex,
           conditionTraceIndex: &conditionTraceIndex,
-          earlyExitContext: earlyExitContext
+          earlyExitContext: earlyExitContext,
+          capturesHandledErrors: capturesHandledErrors
         )
       )
       return [CodeBlockItemSyntax(forStmt)]
@@ -1140,7 +1337,8 @@ extension AutoLogMacro {
           Array(whileStmt.body.statements),
           yieldCaptureIndex: &yieldCaptureIndex,
           conditionTraceIndex: &conditionTraceIndex,
-          earlyExitContext: earlyExitContext
+          earlyExitContext: earlyExitContext,
+          capturesHandledErrors: capturesHandledErrors
         )
       )
       return [CodeBlockItemSyntax(whileStmt)]
@@ -1152,7 +1350,8 @@ extension AutoLogMacro {
           Array(repeatStmt.body.statements),
           yieldCaptureIndex: &yieldCaptureIndex,
           conditionTraceIndex: &conditionTraceIndex,
-          earlyExitContext: earlyExitContext
+          earlyExitContext: earlyExitContext,
+          capturesHandledErrors: capturesHandledErrors
         )
       )
       return [CodeBlockItemSyntax(repeatStmt)]
@@ -1183,7 +1382,8 @@ extension AutoLogMacro {
           Array(guardStmt.body.statements),
           yieldCaptureIndex: &yieldCaptureIndex,
           conditionTraceIndex: &conditionTraceIndex,
-          earlyExitContext: guardFailureContext
+          earlyExitContext: guardFailureContext,
+          capturesHandledErrors: capturesHandledErrors
         )
       )
       if let tracePlan {
@@ -1198,7 +1398,8 @@ extension AutoLogMacro {
           Array(doStmt.body.statements),
           yieldCaptureIndex: &yieldCaptureIndex,
           conditionTraceIndex: &conditionTraceIndex,
-          earlyExitContext: earlyExitContext
+          earlyExitContext: earlyExitContext,
+          capturesHandledErrors: capturesHandledErrors
         )
       )
 
@@ -1209,11 +1410,14 @@ extension AutoLogMacro {
           Array(clause.body.statements),
           yieldCaptureIndex: &yieldCaptureIndex,
           conditionTraceIndex: &conditionTraceIndex,
-          earlyExitContext: earlyExitContext
+          earlyExitContext: earlyExitContext,
+          capturesHandledErrors: capturesHandledErrors
         )
         let errorExpression = catchErrorExpression(in: clause)
         clause.body.statements = CodeBlockItemListSyntax(
-          [recordHandledError(), emitHandledError(errorExpression: errorExpression)]
+          (capturesHandledErrors
+            ? [recordHandledError(), emitHandledError(errorExpression: errorExpression)]
+            : [])
             + rewrittenStatements
         )
         catchClauses[index] = clause
@@ -1230,6 +1434,7 @@ extension AutoLogMacro {
     yieldCaptureIndex: inout Int,
     conditionTraceIndex: inout Int,
     earlyExitContext: EarlyExitContext? = nil,
+    capturesHandledErrors: Bool = true,
     isElseIfBranch: Bool = false,
     priorFalseConditions: [String] = []
   ) -> ExprSyntax {
@@ -1238,7 +1443,8 @@ extension AutoLogMacro {
         rewriteStatements(
           Array(closure.statements),
           yieldCaptureIndex: &yieldCaptureIndex,
-          conditionTraceIndex: &conditionTraceIndex
+          conditionTraceIndex: &conditionTraceIndex,
+          capturesHandledErrors: capturesHandledErrors
         )
       )
       return ExprSyntax(closure)
@@ -1249,7 +1455,8 @@ extension AutoLogMacro {
         functionCall.calledExpression,
         yieldCaptureIndex: &yieldCaptureIndex,
         conditionTraceIndex: &conditionTraceIndex,
-        earlyExitContext: earlyExitContext
+        earlyExitContext: earlyExitContext,
+        capturesHandledErrors: capturesHandledErrors
       )
 
       var arguments = functionCall.arguments
@@ -1259,7 +1466,8 @@ extension AutoLogMacro {
           argument.expression,
           yieldCaptureIndex: &yieldCaptureIndex,
           conditionTraceIndex: &conditionTraceIndex,
-          earlyExitContext: earlyExitContext
+          earlyExitContext: earlyExitContext,
+          capturesHandledErrors: capturesHandledErrors
         )
         arguments[index] = argument
       }
@@ -1270,7 +1478,8 @@ extension AutoLogMacro {
           rewriteStatements(
             Array(trailingClosure.statements),
             yieldCaptureIndex: &yieldCaptureIndex,
-            conditionTraceIndex: &conditionTraceIndex
+            conditionTraceIndex: &conditionTraceIndex,
+            capturesHandledErrors: capturesHandledErrors
           )
         )
         functionCall.trailingClosure = trailingClosure
@@ -1284,7 +1493,8 @@ extension AutoLogMacro {
           rewriteStatements(
             Array(closure.statements),
             yieldCaptureIndex: &yieldCaptureIndex,
-            conditionTraceIndex: &conditionTraceIndex
+            conditionTraceIndex: &conditionTraceIndex,
+            capturesHandledErrors: capturesHandledErrors
           )
         )
         closureElement.closure = closure
@@ -1300,7 +1510,8 @@ extension AutoLogMacro {
         switchExpr.subject,
         yieldCaptureIndex: &yieldCaptureIndex,
         conditionTraceIndex: &conditionTraceIndex,
-        earlyExitContext: earlyExitContext
+        earlyExitContext: earlyExitContext,
+        capturesHandledErrors: capturesHandledErrors
       )
 
       var cases = switchExpr.cases
@@ -1315,7 +1526,8 @@ extension AutoLogMacro {
             Array(switchCase.statements),
             yieldCaptureIndex: &yieldCaptureIndex,
             conditionTraceIndex: &conditionTraceIndex,
-            earlyExitContext: context
+            earlyExitContext: context,
+            capturesHandledErrors: capturesHandledErrors
           )
         )
         cases[index] = SwitchCaseListSyntax.Element(switchCase)
@@ -1338,7 +1550,8 @@ extension AutoLogMacro {
             kind: isElseIfBranch ? .elseif : .if,
             branchCondition: condition,
             effectiveCondition: joinedConditionString(enteredConditions)
-          )
+          ),
+          capturesHandledErrors: capturesHandledErrors
         )
       )
 
@@ -1354,7 +1567,8 @@ extension AutoLogMacro {
                 kind: .else,
                 branchCondition: condition,
                 effectiveCondition: joinedConditionString(priorFalseConditions + [failedCondition])
-              )
+              ),
+              capturesHandledErrors: capturesHandledErrors
             )
           )
           ifExpr.elseBody = .codeBlock(codeBlock)
@@ -1365,6 +1579,7 @@ extension AutoLogMacro {
             yieldCaptureIndex: &yieldCaptureIndex,
             conditionTraceIndex: &conditionTraceIndex,
             earlyExitContext: earlyExitContext,
+            capturesHandledErrors: capturesHandledErrors,
             isElseIfBranch: true,
             priorFalseConditions: priorFalseConditions + [failedCondition]
           )
@@ -1384,7 +1599,8 @@ extension AutoLogMacro {
     _ statements: [CodeBlockItemSyntax],
     yieldCaptureIndex: inout Int,
     conditionTraceIndex: inout Int,
-    earlyExitContext: EarlyExitContext
+    earlyExitContext: EarlyExitContext,
+    capturesHandledErrors: Bool = true
   ) -> [CodeBlockItemSyntax] {
     [
       captureBranchDecision(earlyExitContext),
@@ -1392,7 +1608,8 @@ extension AutoLogMacro {
       statements,
       yieldCaptureIndex: &yieldCaptureIndex,
       conditionTraceIndex: &conditionTraceIndex,
-      earlyExitContext: earlyExitContext
+      earlyExitContext: earlyExitContext,
+      capturesHandledErrors: capturesHandledErrors
     )
   }
 

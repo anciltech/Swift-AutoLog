@@ -105,6 +105,29 @@ struct LoggedMacroTests {
   }
 
   @Test
+  func struct_emitFailuresOnly_preservesCompileTimeEmissionArgument() throws {
+    assertMacro {
+      #"""
+      @Logged(emit: "failuresOnly")
+      struct Foo {
+        func bar() {
+          print("bar")
+        }
+      }
+      """#
+    } expansion: {
+      """
+      struct Foo {
+        @Log(emit: "failuresOnly")
+        func bar() {
+          print("bar")
+        }
+      }
+      """
+    }
+  }
+
+  @Test
   func class_withAutoLoggerAsInitializer_noAdditionalAnnotations() throws {
     assertMacro {
       #"""

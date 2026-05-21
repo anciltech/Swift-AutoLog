@@ -25,9 +25,15 @@ without removing the SwiftUI convenience APIs that make the demo ergonomic.
   size/build numbers.
 - [ ] Consider a follow-up split for formatter/failure-context/settings code if
   the core product still has too much fixed footprint.
-- [ ] Consider a follow-up error-only macro or compile-time option that avoids
+- [x] Add a follow-up error-only macro compile-time option that avoids
   generating success/start event machinery for projects that only want thrown
   error instrumentation.
+- [x] Extend the impact probe with stripped executable bytes and compile-time
+  `emit:` variants so runtime filtering and generated-code pruning can be
+  compared directly.
+- [ ] Consider a follow-up split for the macro declarations and source helpers
+  so non-macro consumers can use interaction propagation without building the
+  `swift-syntax` macro plugin.
 - [ ] Add warm incremental-build timing after touching a logged source file so
   clean-build cost and day-to-day edit/build cost are tracked separately.
 

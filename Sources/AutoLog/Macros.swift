@@ -144,6 +144,17 @@ public macro AutoLog() = #externalMacro(
   type: "LoggedMacro"
 )
 
+/// Introduces ``Log(emit:level:omit:tag:measure:)`` to all methods in the
+/// attached declaration using a compile-time emission policy.
+///
+/// Supported values are `"all"`, `"completionsOnly"`, `"successesOnly"`, and
+/// `"failuresOnly"`.
+@attached(memberAttribute)
+public macro AutoLog(emit emission: String) = #externalMacro(
+  module: "AutoLogMacro",
+  type: "LoggedMacro"
+)
+
 @attached(memberAttribute)
 public macro AutoLog(using logger: any AutoLogger) = #externalMacro(
   module: "AutoLogMacro",
@@ -151,7 +162,25 @@ public macro AutoLog(using logger: any AutoLogger) = #externalMacro(
 )
 
 @attached(memberAttribute)
+public macro AutoLog(
+  using logger: any AutoLogger,
+  emit emission: String
+) = #externalMacro(
+  module: "AutoLogMacro",
+  type: "LoggedMacro"
+)
+
+@attached(memberAttribute)
 public macro AutoLog(architecture logger: any AutoLogger) = #externalMacro(
+  module: "AutoLogMacro",
+  type: "LoggedMacro"
+)
+
+@attached(memberAttribute)
+public macro AutoLog(
+  architecture logger: any AutoLogger,
+  emit emission: String
+) = #externalMacro(
   module: "AutoLogMacro",
   type: "LoggedMacro"
 )
@@ -165,7 +194,25 @@ public macro AutoLog(using logger: AutoLogLogger) = #externalMacro(
 )
 
 @attached(memberAttribute)
+public macro AutoLog(
+  using logger: AutoLogLogger,
+  emit emission: String
+) = #externalMacro(
+  module: "AutoLogMacro",
+  type: "LoggedMacro"
+)
+
+@attached(memberAttribute)
 public macro AutoLog(architecture logger: AutoLogLogger) = #externalMacro(
+  module: "AutoLogMacro",
+  type: "LoggedMacro"
+)
+
+@attached(memberAttribute)
+public macro AutoLog(
+  architecture logger: AutoLogLogger,
+  emit emission: String
+) = #externalMacro(
   module: "AutoLogMacro",
   type: "LoggedMacro"
 )
@@ -184,6 +231,25 @@ public macro Log(
   level: (any Levelable)? = nil,
   omit: any Omittable... = [],
   tag: any Taggable... = []
+) = #externalMacro(
+  module: "AutoLogMacro",
+  type: "LogMacro"
+)
+
+/// Logs only the event paths selected at compile time.
+///
+/// Runtime ``AutoLogConfiguration`` output filters still control what is
+/// printed or routed after an event exists. `emit:` is different: the macro
+/// skips code generation for event paths that can never be emitted. Supported
+/// values are `"all"`, `"completionsOnly"`, `"successesOnly"`, and
+/// `"failuresOnly"`.
+@attached(body)
+public macro Log(
+  emit emission: String,
+  level: (any Levelable)? = nil,
+  omit: any Omittable... = [],
+  tag: any Taggable... = [],
+  measure: Bool? = nil
 ) = #externalMacro(
   module: "AutoLogMacro",
   type: "LogMacro"
@@ -264,7 +330,33 @@ public macro Log(using logger: any AutoLogger) = #externalMacro(
 )
 
 @attached(body)
+public macro Log(
+  using logger: any AutoLogger,
+  emit emission: String,
+  level: (any Levelable)? = nil,
+  omit: any Omittable... = [],
+  tag: any Taggable... = [],
+  measure: Bool? = nil
+) = #externalMacro(
+  module: "AutoLogMacro",
+  type: "LogMacro"
+)
+
+@attached(body)
 public macro Log(architecture logger: any AutoLogger) = #externalMacro(
+  module: "AutoLogMacro",
+  type: "LogMacro"
+)
+
+@attached(body)
+public macro Log(
+  architecture logger: any AutoLogger,
+  emit emission: String,
+  level: (any Levelable)? = nil,
+  omit: any Omittable... = [],
+  tag: any Taggable... = [],
+  measure: Bool? = nil
+) = #externalMacro(
   module: "AutoLogMacro",
   type: "LogMacro"
 )
@@ -278,7 +370,33 @@ public macro Log(using logger: AutoLogLogger) = #externalMacro(
 )
 
 @attached(body)
+public macro Log(
+  using logger: AutoLogLogger,
+  emit emission: String,
+  level: (any Levelable)? = nil,
+  omit: any Omittable... = [],
+  tag: any Taggable... = [],
+  measure: Bool? = nil
+) = #externalMacro(
+  module: "AutoLogMacro",
+  type: "LogMacro"
+)
+
+@attached(body)
 public macro Log(architecture logger: AutoLogLogger) = #externalMacro(
+  module: "AutoLogMacro",
+  type: "LogMacro"
+)
+
+@attached(body)
+public macro Log(
+  architecture logger: AutoLogLogger,
+  emit emission: String,
+  level: (any Levelable)? = nil,
+  omit: any Omittable... = [],
+  tag: any Taggable... = [],
+  measure: Bool? = nil
+) = #externalMacro(
   module: "AutoLogMacro",
   type: "LogMacro"
 )
