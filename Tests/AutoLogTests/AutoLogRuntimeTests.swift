@@ -409,6 +409,7 @@ struct AutoLogRuntimeTests {
     #expect(logger.events.count == 3)
     #expect(logger.events[0].outputEventType == .success)
     #expect(logger.events[1].handledError != nil)
+    #expect(logger.events[1].outputEventType == .warning)
     #expect(logger.events[2].outputEventType == .failure)
     guard case .failure = logger.events[2].result else {
       Issue.record("Expected typed failure emission to capture the thrown error")

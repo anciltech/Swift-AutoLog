@@ -722,6 +722,22 @@ struct AutoLoggerTests {
   }
 
   @Test
+  func autoLogEvent_outputEventTypeTreatsHandledErrorsAsWarnings() {
+    let parent = AutoLogEvent(
+      location: "App/CheckoutViewModel.swift:12:1",
+      declaration: "func processPayment() async"
+    )
+
+    let handledError = parent.asHandledErrorEvent(
+      Failure.mock,
+      location: "App/CheckoutViewModel.swift:13:1"
+    )
+
+    #expect(handledError.handledError != nil)
+    #expect(handledError.outputEventType == .warning)
+  }
+
+  @Test
   func autoLogEvent_cachesDerivedLocationAndDeclarationMetadata() {
     let event = AutoLogEvent(
       location: "App/CheckoutViewModel.swift:42:7",

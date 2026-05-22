@@ -675,7 +675,6 @@ For each early exit or recorded branch path, AutoLog captures:
 
 This keeps branch decisions visible without treating them as automatic failures. A branch may exit early and still be a successful, expected outcome such as `.success(false)` or `.success(nil)`, and a non-returning branch can now remain visible even when the function later completes normally.
 
-Output profiles classify manual ``AutoLog/warning(_:fileID:line:)`` events as
-`.warning`, so warning rows can be shown or hidden independently from ordinary
-successful completions. Handled-error rows still participate in failure output
-filters because they are part of the failure-diagnosis trail.
+Output profiles classify manual ``AutoLog/warning(_:fileID:line:)`` events and
+handled-error catch-site rows as `.warning`, so warning rows can be shown or
+hidden independently from ordinary successful completions and thrown failures.

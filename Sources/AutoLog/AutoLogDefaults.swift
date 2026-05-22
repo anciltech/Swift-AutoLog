@@ -366,16 +366,16 @@ extension AutoLogEvent {
       return .start
     }
 
+    if let level = level as? LogLevel, level == .warning {
+      return .warning
+    }
+
     if handledError != nil {
-      return .failure
+      return .warning
     }
 
     if case .failure = result {
       return .failure
-    }
-
-    if let level = level as? LogLevel, level == .warning {
-      return .warning
     }
 
     return .success
