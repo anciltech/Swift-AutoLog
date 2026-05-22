@@ -85,6 +85,67 @@ struct AutoLogRuntimeTests {
   }
 
   @Test
+  func buildConfiguration_derivesDefaultEmissionsFromEffectiveOutputs() {
+    let buildConfiguration = AutoLogConfiguration.default.derivedBuildConfiguration
+
+    #expect(buildConfiguration.emissions == [
+      .starts,
+      .successes,
+      .failures,
+      .warnings,
+    ])
+    #expect(buildConfiguration.macroEmitArgument == "[.starts, .successes, .failures, .warnings]")
+  }
+
+  @Test
+  func buildConfiguration_derivesDiagnosticsFromOutputEventTypes() {
+    let configuration = AutoLogConfiguration(
+      outputs: [
+        AutoLogOutput(
+          name: "Production Console",
+          route: .console,
+          eventTypes: [.failure, .warning]
+        )
+      ]
+    )
+
+    let buildConfiguration = configuration.derivedBuildConfiguration
+
+    #expect(buildConfiguration.emissions == [.failures, .warnings])
+    #expect(buildConfiguration.macroEmitArgument == "[.failures, .warnings]")
+  }
+
+  @Test
+  func buildConfiguration_ignoresRuntimeOnlyFiltersAndDisabledOutputs() {
+    let configuration = AutoLogConfiguration(
+      outputs: [
+        AutoLogOutput(
+          name: "Disabled",
+          route: .console,
+          isEnabled: false,
+          eventTypes: [.success, .failure, .warning]
+        ),
+        AutoLogOutput(
+          name: "Filtered",
+          route: .splunk,
+          eventTypes: [.failure],
+          typeNameFilters: ["CheckoutViewModel"]
+        ),
+        AutoLogOutput(
+          name: "Interactions",
+          route: .console,
+          eventTypes: [.interaction]
+        ),
+      ]
+    )
+
+    let buildConfiguration = configuration.derivedBuildConfiguration
+
+    #expect(buildConfiguration.emissions == [.failures])
+    #expect(buildConfiguration.macroEmitArgument == "[.failures]")
+  }
+
+  @Test
   func withConfiguration_restoresPreviousRuntimeAfterScope() {
     let originalRuntime = AutoLog.runtimeSnapshot()
     let override = AutoLogConfiguration(

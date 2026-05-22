@@ -487,6 +487,13 @@ intentionally explicit at the macro call site; mutable
 ``AutoLogConfiguration`` settings still run after an event exists and cannot
 remove generated code from the binary.
 
+If the runtime outputs are the desired source of truth, use
+``AutoLogConfiguration/derivedBuildConfiguration`` to generate the default
+build ceiling from enabled output event types. For example, outputs containing
+only `.failure` and `.warning` derive `macroEmitArgument ==
+"[.failures, .warnings]"`. Route filters and type-name filters remain runtime
+matching rules and are not used to prune generated wrapper paths.
+
 ## Omit methods from being logged
 
 Simply change the ``Log(using:)`` annotation to ``Omit()``. In this scenario, an event won’t be emitted when the function is invoked. The ``Omit(_:)`` macro also has an override, which you can learn more about in <doc:CustomizingMacroBehavior>.

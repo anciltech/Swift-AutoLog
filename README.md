@@ -183,6 +183,27 @@ compatibility. Runtime `AutoLogConfiguration` filters still decide which
 constructed events reach each output, but `emit:` changes what wrapper code the
 macro generates in the first place.
 
+When outputs are the source of truth, derive the build ceiling from the same
+configuration:
+
+```swift
+let configuration = AutoLogConfiguration(
+  outputs: [
+    AutoLogOutput(
+      name: "Production Console",
+      route: .console,
+      eventTypes: [.failure, .warning]
+    )
+  ]
+)
+
+configuration.derivedBuildConfiguration.macroEmitArgument
+// "[.failures, .warnings]"
+```
+
+Route and type-name filters stay runtime-only; output `eventTypes` determine
+the default build-time emission ceiling.
+
 For hot paths such as hover polling or selection probes, add `@Deduplicate` to
 collapse repeated identical events:
 

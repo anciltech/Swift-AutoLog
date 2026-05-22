@@ -37,6 +37,9 @@ without removing the SwiftUI convenience APIs that make the demo ergonomic.
 - [ ] Add a build-time profile input that plain `@AutoLog` can read during
   macro expansion, allowing production targets to inherit a default emission
   policy without changing every annotation.
+- [x] Add `AutoLogConfiguration.derivedBuildConfiguration` so enabled output
+  `eventTypes` produce the default build-time emission ceiling from the same
+  output definition.
 - [ ] Consider a follow-up split for the macro declarations and source helpers
   so non-macro consumers can use interaction propagation without building the
   `swift-syntax` macro plugin.

@@ -69,6 +69,27 @@ behavior, `emit: "completionsOnly"` skips start events,
 output filters when you still want the same generated instrumentation available
 for live settings or per-destination routing.
 
+To keep output definitions as the source of truth, derive the build-time
+ceiling from the same ``AutoLogConfiguration``:
+
+```swift
+let configuration = AutoLogConfiguration(
+  outputs: [
+    AutoLogOutput(
+      name: "Production Console",
+      route: .console,
+      eventTypes: [.failure, .warning]
+    )
+  ]
+)
+
+let buildConfiguration = configuration.derivedBuildConfiguration
+// buildConfiguration.macroEmitArgument == "[.failures, .warnings]"
+```
+
+Only output event types become build-time emissions. Route filters,
+type-name filters, and sink-specific settings remain runtime decisions.
+
 ### Logging levels
 
 Logging levels can be specified for an event using either overload of ``Log(using:level:omit:tag:)``, ``Level(_:)``, or a combination of both.

@@ -10,6 +10,21 @@ public enum AutoLogOutputEventType: String, Sendable, Codable, CaseIterable, Has
   case warning
   case success
   case failure
+
+  var buildEmission: AutoLogEmission? {
+    switch self {
+    case .interaction:
+      return nil
+    case .start:
+      return .starts
+    case .warning:
+      return .warnings
+    case .success:
+      return .successes
+    case .failure:
+      return .failures
+    }
+  }
 }
 
 public enum AutoLogParameterPrivacy: Sendable, Codable, Equatable, Hashable {
@@ -309,6 +324,26 @@ public struct AutoLogConfiguration: Sendable, Codable, Equatable {
 
   public var maxErrorContextLimit: Int {
     max(effectiveOutputs.map(\.errorContextLimit).max() ?? 0, 5)
+  }
+
+  /// Build-time macro policy derived from enabled output event types.
+  ///
+  /// This is the default build configuration for the runtime outputs already
+  /// defined here. It intentionally ignores route and type-name filters because
+  /// those are runtime routing decisions; only event-type membership can safely
+  /// become a global macro emission ceiling.
+  public var derivedBuildConfiguration: AutoLogBuildConfiguration {
+    let emissions = effectiveOutputs
+      .filter(\.isEnabled)
+      .reduce(into: Set<AutoLogEmission>()) { partialResult, output in
+        for eventType in output.eventTypes {
+          if let emission = eventType.buildEmission {
+            partialResult.insert(emission)
+          }
+        }
+      }
+
+    return AutoLogBuildConfiguration(emissions: emissions)
   }
 
   public func shouldEmit(_ event: AutoLogEvent) -> Bool {
