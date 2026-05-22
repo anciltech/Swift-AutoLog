@@ -1,5 +1,26 @@
 # Changelog
 
+## 0.9.0 - 2026-05-22
+
+### Added
+
+- Added the `AutoLogSwiftUI` product for SwiftUI helpers such as `Button.log`, binding logging, and lifecycle modifiers.
+- Added compile-time emission pruning so macros can omit start, success, or failure paths when an emit filter is known at build time.
+- Added typed macro emission filters, including array-style filters such as `@Log(emit: [.failures, .warnings])`.
+- Added build-derived emission defaults so `@AutoLog` can use output definitions to choose a smaller generated logging surface.
+- Added explicit initializer logging support.
+
+### Changed
+
+- Moved SwiftUI-specific source out of the core `AutoLog` product so non-UI consumers do not link SwiftUI/Combine just to log.
+- Treated handled thrown errors as warning events so warning filters can show recovered failures without enabling all success output.
+- Reduced generated macro code when builds choose failures-only or timing-free logging paths.
+
+### Documentation
+
+- Added binary-impact measurement notes and follow-up planning for reducing executable size and clean build time.
+- Documented the SwiftUI product split and build-time filtering guidance.
+
 ## 0.8.1 - 2026-05-20
 
 ### Added
