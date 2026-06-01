@@ -83,7 +83,13 @@ public enum AutoLog {
   /// and the call-site location, allowing function events to reference
   /// where the interaction originated.
   @TaskLocal public static var current: SourceContext?
+  @TaskLocal public static var currentCallSiteDepth = 0
   @TaskLocal private static var scopedRuntime: AutoLogRuntime?
+
+  /// The depth a newly entered logged call site should use.
+  public static var nextCallSiteDepth: Int {
+    currentCallSiteDepth + 1
+  }
 
   // MARK: - Runtime bootstrap and configuration
 
@@ -266,6 +272,28 @@ public enum AutoLog {
     }
   }
 
+  /// Runs `operation` while downstream logged calls inherit the supplied depth.
+  @discardableResult
+  public static func withCallSiteDepth<T>(
+    _ depth: Int?,
+    operation: () throws -> T
+  ) rethrows -> T {
+    try $currentCallSiteDepth.withValue(max(depth ?? 0, 0)) {
+      try operation()
+    }
+  }
+
+  /// Async variant of ``withCallSiteDepth(_:operation:)``.
+  @discardableResult
+  public static func withCallSiteDepth<T>(
+    _ depth: Int?,
+    operation: () async throws -> T
+  ) async rethrows -> T {
+    try await $currentCallSiteDepth.withValue(max(depth ?? 0, 0)) {
+      try await operation()
+    }
+  }
+
   // MARK: - Interaction source activation
 
   /// Emits a standalone interaction event and runs the operation
@@ -287,6 +315,7 @@ public enum AutoLog {
     runtime.logger.emitIfEnabled(
       event: AutoLogEvent(
         source: context,
+        callSiteDepth: 1,
         location: locationString,
         declaration: source.description
       ),
@@ -294,7 +323,9 @@ public enum AutoLog {
       deduplicator: runtime.deduplicator
     )
     return try $current.withValue(context) {
-      try operation()
+      try $currentCallSiteDepth.withValue(1) {
+        try operation()
+      }
     }
   }
 
@@ -313,6 +344,7 @@ public enum AutoLog {
     runtime.logger.emitIfEnabled(
       event: AutoLogEvent(
         source: context,
+        callSiteDepth: 1,
         location: locationString,
         declaration: source.description
       ),
@@ -320,7 +352,9 @@ public enum AutoLog {
       deduplicator: runtime.deduplicator
     )
     return try await $current.withValue(context) {
-      try await operation()
+      try await $currentCallSiteDepth.withValue(1) {
+        try await operation()
+      }
     }
   }
 
@@ -349,6 +383,7 @@ public enum AutoLog {
     var event = AutoLogEvent(
       level: level,
       source: current,
+      callSiteDepth: nextCallSiteDepth,
       location: "\(fileID):\(line):\(column)",
       declaration: declaration,
       parameters: [:],
@@ -362,7 +397,9 @@ public enum AutoLog {
     let start = ContinuousClock.now
 
     do {
-      let result = try await operation()
+      let result = try await withCallSiteDepth(event.callSiteDepth) {
+        try await operation()
+      }
       event.result = .success(result)
       event.duration = ContinuousClock.now - start
       autoLogger.emitIfEnabled(
@@ -405,6 +442,7 @@ public enum AutoLog {
       event: AutoLogEvent(
         level: level,
         source: current,
+        callSiteDepth: currentCallSiteDepth > 0 ? currentCallSiteDepth : nil,
         location: "\(fileID):\(line)",
         declaration: message,
         parameters: [:]

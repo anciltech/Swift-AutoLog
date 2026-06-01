@@ -257,6 +257,12 @@ public struct AutoLogEvent: @unchecked Sendable, CustomStringConvertible, Custom
   /// Best-effort function name derived from the declaration string.
   public let functionName: String
 
+  /// Logical call-site depth captured when the event is created.
+  ///
+  /// Interaction events normally start at depth `1`; logged functions entered
+  /// from that interaction increment the current depth as calls move downstream.
+  public let callSiteDepth: Int?
+
   /// `true` when the declaration includes an `async` effect specifier.
   public let hasAsyncEffect: Bool
 
@@ -346,6 +352,7 @@ public struct AutoLogEvent: @unchecked Sendable, CustomStringConvertible, Custom
     errorContext: \(errorContext)
     tags: \(tags)
     routes: \(Array(routes).sorted { $0.rawValue < $1.rawValue })
+    callSiteDepth: \(callSiteDepth.map(String.init) ?? "nil")
     executionContext: \(executionContext)
     deduplicateWithin: \(String(describing: deduplicateWithin))
     omissionRules: \(omissionRules)
@@ -368,6 +375,7 @@ public struct AutoLogEvent: @unchecked Sendable, CustomStringConvertible, Custom
     tags: \(tags)
     routes: \(Array(routes).sorted { $0.rawValue < $1.rawValue })
     duration: \(duration.map { String(describing: $0) } ?? "nil")
+    callSiteDepth: \(callSiteDepth.map(String.init) ?? "nil")
     executionContext: \(executionContext)
     deduplicateWithin: \(String(describing: deduplicateWithin))
     omissionRules: \(omissionRules)
@@ -387,9 +395,11 @@ public struct AutoLogEvent: @unchecked Sendable, CustomStringConvertible, Custom
   ///   - deduplicateWithin: A per-event duplicate suppression window override.
   ///   - omissionRules: Conditional omission rules evaluated before emission.
   ///   - isMeasuredExplicitly: Whether timing was explicitly requested via `@Log(measure: true)`.
+  ///   - callSiteDepth: Logical depth captured from the current call-site chain.
   public init(
     level: (any Levelable)? = nil,
     source: (any Sourceable)? = nil,
+    callSiteDepth: Int? = nil,
     location: String,
     declaration: String,
     parameters: [String: Any] = [:],
@@ -408,6 +418,7 @@ public struct AutoLogEvent: @unchecked Sendable, CustomStringConvertible, Custom
     self.sourceLine = Self.extractLine(from: location)
     self.shortLocation = Self.shortLocation(from: location)
     self.functionName = Self.extractFunctionName(from: declaration)
+    self.callSiteDepth = callSiteDepth
     self.hasAsyncEffect = Self.hasAsyncEffect(in: declaration)
     self.parameters = parameters
     self.parameterLabels = Self.orderedParameterLabels(from: parameters)
@@ -458,6 +469,7 @@ public struct AutoLogEvent: @unchecked Sendable, CustomStringConvertible, Custom
     AutoLogEvent(
       level: LogLevel.start,
       source: source,
+      callSiteDepth: callSiteDepth,
       location: location,
       declaration: declaration,
       parameters: parameters,

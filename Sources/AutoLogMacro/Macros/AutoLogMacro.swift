@@ -644,6 +644,22 @@ extension AutoLogMacro {
                     trailingTrivia: .newline
                   )
 
+                  // MARK: - callSiteDepth: Int?
+                  LabeledExprSyntax(
+                    leadingTrivia: .newline,
+                    label: .identifier("callSiteDepth"),
+                    colon: .colonToken(),
+                    expression: MemberAccessExprSyntax(
+                      base: DeclReferenceExprSyntax(
+                        baseName: .predefined(.AutoLogSource)
+                      ),
+                      period: .periodToken(),
+                      name: TokenSyntax.identifier("nextCallSiteDepth")
+                    ),
+                    trailingComma: .commaToken(),
+                    trailingTrivia: .newline
+                  )
+
                   // MARK: - location: String
                   LabeledExprSyntax(
                     leadingTrivia: .newline,

@@ -451,12 +451,14 @@ Button.log("Save") {
 }
 ```
 
-The interaction event becomes the root of a small trace tree, and downstream work uses longer branch lengths to hint at architectural depth:
+The interaction event becomes level 1 of a small trace tree. Macro-generated
+function events capture the current call-site count, so downstream work uses
+longer branch lengths without depending on type-name suffix matching:
 
 ```text
 👆🏼-🧵A1B - 👆🏼 Save [PaymentsView:42]
 👆🏼-🧵A1B │ main │       │ ├──🔵 PaymentsViewModel.saveTapped()
-👆🏼-🧵A1B │ bg   │ 12ms  │ └──🟢 PaymentService.validate()
+👆🏼-🧵A1B │ bg   │ 12ms  │ └───🟢 PaymentService.validate()
 👆🏼-🧵A1B │ bg   │ 221ms │ └────🔴 PaymentAPI.submit() → declined [PaymentError]
 ```
 

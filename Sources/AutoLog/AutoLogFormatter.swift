@@ -56,7 +56,7 @@ public struct CompactFormatter: AutoLogFormatter {
     let typeName = event.inferredTypeName
     let fmt = format ?? configuration.logFormat
     let plan = fixedFormatPlan ?? (fmt == .default ? .defaultPlan : FormatPlan(format: fmt))
-    let depth = profile.depth(for: typeName) ?? 1
+    let depth = event.callSiteDepth ?? profile.depth(for: typeName) ?? 1
     let visibleTags = event.visibleTags
     var parameterText = ParameterText(
       parameters: event.parameters,

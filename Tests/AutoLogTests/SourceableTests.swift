@@ -340,12 +340,15 @@ struct AutoLogSourceTests {
         withMockRuntime {
             var capturedEmoji: String?
             var capturedInteractionID: String?
+            var capturedDepth: Int?
             AutoLogSource.run(InteractionSource.button("Test")) {
                 capturedEmoji = AutoLogSource.current?.emoji
                 capturedInteractionID = AutoLogSource.current?.interactionID
+                capturedDepth = AutoLogSource.currentCallSiteDepth
             }
             #expect(capturedEmoji == "👆🏼")
             #expect(capturedInteractionID?.count == 6)
+            #expect(capturedDepth == 1)
         }
     }
 
@@ -374,10 +377,33 @@ struct AutoLogSourceTests {
             #expect(mock.events.count == 1)
             #expect(mock.events.first?.source?.emoji == "👆🏼")
             #expect(mock.events.first?.declaration == "button(\"Deposit\")")
+            #expect(mock.events.first?.callSiteDepth == 1)
             let context = mock.events.first?.source as? SourceContext
             #expect(context != nil)
             #expect(context?.interactionID.count == 6)
         }
+    }
+
+    @Test func nestedLoggedCalls_incrementCallSiteDepth() {
+        final class Subject {
+            @Log
+            func outer() {
+                inner()
+            }
+
+            @Log
+            func inner() {}
+        }
+
+        let mock = MockLogger()
+        withMockRuntime(logger: mock) {
+            AutoLogSource.run(InteractionSource.button("Start")) {
+                Subject().outer()
+            }
+        }
+
+        let functionEvents = mock.events.filter { $0.declaration.hasPrefix("func") }
+        #expect(functionEvents.map(\.callSiteDepth) == [2, 3, 3, 2])
     }
 
     @Test func run_returnsOperationResult() {
@@ -483,6 +509,9 @@ struct AutoLogSourceTests {
         }
 
         #expect(mock.events.count == 3)
+        #expect(mock.events[0].callSiteDepth == 1)
+        #expect(mock.events[1].callSiteDepth == 2)
+        #expect(mock.events[2].callSiteDepth == 2)
         #expect(mock.events[1].source?.emoji == "👆🏼")
         #expect(mock.events[2].source?.emoji == "👆🏼")
         #expect(mock.events[2].declaration == "TaskGroup child Alpha")
@@ -502,11 +531,13 @@ struct CompactFormatterSourceTests {
         declaration: String = "func doSomething()",
         parameters: [String: Any] = [:],
         result: Result<Any, any Error> = .success(()),
-        tags: [any Taggable] = []
+        tags: [any Taggable] = [],
+        callSiteDepth: Int? = nil
     ) -> AutoLogEvent {
         AutoLogEvent(
             level: level,
             source: source,
+            callSiteDepth: callSiteDepth,
             location: location,
             declaration: declaration,
             parameters: parameters,
@@ -654,6 +685,26 @@ struct CompactFormatterSourceTests {
         let lines = output.split(separator: "\n", omittingEmptySubsequences: false)
         #expect(lines[0].contains("└──🟢"))
         #expect(lines[0].contains("PaymentService.validate() async → true"))
+    }
+
+    @Test func explicitCallSiteDepth_overridesDepthProfile() {
+        let ctx = SourceContext(
+            source: InteractionSource.button("Save"),
+            location: "App/ContentView.swift:30:5",
+            interactionID: "A1B2C3",
+            flowMarker: "🧵"
+        )
+        let event = makeEvent(
+            source: ctx,
+            location: "App/PaymentAPI.swift:30:5",
+            declaration: "func submit() async throws",
+            result: .success(()),
+            callSiteDepth: 3
+        )
+
+        let output = CompactFormatter(profile: .cleanArchitecture).format(event: event, configuration: configuration)
+        #expect(output.contains("└───🟢"))
+        #expect(!output.contains("└─────🟢"))
     }
 
     @Test func traceEvent_earlyExit_showsOnSecondLine() {

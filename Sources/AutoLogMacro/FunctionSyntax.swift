@@ -55,6 +55,39 @@ public struct FunctionSyntax {
     }
   }
 
+  /// Creates an initializer that calls the underscored function copy while
+  /// publishing this event's logical depth to downstream logged calls.
+  var scopedInitializer: InitializerClauseSyntax {
+    let callExpression = "_\(self.syntax.name.text)(\(self.signature.arguments.trimmedDescription))"
+    let innerPrefix: String
+    let outerPrefix: String
+
+    switch (self.signature.isThrowing, self.signature.isAsync) {
+    case (true, true):
+      innerPrefix = "try await "
+      outerPrefix = "try await "
+    case (true, false):
+      innerPrefix = "try "
+      outerPrefix = "try "
+    case (false, true):
+      innerPrefix = "await "
+      outerPrefix = "await "
+    case (false, false):
+      innerPrefix = ""
+      outerPrefix = ""
+    }
+
+    return InitializerClauseSyntax(
+      value: ExprSyntax(
+        stringLiteral: """
+        \(outerPrefix)AutoLogSource.withCallSiteDepth(event.callSiteDepth ?? AutoLogSource.nextCallSiteDepth) {
+          \(innerPrefix)\(callExpression)
+        }
+        """
+      )
+    )
+  }
+
   /// Returns `true` if the function includes any generic parameters, otherwise returns `false`.
   var isGeneric: Bool { self.syntax.genericParameterClause != nil }
 

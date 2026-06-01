@@ -33,6 +33,8 @@ struct LogMacroTests {
           var event = AutoLogEvent(
             source: AutoLogSource.current,
 
+            callSiteDepth: AutoLogSource.nextCallSiteDepth,
+
             location: "TestModule/Test.swift:4:3",
             declaration: "init(name: String)",
             parameters: [
@@ -79,6 +81,8 @@ struct LogMacroTests {
           let autoLogger: any AutoLogger = runtime.logger
           var event = AutoLogEvent(
             source: AutoLogSource.current,
+
+            callSiteDepth: AutoLogSource.nextCallSiteDepth,
 
             location: "TestModule/Test.swift:4:3",
             declaration: "init(name: String) throws",
@@ -140,6 +144,8 @@ struct LogMacroTests {
           var event = AutoLogEvent(
             source: AutoLogSource.current,
 
+            callSiteDepth: AutoLogSource.nextCallSiteDepth,
+
             location: "TestModule/Test.swift:4:3",
             declaration: "init?(name: String)",
             parameters: [
@@ -182,6 +188,8 @@ struct LogMacroTests {
         var event = AutoLogEvent(
           source: AutoLogSource.current,
 
+          callSiteDepth: AutoLogSource.nextCallSiteDepth,
+
           location: "TestModule/Test.swift:1:1",
           declaration: "func foo()"
         )
@@ -190,7 +198,9 @@ struct LogMacroTests {
         func _foo() {
           print("Foo")
         }
-        let _ = _foo()
+        let _ = AutoLogSource.withCallSiteDepth(event.callSiteDepth ?? AutoLogSource.nextCallSiteDepth) {
+          _foo()
+        }
         if let __logStart {
           event.duration = ContinuousClock.now - __logStart
         }
@@ -217,6 +227,8 @@ struct LogMacroTests {
         var event = AutoLogEvent(
           source: AutoLogSource.current,
 
+          callSiteDepth: AutoLogSource.nextCallSiteDepth,
+
           location: "TestModule/Test.swift:1:1",
           declaration: "func foo()"
         )
@@ -225,7 +237,9 @@ struct LogMacroTests {
         func _foo() {
           print("Foo")
         }
-        let _ = _foo()
+        let _ = AutoLogSource.withCallSiteDepth(event.callSiteDepth ?? AutoLogSource.nextCallSiteDepth) {
+          _foo()
+        }
         if let __logStart {
           event.duration = ContinuousClock.now - __logStart
         }
@@ -252,6 +266,8 @@ struct LogMacroTests {
         var event = AutoLogEvent(
           source: AutoLogSource.current,
 
+          callSiteDepth: AutoLogSource.nextCallSiteDepth,
+
           location: "TestModule/Test.swift:1:1",
           declaration: "func foo()"
         )
@@ -260,7 +276,9 @@ struct LogMacroTests {
         func _foo() {
           print("Foo")
         }
-        let _ = _foo()
+        let _ = AutoLogSource.withCallSiteDepth(event.callSiteDepth ?? AutoLogSource.nextCallSiteDepth) {
+          _foo()
+        }
         if let __logStart {
           event.duration = ContinuousClock.now - __logStart
         }
@@ -287,6 +305,8 @@ struct LogMacroTests {
         var event = AutoLogEvent(
           source: AutoLogSource.current,
 
+          callSiteDepth: AutoLogSource.nextCallSiteDepth,
+
           location: "TestModule/Test.swift:1:1",
           declaration: "func foo()"
         )
@@ -294,7 +314,9 @@ struct LogMacroTests {
         func _foo() {
           print("Foo")
         }
-        let _ = _foo()
+        let _ = AutoLogSource.withCallSiteDepth(event.callSiteDepth ?? AutoLogSource.nextCallSiteDepth) {
+          _foo()
+        }
         autoLogger.emitIfEnabled(event: event, runtime: runtime)
       }
       """
@@ -318,6 +340,8 @@ struct LogMacroTests {
         var event = AutoLogEvent(
           source: AutoLogSource.current,
 
+          callSiteDepth: AutoLogSource.nextCallSiteDepth,
+
           location: "TestModule/Test.swift:1:1",
           declaration: "func foo() -> String"
         )
@@ -326,7 +350,9 @@ struct LogMacroTests {
         func _foo() -> String {
           return "Foo"
         }
-        let result = _foo()
+        let result = AutoLogSource.withCallSiteDepth(event.callSiteDepth ?? AutoLogSource.nextCallSiteDepth) {
+          _foo()
+        }
         event.result = .success(result)
         if let __logStart {
           event.duration = ContinuousClock.now - __logStart
@@ -355,6 +381,8 @@ struct LogMacroTests {
         var event = AutoLogEvent(
           source: AutoLogSource.current,
 
+          callSiteDepth: AutoLogSource.nextCallSiteDepth,
+
           location: "TestModule/Test.swift:1:1",
           declaration: "func foo() -> String"
         )
@@ -362,7 +390,9 @@ struct LogMacroTests {
         func _foo() -> String {
           return "Foo"
         }
-        let result = _foo()
+        let result = AutoLogSource.withCallSiteDepth(event.callSiteDepth ?? AutoLogSource.nextCallSiteDepth) {
+          _foo()
+        }
         event.result = .success(result)
         if let __logStart {
           event.duration = ContinuousClock.now - __logStart
@@ -391,6 +421,8 @@ struct LogMacroTests {
         var event = AutoLogEvent(
           source: AutoLogSource.current,
 
+          callSiteDepth: AutoLogSource.nextCallSiteDepth,
+
           location: "TestModule/Test.swift:1:1",
           declaration: "func foo() -> String"
         )
@@ -398,7 +430,9 @@ struct LogMacroTests {
         func _foo() -> String {
           return "Foo"
         }
-        let result = _foo()
+        let result = AutoLogSource.withCallSiteDepth(event.callSiteDepth ?? AutoLogSource.nextCallSiteDepth) {
+          _foo()
+        }
         event.result = .success(result)
         if let __logStart {
           event.duration = ContinuousClock.now - __logStart
@@ -427,6 +461,8 @@ struct LogMacroTests {
         var event = AutoLogEvent(
           source: AutoLogSource.current,
 
+          callSiteDepth: AutoLogSource.nextCallSiteDepth,
+
           location: "TestModule/Test.swift:1:1",
           declaration: "func foo() throws -> String"
         )
@@ -435,7 +471,9 @@ struct LogMacroTests {
           try risky()
         }
         do {
-          let result = try _foo()
+          let result = try AutoLogSource.withCallSiteDepth(event.callSiteDepth ?? AutoLogSource.nextCallSiteDepth) {
+            try _foo()
+          }
           return result
         } catch {
           event.result = .failure(error)
@@ -469,6 +507,8 @@ struct LogMacroTests {
         var event = AutoLogEvent(
           source: AutoLogSource.current,
 
+          callSiteDepth: AutoLogSource.nextCallSiteDepth,
+
           location: "TestModule/Test.swift:1:1",
           declaration: "func hover(frameID: Int) -> Bool",
           parameters: [
@@ -481,7 +521,9 @@ struct LogMacroTests {
         func _hover(frameID: Int) -> Bool {
           return frameID.isMultiple(of: 2)
         }
-        let result = _hover(frameID: frameID)
+        let result = AutoLogSource.withCallSiteDepth(event.callSiteDepth ?? AutoLogSource.nextCallSiteDepth) {
+          _hover(frameID: frameID)
+        }
         event.result = .success(result)
         if let __logStart {
           event.duration = ContinuousClock.now - __logStart
@@ -512,6 +554,8 @@ struct LogMacroTests {
         var event = AutoLogEvent(
           source: AutoLogSource.current,
 
+          callSiteDepth: AutoLogSource.nextCallSiteDepth,
+
           location: "TestModule/Test.swift:1:1",
           declaration: "func isSelected(frameID: Int) -> Bool",
           parameters: [
@@ -523,7 +567,9 @@ struct LogMacroTests {
         func _isSelected(frameID: Int) -> Bool {
           return frameID.isMultiple(of: 2)
         }
-        let result = _isSelected(frameID: frameID)
+        let result = AutoLogSource.withCallSiteDepth(event.callSiteDepth ?? AutoLogSource.nextCallSiteDepth) {
+          _isSelected(frameID: frameID)
+        }
         event.result = .success(result)
         if let __logStart {
           event.duration = ContinuousClock.now - __logStart
@@ -556,6 +602,8 @@ struct LogMacroTests {
         var event = AutoLogEvent(
           source: AutoLogSource.current,
 
+          callSiteDepth: AutoLogSource.nextCallSiteDepth,
+
           location: "TestModule/Test.swift:1:1",
           declaration: "func selectedValue(flag: Bool) -> Int?",
           parameters: [
@@ -567,7 +615,9 @@ struct LogMacroTests {
         func _selectedValue(flag: Bool) -> Int? {
           return flag ? 42 : nil
         }
-        let result = _selectedValue(flag: flag)
+        let result = AutoLogSource.withCallSiteDepth(event.callSiteDepth ?? AutoLogSource.nextCallSiteDepth) {
+          _selectedValue(flag: flag)
+        }
         event.result = .success(AutoLogMetadata.box(result))
         if let __logStart {
           event.duration = ContinuousClock.now - __logStart
@@ -600,6 +650,8 @@ struct LogMacroTests {
         var event = AutoLogEvent(
           source: AutoLogSource.current,
 
+          callSiteDepth: AutoLogSource.nextCallSiteDepth,
+
           location: "TestModule/Test.swift:1:1",
           declaration: "func selectionState(frameID: Int) -> SelectionState",
           parameters: [
@@ -611,7 +663,9 @@ struct LogMacroTests {
         func _selectionState(frameID: Int) -> SelectionState {
           return SelectionState(isSelected: frameID.isMultiple(of: 2))
         }
-        let result = _selectionState(frameID: frameID)
+        let result = AutoLogSource.withCallSiteDepth(event.callSiteDepth ?? AutoLogSource.nextCallSiteDepth) {
+          _selectionState(frameID: frameID)
+        }
         event.result = .success(result)
         if let __logStart {
           event.duration = ContinuousClock.now - __logStart
@@ -664,6 +718,8 @@ struct LogMacroTests {
         var event = AutoLogEvent(
           source: AutoLogSource.current,
 
+          callSiteDepth: AutoLogSource.nextCallSiteDepth,
+
           location: "TestModule/Test.swift:1:1",
           declaration: "func isSelected(flag: Bool) -> Bool",
           parameters: [
@@ -676,7 +732,9 @@ struct LogMacroTests {
         func _isSelected(flag: Bool) -> Bool {
           return flag
         }
-        let result = _isSelected(flag: flag)
+        let result = AutoLogSource.withCallSiteDepth(event.callSiteDepth ?? AutoLogSource.nextCallSiteDepth) {
+          _isSelected(flag: flag)
+        }
         event.result = .success(result)
         if let __logStart {
           event.duration = ContinuousClock.now - __logStart
@@ -707,6 +765,8 @@ struct LogMacroTests {
         var event = AutoLogEvent(
           source: AutoLogSource.current,
 
+          callSiteDepth: AutoLogSource.nextCallSiteDepth,
+
           location: "TestModule/Test.swift:1:1",
           declaration: "func refreshSession() throws",
           omissionRules: [AutoLogOmissionRule(scope: AutoLogOmissionRule.Scope.error, tokens: [], upToCount: 1)]
@@ -717,7 +777,9 @@ struct LogMacroTests {
           throw AuthError.expired
         }
         do {
-          let _ = try _refreshSession()
+          let _ = try AutoLogSource.withCallSiteDepth(event.callSiteDepth ?? AutoLogSource.nextCallSiteDepth) {
+            try _refreshSession()
+          }
           if let __logStart {
             event.duration = ContinuousClock.now - __logStart
           }
@@ -756,6 +818,8 @@ struct LogMacroTests {
         var event = AutoLogEvent(
           source: AutoLogSource.current,
 
+          callSiteDepth: AutoLogSource.nextCallSiteDepth,
+
           location: "TestModule/Test.swift:1:1",
           declaration: "func refreshSession() throws -> Bool",
           omissionRules: [AutoLogOmissionRule(scope: AutoLogOmissionRule.Scope.error, tokens: ["iamError", "nextAuthStep", "UserName"], upToCount: 1)]
@@ -766,7 +830,9 @@ struct LogMacroTests {
           throw AuthError.expired
         }
         do {
-          let result = try _refreshSession()
+          let result = try AutoLogSource.withCallSiteDepth(event.callSiteDepth ?? AutoLogSource.nextCallSiteDepth) {
+            try _refreshSession()
+          }
           if let __logStart {
             event.duration = ContinuousClock.now - __logStart
           }
@@ -799,12 +865,14 @@ struct LogMacroTests {
       }
       """#
     } expansion: {
-      """
+      #"""
       func project() {
         let runtime = AutoLog.runtimeSnapshot()
         let autoLogger: any AutoLogger = runtime.logger
         var event = AutoLogEvent(
           source: AutoLogSource.current,
+
+          callSiteDepth: AutoLogSource.nextCallSiteDepth,
 
           location: "TestModule/Test.swift:1:1",
           declaration: "func project()"
@@ -817,16 +885,18 @@ struct LogMacroTests {
           } catch {
             event.recordHandledError()
             autoLogger.emitHandledErrorIfEnabled(error: error, from: event, runtime: runtime)
-                projectionStatus = "Error: \\(error.localizedDescription)"
+                projectionStatus = "Error: \(error.localizedDescription)"
           }
         }
-        let _ = _project()
+        let _ = AutoLogSource.withCallSiteDepth(event.callSiteDepth ?? AutoLogSource.nextCallSiteDepth) {
+          _project()
+        }
         if let __logStart {
           event.duration = ContinuousClock.now - __logStart
         }
         autoLogger.emitIfEnabled(event: event, runtime: runtime)
       }
-      """
+      """#
     }
   }
 
@@ -844,12 +914,14 @@ struct LogMacroTests {
       }
       """#
     } expansion: {
-      """
+      #"""
       func project() {
         let runtime = AutoLog.runtimeSnapshot()
         let autoLogger: any AutoLogger = runtime.logger
         var event = AutoLogEvent(
           source: AutoLogSource.current,
+
+          callSiteDepth: AutoLogSource.nextCallSiteDepth,
 
           location: "TestModule/Test.swift:1:1",
           declaration: "func project()"
@@ -862,16 +934,18 @@ struct LogMacroTests {
           } catch let caught {
             event.recordHandledError()
             autoLogger.emitHandledErrorIfEnabled(error: caught, from: event, runtime: runtime)
-                projectionStatus = "Error: \\(caught)"
+                projectionStatus = "Error: \(caught)"
           }
         }
-        let _ = _project()
+        let _ = AutoLogSource.withCallSiteDepth(event.callSiteDepth ?? AutoLogSource.nextCallSiteDepth) {
+          _project()
+        }
         if let __logStart {
           event.duration = ContinuousClock.now - __logStart
         }
         autoLogger.emitIfEnabled(event: event, runtime: runtime)
       }
-      """
+      """#
     }
   }
 
@@ -896,6 +970,8 @@ struct LogMacroTests {
         var event = AutoLogEvent(
           source: AutoLogSource.current,
 
+          callSiteDepth: AutoLogSource.nextCallSiteDepth,
+
           location: "TestModule/Test.swift:1:1",
           declaration: "func deleteActiveLayout(collection: LayoutCollection) -> Bool",
           parameters: [
@@ -912,7 +988,9 @@ struct LogMacroTests {
 
           return true
         }
-        let result = _deleteActiveLayout(collection: collection)
+        let result = AutoLogSource.withCallSiteDepth(event.callSiteDepth ?? AutoLogSource.nextCallSiteDepth) {
+          _deleteActiveLayout(collection: collection)
+        }
         event.result = .success(result)
         if let __logStart {
           event.duration = ContinuousClock.now - __logStart
@@ -945,6 +1023,8 @@ struct LogMacroTests {
         var event = AutoLogEvent(
           source: AutoLogSource.current,
 
+          callSiteDepth: AutoLogSource.nextCallSiteDepth,
+
           location: "TestModule/Test.swift:1:1",
           declaration: "func removed(status: OSStatus) -> Bool",
           parameters: [
@@ -962,7 +1042,9 @@ struct LogMacroTests {
 
             return true
         }
-        let result = _removed(status: status)
+        let result = AutoLogSource.withCallSiteDepth(event.callSiteDepth ?? AutoLogSource.nextCallSiteDepth) {
+          _removed(status: status)
+        }
         event.result = .success(result)
         if let __logStart {
           event.duration = ContinuousClock.now - __logStart
@@ -995,6 +1077,8 @@ struct LogMacroTests {
         var event = AutoLogEvent(
           source: AutoLogSource.current,
 
+          callSiteDepth: AutoLogSource.nextCallSiteDepth,
+
           location: "TestModule/Test.swift:1:1",
           declaration: "func refresh(sessionToken: String?)",
           parameters: [
@@ -1011,7 +1095,9 @@ struct LogMacroTests {
 
           print(sessionToken)
         }
-        let _ = _refresh(sessionToken: sessionToken)
+        let _ = AutoLogSource.withCallSiteDepth(event.callSiteDepth ?? AutoLogSource.nextCallSiteDepth) {
+          _refresh(sessionToken: sessionToken)
+        }
         if let __logStart {
           event.duration = ContinuousClock.now - __logStart
         }
@@ -1042,6 +1128,8 @@ struct LogMacroTests {
         var event = AutoLogEvent(
           source: AutoLogSource.current,
 
+          callSiteDepth: AutoLogSource.nextCallSiteDepth,
+
           location: "TestModule/Test.swift:1:1",
           declaration: "func deleteActiveLayout(collection: LayoutCollection) -> Bool",
           parameters: [
@@ -1059,7 +1147,9 @@ struct LogMacroTests {
 
           return true
         }
-        let result = _deleteActiveLayout(collection: collection)
+        let result = AutoLogSource.withCallSiteDepth(event.callSiteDepth ?? AutoLogSource.nextCallSiteDepth) {
+          _deleteActiveLayout(collection: collection)
+        }
         event.result = .success(result)
         if let __logStart {
           event.duration = ContinuousClock.now - __logStart
@@ -1093,6 +1183,8 @@ struct LogMacroTests {
         var event = AutoLogEvent(
           source: AutoLogSource.current,
 
+          callSiteDepth: AutoLogSource.nextCallSiteDepth,
+
           location: "TestModule/Test.swift:1:1",
           declaration: "func route(kind: Int) -> String",
           parameters: [
@@ -1113,7 +1205,9 @@ struct LogMacroTests {
             return "other"
           }
         }
-        let result = _route(kind: kind)
+        let result = AutoLogSource.withCallSiteDepth(event.callSiteDepth ?? AutoLogSource.nextCallSiteDepth) {
+          _route(kind: kind)
+        }
         event.result = .success(result)
         if let __logStart {
           event.duration = ContinuousClock.now - __logStart
@@ -1146,6 +1240,8 @@ struct LogMacroTests {
         var event = AutoLogEvent(
           source: AutoLogSource.current,
 
+          callSiteDepth: AutoLogSource.nextCallSiteDepth,
+
           location: "TestModule/Test.swift:1:1",
           declaration: "func cleanup()"
         )
@@ -1158,7 +1254,9 @@ struct LogMacroTests {
 
           openHandle()
         }
-        let _ = _cleanup()
+        let _ = AutoLogSource.withCallSiteDepth(event.callSiteDepth ?? AutoLogSource.nextCallSiteDepth) {
+          _cleanup()
+        }
         if let __logStart {
           event.duration = ContinuousClock.now - __logStart
         }
@@ -1187,6 +1285,8 @@ struct LogMacroTests {
         var event = AutoLogEvent(
           source: AutoLogSource.current,
 
+          callSiteDepth: AutoLogSource.nextCallSiteDepth,
+
           location: "TestModule/Test.swift:1:1",
           declaration: "func consume(stream: AsyncStream<Int>) async",
           parameters: [
@@ -1200,7 +1300,9 @@ struct LogMacroTests {
             print(value)
           }
         }
-        let _ = await _consume(stream: stream)
+        let _ = await AutoLogSource.withCallSiteDepth(event.callSiteDepth ?? AutoLogSource.nextCallSiteDepth) {
+          await _consume(stream: stream)
+        }
         if let __logStart {
           event.duration = ContinuousClock.now - __logStart
         }
@@ -1232,6 +1334,8 @@ struct LogMacroTests {
         var event = AutoLogEvent(
           source: AutoLogSource.current,
 
+          callSiteDepth: AutoLogSource.nextCallSiteDepth,
+
           location: "TestModule/Test.swift:1:1",
           declaration: "func cachedLookup(hit: Bool) -> Bool",
           parameters: [
@@ -1249,7 +1353,9 @@ struct LogMacroTests {
 
           return false
         }
-        let result = _cachedLookup(hit: hit)
+        let result = AutoLogSource.withCallSiteDepth(event.callSiteDepth ?? AutoLogSource.nextCallSiteDepth) {
+          _cachedLookup(hit: hit)
+        }
         event.result = .success(result)
         if let __logStart {
           event.duration = ContinuousClock.now - __logStart
@@ -1283,6 +1389,8 @@ struct LogMacroTests {
         var event = AutoLogEvent(
           source: AutoLogSource.current,
 
+          callSiteDepth: AutoLogSource.nextCallSiteDepth,
+
           location: "TestModule/Test.swift:1:1",
           declaration: "func cachedLookup(hit: Bool) -> Bool",
           parameters: [
@@ -1300,7 +1408,9 @@ struct LogMacroTests {
 
           return false
         }
-        let result = _cachedLookup(hit: hit)
+        let result = AutoLogSource.withCallSiteDepth(event.callSiteDepth ?? AutoLogSource.nextCallSiteDepth) {
+          _cachedLookup(hit: hit)
+        }
         event.result = .success(result)
         if let __logStart {
           event.duration = ContinuousClock.now - __logStart
@@ -1334,6 +1444,8 @@ struct LogMacroTests {
         var event = AutoLogEvent(
           source: AutoLogSource.current,
 
+          callSiteDepth: AutoLogSource.nextCallSiteDepth,
+
           location: "TestModule/Test.swift:1:1",
           declaration: "func deleteActiveLayout(collection: LayoutCollection) -> Bool",
           parameters: [
@@ -1350,7 +1462,9 @@ struct LogMacroTests {
 
           return true
         }
-        let result = _deleteActiveLayout(collection: collection)
+        let result = AutoLogSource.withCallSiteDepth(event.callSiteDepth ?? AutoLogSource.nextCallSiteDepth) {
+          _deleteActiveLayout(collection: collection)
+        }
         event.result = .success(result)
         if let __logStart {
           event.duration = ContinuousClock.now - __logStart
@@ -1380,6 +1494,8 @@ struct LogMacroTests {
           level: .debug,
           source: AutoLogSource.current,
 
+          callSiteDepth: AutoLogSource.nextCallSiteDepth,
+
           location: "TestModule/Test.swift:1:1",
           declaration: "func foo(bar: String) -> String",
           parameters: [
@@ -1391,7 +1507,9 @@ struct LogMacroTests {
         func _foo(bar: String) -> String {
           print("Foo: \(bar)")
         }
-        let result = _foo(bar: bar)
+        let result = AutoLogSource.withCallSiteDepth(event.callSiteDepth ?? AutoLogSource.nextCallSiteDepth) {
+          _foo(bar: bar)
+        }
         event.result = .success(result)
         if let __logStart {
           event.duration = ContinuousClock.now - __logStart
@@ -1420,6 +1538,8 @@ struct LogMacroTests {
         var event = AutoLogEvent(
           source: AutoLogSource.current,
 
+          callSiteDepth: AutoLogSource.nextCallSiteDepth,
+
           location: "TestModule/Test.swift:1:1",
           declaration: "func foo(bar: String) -> String",
           parameters: [
@@ -1432,7 +1552,9 @@ struct LogMacroTests {
         func _foo(bar: String) -> String {
           return "Foo: \(bar)"
         }
-        let result = _foo(bar: bar)
+        let result = AutoLogSource.withCallSiteDepth(event.callSiteDepth ?? AutoLogSource.nextCallSiteDepth) {
+          _foo(bar: bar)
+        }
         event.result = .success(result)
         if let __logStart {
           event.duration = ContinuousClock.now - __logStart
@@ -1465,6 +1587,8 @@ struct LogMacroTests {
         var event = AutoLogEvent(
           source: AutoLogSource.current,
 
+          callSiteDepth: AutoLogSource.nextCallSiteDepth,
+
           location: "TestModule/Test.swift:1:1",
           declaration: "func toggleFramePicker(isVisible: Bool)",
           parameters: [
@@ -1482,7 +1606,9 @@ struct LogMacroTests {
                 pickerPanel.show()
           }
         }
-        let _ = _toggleFramePicker(isVisible: isVisible)
+        let _ = AutoLogSource.withCallSiteDepth(event.callSiteDepth ?? AutoLogSource.nextCallSiteDepth) {
+          _toggleFramePicker(isVisible: isVisible)
+        }
         if let __logStart {
           event.duration = ContinuousClock.now - __logStart
         }
@@ -1509,6 +1635,8 @@ struct LogMacroTests {
         var event = AutoLogEvent(
           source: AutoLogSource.current,
 
+          callSiteDepth: AutoLogSource.nextCallSiteDepth,
+
           location: "TestModule/Test.swift:1:1",
           declaration: "func foo(_ bar: String, baz biz: Int) -> (String, Int)",
           parameters: [
@@ -1521,7 +1649,9 @@ struct LogMacroTests {
         func _foo(bar: String, biz: Int) -> (String, Int) {
           return ("Bar: \(bar)", biz * 2)
         }
-        let result = _foo(bar: bar, biz: biz)
+        let result = AutoLogSource.withCallSiteDepth(event.callSiteDepth ?? AutoLogSource.nextCallSiteDepth) {
+          _foo(bar: bar, biz: biz)
+        }
         event.result = .success(result)
         if let __logStart {
           event.duration = ContinuousClock.now - __logStart
@@ -1553,6 +1683,8 @@ struct LogMacroTests {
           level: .debug,
           source: AutoLogSource.current,
 
+          callSiteDepth: AutoLogSource.nextCallSiteDepth,
+
           location: "TestModule/Test.swift:1:1",
           declaration: "mutating func foo()"
         )
@@ -1561,7 +1693,9 @@ struct LogMacroTests {
         func _foo() {
           self.counter += 1
         }
-        let _ = _foo()
+        let _ = AutoLogSource.withCallSiteDepth(event.callSiteDepth ?? AutoLogSource.nextCallSiteDepth) {
+          _foo()
+        }
         if let __logStart {
           event.duration = ContinuousClock.now - __logStart
         }
@@ -1589,6 +1723,8 @@ struct LogMacroTests {
           level: .debug,
           source: AutoLogSource.current,
 
+          callSiteDepth: AutoLogSource.nextCallSiteDepth,
+
           location: "TestModule/Test.swift:1:1",
           declaration: "mutating func foo(bar: String)",
           parameters: [
@@ -1601,7 +1737,9 @@ struct LogMacroTests {
         func _foo(bar: String) {
           self.bar = bar
         }
-        let _ = _foo(bar: bar)
+        let _ = AutoLogSource.withCallSiteDepth(event.callSiteDepth ?? AutoLogSource.nextCallSiteDepth) {
+          _foo(bar: bar)
+        }
         if let __logStart {
           event.duration = ContinuousClock.now - __logStart
         }
@@ -1632,6 +1770,8 @@ struct LogMacroTests {
         var event = AutoLogEvent(
           source: AutoLogSource.current,
 
+          callSiteDepth: AutoLogSource.nextCallSiteDepth,
+
           location: "TestModule/Test.swift:1:1",
           declaration: "mutating func foo() throws"
         )
@@ -1648,7 +1788,9 @@ struct LogMacroTests {
           }
         }
         do {
-          let _ = try _foo()
+          let _ = try AutoLogSource.withCallSiteDepth(event.callSiteDepth ?? AutoLogSource.nextCallSiteDepth) {
+            try _foo()
+          }
           if let __logStart {
             event.duration = ContinuousClock.now - __logStart
           }
@@ -1688,6 +1830,8 @@ struct LogMacroTests {
           level: .error,
           source: AutoLogSource.current,
 
+          callSiteDepth: AutoLogSource.nextCallSiteDepth,
+
           location: "TestModule/Test.swift:1:1",
           declaration: "func foo() throws",
           tags: ["example"]
@@ -1698,7 +1842,9 @@ struct LogMacroTests {
           throw NSError()
         }
         do {
-          let _ = try _foo()
+          let _ = try AutoLogSource.withCallSiteDepth(event.callSiteDepth ?? AutoLogSource.nextCallSiteDepth) {
+            try _foo()
+          }
           if let __logStart {
             event.duration = ContinuousClock.now - __logStart
           }
@@ -1737,6 +1883,8 @@ struct LogMacroTests {
         var event = AutoLogEvent(
           source: AutoLogSource.current,
 
+          callSiteDepth: AutoLogSource.nextCallSiteDepth,
+
           location: "TestModule/Test.swift:1:1",
           declaration: "func foo() throws -> Int"
         )
@@ -1754,7 +1902,9 @@ struct LogMacroTests {
           }
         }
         do {
-          let result = try _foo()
+          let result = try AutoLogSource.withCallSiteDepth(event.callSiteDepth ?? AutoLogSource.nextCallSiteDepth) {
+            try _foo()
+          }
           event.result = .success(result)
           if let __logStart {
             event.duration = ContinuousClock.now - __logStart
@@ -1798,6 +1948,8 @@ struct LogMacroTests {
         var event = AutoLogEvent(
           source: AutoLogSource.current,
 
+          callSiteDepth: AutoLogSource.nextCallSiteDepth,
+
           location: "TestModule/Test.swift:1:1",
           declaration: "func foo(_ value: Int) throws"
         )
@@ -1815,7 +1967,9 @@ struct LogMacroTests {
           }
         }
         do {
-          let _ = try _foo(value: value)
+          let _ = try AutoLogSource.withCallSiteDepth(event.callSiteDepth ?? AutoLogSource.nextCallSiteDepth) {
+            try _foo(value: value)
+          }
           if let __logStart {
             event.duration = ContinuousClock.now - __logStart
           }
@@ -1854,6 +2008,8 @@ struct LogMacroTests {
         var event = AutoLogEvent(
           source: AutoLogSource.current,
 
+          callSiteDepth: AutoLogSource.nextCallSiteDepth,
+
           location: "TestModule/Test.swift:1:1",
           declaration: "func foo(_ value: Int, content: String) throws -> (Int, String)"
         )
@@ -1871,7 +2027,9 @@ struct LogMacroTests {
           }
         }
         do {
-          let result = try _foo(value: value, content: content)
+          let result = try AutoLogSource.withCallSiteDepth(event.callSiteDepth ?? AutoLogSource.nextCallSiteDepth) {
+            try _foo(value: value, content: content)
+          }
           event.result = .success(result)
           if let __logStart {
             event.duration = ContinuousClock.now - __logStart
@@ -1911,6 +2069,8 @@ struct LogMacroTests {
           level: "fault",
           source: AutoLogSource.current,
 
+          callSiteDepth: AutoLogSource.nextCallSiteDepth,
+
           location: "TestModule/Test.swift:1:1",
           declaration: "func foo() async throws",
           tags: ["example"]
@@ -1921,7 +2081,9 @@ struct LogMacroTests {
           try await Task.sleep(nanoseconds: 100_000_000)
         }
         do {
-          let _ = try await _foo()
+          let _ = try await AutoLogSource.withCallSiteDepth(event.callSiteDepth ?? AutoLogSource.nextCallSiteDepth) {
+            try await _foo()
+          }
           if let __logStart {
             event.duration = ContinuousClock.now - __logStart
           }
@@ -1956,6 +2118,8 @@ struct LogMacroTests {
         var event = AutoLogEvent(
           source: AutoLogSource.current,
 
+          callSiteDepth: AutoLogSource.nextCallSiteDepth,
+
           location: "TestModule/Test.swift:1:1",
           declaration: "func performTask(completion: @escaping () -> Void)",
           parameters: [
@@ -1967,7 +2131,9 @@ struct LogMacroTests {
         func _performTask(completion: @escaping () -> Void) {
           completion()
         }
-        let _ = _performTask(completion: completion)
+        let _ = AutoLogSource.withCallSiteDepth(event.callSiteDepth ?? AutoLogSource.nextCallSiteDepth) {
+          _performTask(completion: completion)
+        }
         if let __logStart {
           event.duration = ContinuousClock.now - __logStart
         }
@@ -1997,6 +2163,8 @@ struct LogMacroTests {
           level: .info,
           source: AutoLogSource.current,
 
+          callSiteDepth: AutoLogSource.nextCallSiteDepth,
+
           location: "TestModule/Test.swift:1:1",
           declaration: "func check(condition: @autoclosure () -> Bool) -> Bool",
           parameters: [
@@ -2008,7 +2176,9 @@ struct LogMacroTests {
         func _check(condition: @autoclosure () -> Bool) -> Bool {
           return condition()
         }
-        let result = _check(condition: condition())
+        let result = AutoLogSource.withCallSiteDepth(event.callSiteDepth ?? AutoLogSource.nextCallSiteDepth) {
+          _check(condition: condition())
+        }
         if let __logStart {
           event.duration = ContinuousClock.now - __logStart
         }
@@ -2036,6 +2206,8 @@ struct LogMacroTests {
         var event = AutoLogEvent(
           source: AutoLogSource.current,
 
+          callSiteDepth: AutoLogSource.nextCallSiteDepth,
+
           location: "TestModule/Test.swift:1:1",
           declaration: "func update(value: inout Int, with newValue: Int)",
           parameters: [
@@ -2048,7 +2220,9 @@ struct LogMacroTests {
         func _update(value: inout Int, newValue: Int) {
           value = newValue
         }
-        let _ = _update(value: &value, newValue: newValue)
+        let _ = AutoLogSource.withCallSiteDepth(event.callSiteDepth ?? AutoLogSource.nextCallSiteDepth) {
+          _update(value: &value, newValue: newValue)
+        }
         if let __logStart {
           event.duration = ContinuousClock.now - __logStart
         }
@@ -2077,6 +2251,8 @@ struct LogMacroTests {
         var event = AutoLogEvent(
           source: AutoLogSource.current,
 
+          callSiteDepth: AutoLogSource.nextCallSiteDepth,
+
           location: "TestModule/Test.swift:1:1",
           declaration: "static func staticMethod(info: String) -> String"
         )
@@ -2085,7 +2261,9 @@ struct LogMacroTests {
         func _staticMethod(info: String) -> String {
           return "Static: \(info)"
         }
-        let result = _staticMethod(info: info)
+        let result = AutoLogSource.withCallSiteDepth(event.callSiteDepth ?? AutoLogSource.nextCallSiteDepth) {
+          _staticMethod(info: info)
+        }
         if let __logStart {
           event.duration = ContinuousClock.now - __logStart
         }
@@ -2115,6 +2293,8 @@ struct LogMacroTests {
         var event = AutoLogEvent(
           source: AutoLogSource.current,
 
+          callSiteDepth: AutoLogSource.nextCallSiteDepth,
+
           location: "TestModule/Test.swift:1:1",
           declaration: "func execute(operation: () throws -> Void) rethrows"
         )
@@ -2124,7 +2304,9 @@ struct LogMacroTests {
           try operation()
         }
         do {
-          let _ = try _execute(operation: operation)
+          let _ = try AutoLogSource.withCallSiteDepth(event.callSiteDepth ?? AutoLogSource.nextCallSiteDepth) {
+            try _execute(operation: operation)
+          }
           if let __logStart {
             event.duration = ContinuousClock.now - __logStart
           }
@@ -2160,6 +2342,8 @@ struct LogMacroTests {
           level: .debug,
           source: AutoLogSource.current,
 
+          callSiteDepth: AutoLogSource.nextCallSiteDepth,
+
           location: "TestModule/Test.swift:1:1",
           declaration: "func transform(value: Int, using transform: (Int) -> String) -> String",
           tags: [.commonTag, "example"]
@@ -2169,7 +2353,9 @@ struct LogMacroTests {
         func _transform(value: Int, transform: (Int) -> String) -> String {
           return transform(value)
         }
-        let result = _transform(value: value, transform: transform)
+        let result = AutoLogSource.withCallSiteDepth(event.callSiteDepth ?? AutoLogSource.nextCallSiteDepth) {
+          _transform(value: value, transform: transform)
+        }
         if let __logStart {
           event.duration = ContinuousClock.now - __logStart
         }
@@ -2199,6 +2385,8 @@ struct LogMacroTests {
         var event = AutoLogEvent(
           source: AutoLogSource.current,
 
+          callSiteDepth: AutoLogSource.nextCallSiteDepth,
+
           location: "TestModule/Test.swift:1:1",
           declaration: "func ping()",
           tags: ["example", .commonTag]
@@ -2207,7 +2395,9 @@ struct LogMacroTests {
         let __logStart = autoLogger.shouldMeasureTiming(for: event, runtime: runtime) ? ContinuousClock.now : nil
         func _ping() {
         }
-        let _ = _ping()
+        let _ = AutoLogSource.withCallSiteDepth(event.callSiteDepth ?? AutoLogSource.nextCallSiteDepth) {
+          _ping()
+        }
         if let __logStart {
           event.duration = ContinuousClock.now - __logStart
         }
@@ -2236,6 +2426,8 @@ struct LogMacroTests {
         var event = AutoLogEvent(
           source: AutoLogSource.current,
 
+          callSiteDepth: AutoLogSource.nextCallSiteDepth,
+
           location: "TestModule/Test.swift:1:1",
           declaration: "func combine<T, U>(first: T, second: U) -> (T, U) where T: CustomStringConvertible, U: CustomStringConvertible",
           parameters: [
@@ -2249,7 +2441,9 @@ struct LogMacroTests {
         func _combine(first: T, second: U) -> (T, U) {
           return (first, second)
         }
-        let result = _combine(first: first, second: second)
+        let result = AutoLogSource.withCallSiteDepth(event.callSiteDepth ?? AutoLogSource.nextCallSiteDepth) {
+          _combine(first: first, second: second)
+        }
         event.result = .success(result)
         if let __logStart {
           event.duration = ContinuousClock.now - __logStart
@@ -2278,6 +2472,8 @@ struct LogMacroTests {
         var event = AutoLogEvent(
           source: AutoLogSource.current,
 
+          callSiteDepth: AutoLogSource.nextCallSiteDepth,
+
           location: "TestModule/Test.swift:1:1",
           declaration: #"func greet(name: String = "Guest") -> String"#,
           parameters: [
@@ -2289,7 +2485,9 @@ struct LogMacroTests {
         func _greet(name: String) -> String {
           return "Hello, \(name)!"
         }
-        let result = _greet(name: name)
+        let result = AutoLogSource.withCallSiteDepth(event.callSiteDepth ?? AutoLogSource.nextCallSiteDepth) {
+          _greet(name: name)
+        }
         event.result = .success(result)
         if let __logStart {
           event.duration = ContinuousClock.now - __logStart
@@ -2318,6 +2516,8 @@ struct LogMacroTests {
         var event = AutoLogEvent(
           source: AutoLogSource.current,
 
+          callSiteDepth: AutoLogSource.nextCallSiteDepth,
+
           location: "TestModule/Test.swift:1:1",
           declaration: "func sum(numbers: Int...) -> Int",
           parameters: [
@@ -2329,7 +2529,9 @@ struct LogMacroTests {
         func _sum(numbers: Int...) -> Int {
           return numbers.reduce(0, +)
         }
-        let result = _sum(numbers: numbers)
+        let result = AutoLogSource.withCallSiteDepth(event.callSiteDepth ?? AutoLogSource.nextCallSiteDepth) {
+          _sum(numbers: numbers)
+        }
         event.result = .success(result)
         if let __logStart {
           event.duration = ContinuousClock.now - __logStart
@@ -2362,6 +2564,8 @@ struct LogMacroTests {
         var event = AutoLogEvent(
           source: AutoLogSource.current,
 
+          callSiteDepth: AutoLogSource.nextCallSiteDepth,
+
           location: "TestModule/Test.swift:1:1",
           declaration: "func compute(value: Int) -> Int",
           parameters: [
@@ -2373,7 +2577,9 @@ struct LogMacroTests {
         func _compute(value: Int) -> Int {
           return value * value
         }
-        let result = _compute(value: value)
+        let result = AutoLogSource.withCallSiteDepth(event.callSiteDepth ?? AutoLogSource.nextCallSiteDepth) {
+          _compute(value: value)
+        }
         if let __logStart {
           event.duration = ContinuousClock.now - __logStart
         }
@@ -2401,6 +2607,8 @@ struct LogMacroTests {
         var event = AutoLogEvent(
           source: AutoLogSource.current,
 
+          callSiteDepth: AutoLogSource.nextCallSiteDepth,
+
           location: "TestModule/Test.swift:1:1",
           declaration: "func makeIncrementer() -> (Int) -> Int"
         )
@@ -2411,7 +2619,9 @@ struct LogMacroTests {
             $0 + 1
           }
         }
-        let result = _makeIncrementer()
+        let result = AutoLogSource.withCallSiteDepth(event.callSiteDepth ?? AutoLogSource.nextCallSiteDepth) {
+          _makeIncrementer()
+        }
         event.result = .success(result)
         if let __logStart {
           event.duration = ContinuousClock.now - __logStart
@@ -2443,6 +2653,8 @@ struct LogMacroTests {
         var event = AutoLogEvent(
           source: AutoLogSource.current,
 
+          callSiteDepth: AutoLogSource.nextCallSiteDepth,
+
           location: "TestModule/Test.swift:1:1",
           declaration: "func fetchData(completion: @escaping () async -> String)",
           parameters: [
@@ -2457,7 +2669,9 @@ struct LogMacroTests {
             print(data)
           }
         }
-        let _ = _fetchData(completion: completion)
+        let _ = AutoLogSource.withCallSiteDepth(event.callSiteDepth ?? AutoLogSource.nextCallSiteDepth) {
+          _fetchData(completion: completion)
+        }
         if let __logStart {
           event.duration = ContinuousClock.now - __logStart
         }
@@ -2486,6 +2700,8 @@ struct LogMacroTests {
         var event = AutoLogEvent(
           source: AutoLogSource.current,
 
+          callSiteDepth: AutoLogSource.nextCallSiteDepth,
+
           location: "TestModule/Test.swift:1:1",
           declaration: "func updateUI(message: String)",
           parameters: [
@@ -2497,7 +2713,9 @@ struct LogMacroTests {
         func _updateUI(message: String) {
           print(message)
         }
-        let _ = _updateUI(message: message)
+        let _ = AutoLogSource.withCallSiteDepth(event.callSiteDepth ?? AutoLogSource.nextCallSiteDepth) {
+          _updateUI(message: message)
+        }
         if let __logStart {
           event.duration = ContinuousClock.now - __logStart
         }
@@ -2524,6 +2742,8 @@ struct LogMacroTests {
         var event = AutoLogEvent(
           source: AutoLogSource.current,
 
+          callSiteDepth: AutoLogSource.nextCallSiteDepth,
+
           location: "TestModule/Test.swift:1:1",
           declaration: "func process<T: Equatable, U: Numeric>(first: T, second: U) -> Bool",
           parameters: [
@@ -2536,7 +2756,9 @@ struct LogMacroTests {
         func _process(first: T, second: U) -> Bool {
           return true
         }
-        let result = _process(first: first, second: second)
+        let result = AutoLogSource.withCallSiteDepth(event.callSiteDepth ?? AutoLogSource.nextCallSiteDepth) {
+          _process(first: first, second: second)
+        }
         event.result = .success(result)
         if let __logStart {
           event.duration = ContinuousClock.now - __logStart
@@ -2567,6 +2789,8 @@ struct LogMacroTests {
         var event = AutoLogEvent(
           source: AutoLogSource.current,
 
+          callSiteDepth: AutoLogSource.nextCallSiteDepth,
+
           location: "TestModule/Test.swift:1:1",
           declaration: "func performAction()"
         )
@@ -2575,7 +2799,9 @@ struct LogMacroTests {
         func _performAction() {
           print("Action performed")
         }
-        let _ = _performAction()
+        let _ = AutoLogSource.withCallSiteDepth(event.callSiteDepth ?? AutoLogSource.nextCallSiteDepth) {
+          _performAction()
+        }
         if let __logStart {
           event.duration = ContinuousClock.now - __logStart
         }
@@ -2602,6 +2828,8 @@ struct LogMacroTests {
         var event = AutoLogEvent(
           source: AutoLogSource.current,
 
+          callSiteDepth: AutoLogSource.nextCallSiteDepth,
+
           location: "TestModule/Test.swift:1:1",
           declaration: "func getOptionalValue() -> Int?"
         )
@@ -2610,7 +2838,9 @@ struct LogMacroTests {
         func _getOptionalValue() -> Int? {
           return nil
         }
-        let result = _getOptionalValue()
+        let result = AutoLogSource.withCallSiteDepth(event.callSiteDepth ?? AutoLogSource.nextCallSiteDepth) {
+          _getOptionalValue()
+        }
         event.result = .success(AutoLogMetadata.box(result))
         if let __logStart {
           event.duration = ContinuousClock.now - __logStart
@@ -2640,6 +2870,8 @@ struct LogMacroTests {
         var event = AutoLogEvent(
           source: AutoLogSource.current,
 
+          callSiteDepth: AutoLogSource.nextCallSiteDepth,
+
           location: "TestModule/Test.swift:1:1",
           declaration: "func performAsyncTask(completion: @escaping () async throws -> String) async throws -> String",
           parameters: [
@@ -2652,7 +2884,9 @@ struct LogMacroTests {
           return try await completion()
         }
         do {
-          let result = try await _performAsyncTask(completion: completion)
+          let result = try await AutoLogSource.withCallSiteDepth(event.callSiteDepth ?? AutoLogSource.nextCallSiteDepth) {
+            try await _performAsyncTask(completion: completion)
+          }
           event.result = .success(result)
           if let __logStart {
             event.duration = ContinuousClock.now - __logStart
@@ -2689,6 +2923,8 @@ struct LogMacroTests {
         var event = AutoLogEvent(
           source: AutoLogSource.current,
 
+          callSiteDepth: AutoLogSource.nextCallSiteDepth,
+
           location: "TestModule/Test.swift:1:1",
           declaration: "override func description() -> String"
         )
@@ -2697,7 +2933,9 @@ struct LogMacroTests {
         func _description() -> String {
           return "Override"
         }
-        let result = _description()
+        let result = AutoLogSource.withCallSiteDepth(event.callSiteDepth ?? AutoLogSource.nextCallSiteDepth) {
+          _description()
+        }
         event.result = .success(result)
         if let __logStart {
           event.duration = ContinuousClock.now - __logStart
@@ -2726,6 +2964,8 @@ struct LogMacroTests {
         var event = AutoLogEvent(
           source: AutoLogSource.current,
 
+          callSiteDepth: AutoLogSource.nextCallSiteDepth,
+
           location: "TestModule/Test.swift:1:1",
           declaration: "func updateScore(score: inout Int, increment: Int = 1)",
           parameters: [
@@ -2738,7 +2978,9 @@ struct LogMacroTests {
         func _updateScore(score: inout Int, increment: Int) {
           score += increment
         }
-        let _ = _updateScore(score: &score, increment: increment)
+        let _ = AutoLogSource.withCallSiteDepth(event.callSiteDepth ?? AutoLogSource.nextCallSiteDepth) {
+          _updateScore(score: &score, increment: increment)
+        }
         if let __logStart {
           event.duration = ContinuousClock.now - __logStart
         }
@@ -2765,6 +3007,8 @@ struct LogMacroTests {
         var event = AutoLogEvent(
           source: AutoLogSource.current,
 
+          callSiteDepth: AutoLogSource.nextCallSiteDepth,
+
           location: "TestModule/Test.swift:1:1",
           declaration: "func optionalTest(value: String?) -> String",
           parameters: [
@@ -2776,7 +3020,9 @@ struct LogMacroTests {
         func _optionalTest(value: String?) -> String {
           return value ?? "Default"
         }
-        let result = _optionalTest(value: value)
+        let result = AutoLogSource.withCallSiteDepth(event.callSiteDepth ?? AutoLogSource.nextCallSiteDepth) {
+          _optionalTest(value: value)
+        }
         event.result = .success(result)
         if let __logStart {
           event.duration = ContinuousClock.now - __logStart
@@ -2810,6 +3056,8 @@ struct LogMacroTests {
         var event = AutoLogEvent(
           source: AutoLogSource.current,
 
+          callSiteDepth: AutoLogSource.nextCallSiteDepth,
+
           location: "TestModule/Test.swift:1:1",
           declaration: "func merge<T, U>(_ first: [T], with second: [U]) -> [(T, U)]\n  where T: Comparable, U: Comparable",
           parameters: [
@@ -2822,7 +3070,9 @@ struct LogMacroTests {
         {
           return []
         }
-        let result = _merge(first: first, second: second)
+        let result = AutoLogSource.withCallSiteDepth(event.callSiteDepth ?? AutoLogSource.nextCallSiteDepth) {
+          _merge(first: first, second: second)
+        }
         event.result = .success(result)
         if let __logStart {
           event.duration = ContinuousClock.now - __logStart
@@ -2851,6 +3101,8 @@ struct LogMacroTests {
         var event = AutoLogEvent(
           source: AutoLogSource.current,
 
+          callSiteDepth: AutoLogSource.nextCallSiteDepth,
+
           location: "TestModule/Test.swift:1:1",
           declaration: "func perform(action: (() -> Void)? = nil)",
           parameters: [
@@ -2862,7 +3114,9 @@ struct LogMacroTests {
         func _perform(action: (() -> Void)?) {
           action?()
         }
-        let _ = _perform(action: action)
+        let _ = AutoLogSource.withCallSiteDepth(event.callSiteDepth ?? AutoLogSource.nextCallSiteDepth) {
+          _perform(action: action)
+        }
         if let __logStart {
           event.duration = ContinuousClock.now - __logStart
         }
@@ -2891,6 +3145,8 @@ struct LogMacroTests {
         var event = AutoLogEvent(
           source: AutoLogSource.current,
 
+          callSiteDepth: AutoLogSource.nextCallSiteDepth,
+
           location: "TestModule/Test.swift:1:1",
           declaration: "static func create<T>(value: T) -> [T]",
           parameters: [
@@ -2902,7 +3158,9 @@ struct LogMacroTests {
         func _create(value: T) -> [T] {
           return [value]
         }
-        let result = _create(value: value)
+        let result = AutoLogSource.withCallSiteDepth(event.callSiteDepth ?? AutoLogSource.nextCallSiteDepth) {
+          _create(value: value)
+        }
         event.result = .success(result)
         if let __logStart {
           event.duration = ContinuousClock.now - __logStart
@@ -2931,6 +3189,8 @@ struct LogMacroTests {
         var event = AutoLogEvent(
           source: AutoLogSource.current,
 
+          callSiteDepth: AutoLogSource.nextCallSiteDepth,
+
           location: "TestModule/Test.swift:1:1",
           declaration: "func process(pair: (Int, String)) -> String",
           parameters: [
@@ -2942,7 +3202,9 @@ struct LogMacroTests {
         func _process(pair: (Int, String)) -> String {
           return "\(pair.0) - \(pair.1)"
         }
-        let result = _process(pair: pair)
+        let result = AutoLogSource.withCallSiteDepth(event.callSiteDepth ?? AutoLogSource.nextCallSiteDepth) {
+          _process(pair: pair)
+        }
         event.result = .success(result)
         if let __logStart {
           event.duration = ContinuousClock.now - __logStart
@@ -2971,6 +3233,8 @@ struct LogMacroTests {
         var event = AutoLogEvent(
           source: AutoLogSource.current,
 
+          callSiteDepth: AutoLogSource.nextCallSiteDepth,
+
           location: "TestModule/Test.swift:1:1",
           declaration: "func filterElements<T>(elements: [T], using predicate: (T) -> Bool) -> [T]",
           parameters: [
@@ -2983,7 +3247,9 @@ struct LogMacroTests {
         func _filterElements(elements: [T], predicate: (T) -> Bool) -> [T] {
           return elements.filter(predicate)
         }
-        let result = _filterElements(elements: elements, predicate: predicate)
+        let result = AutoLogSource.withCallSiteDepth(event.callSiteDepth ?? AutoLogSource.nextCallSiteDepth) {
+          _filterElements(elements: elements, predicate: predicate)
+        }
         event.result = .success(result)
         if let __logStart {
           event.duration = ContinuousClock.now - __logStart
@@ -3013,6 +3279,8 @@ struct LogMacroTests {
         var event = AutoLogEvent(
           source: AutoLogSource.current,
 
+          callSiteDepth: AutoLogSource.nextCallSiteDepth,
+
           location: "TestModule/Test.swift:1:1",
           declaration: "func filterElements<T>(elements: [T], using predicate: (T) -> Bool) -> [T]",
           parameters: [
@@ -3025,7 +3293,9 @@ struct LogMacroTests {
         func _filterElements(elements: [T], predicate: (T) -> Bool) -> [T] {
           return elements.filter(predicate)
         }
-        let result = _filterElements(elements: elements, predicate: predicate)
+        let result = AutoLogSource.withCallSiteDepth(event.callSiteDepth ?? AutoLogSource.nextCallSiteDepth) {
+          _filterElements(elements: elements, predicate: predicate)
+        }
         event.result = .success(result)
         if let __logStart {
           event.duration = ContinuousClock.now - __logStart

@@ -27,6 +27,8 @@ struct OSLogMacroTests {
         var event = AutoLogEvent(
           source: AutoLogSource.current,
 
+          callSiteDepth: AutoLogSource.nextCallSiteDepth,
+
           location: "TestModule/Test.swift:1:1",
           declaration: "func foo()"
         )
@@ -35,7 +37,9 @@ struct OSLogMacroTests {
         func _foo() {
           print("Foo")
         }
-        let _ = _foo()
+        let _ = AutoLogSource.withCallSiteDepth(event.callSiteDepth ?? AutoLogSource.nextCallSiteDepth) {
+          _foo()
+        }
         if let __logStart {
           event.duration = ContinuousClock.now - __logStart
         }
@@ -62,6 +66,8 @@ struct OSLogMacroTests {
         var event = AutoLogEvent(
           source: AutoLogSource.current,
 
+          callSiteDepth: AutoLogSource.nextCallSiteDepth,
+
           location: "TestModule/Test.swift:1:1",
           declaration: "func sum(numbers: Int...) -> Int",
           parameters: [
@@ -74,7 +80,9 @@ struct OSLogMacroTests {
         func _sum(numbers: Int...) -> Int {
           return numbers.reduce(0, +)
         }
-        let result = _sum(numbers: numbers)
+        let result = AutoLogSource.withCallSiteDepth(event.callSiteDepth ?? AutoLogSource.nextCallSiteDepth) {
+          _sum(numbers: numbers)
+        }
         event.result = .success(result)
         if let __logStart {
           event.duration = ContinuousClock.now - __logStart
@@ -104,6 +112,8 @@ struct OSLogMacroTests {
           level: .debug,
           source: AutoLogSource.current,
 
+          callSiteDepth: AutoLogSource.nextCallSiteDepth,
+
           location: "TestModule/Test.swift:1:1",
           declaration: "func transform(value: Int, using transform: (Int) -> String) -> String",
           tags: [.commonTag, "example"]
@@ -113,7 +123,9 @@ struct OSLogMacroTests {
         func _transform(value: Int, transform: (Int) -> String) -> String {
           return transform(value)
         }
-        let result = _transform(value: value, transform: transform)
+        let result = AutoLogSource.withCallSiteDepth(event.callSiteDepth ?? AutoLogSource.nextCallSiteDepth) {
+          _transform(value: value, transform: transform)
+        }
         if let __logStart {
           event.duration = ContinuousClock.now - __logStart
         }
@@ -143,6 +155,8 @@ struct OSLogMacroTests {
         var event = AutoLogEvent(
           source: AutoLogSource.current,
 
+          callSiteDepth: AutoLogSource.nextCallSiteDepth,
+
           location: "TestModule/Test.swift:1:1",
           declaration: "func ping()",
           tags: ["example", .commonTag]
@@ -151,7 +165,9 @@ struct OSLogMacroTests {
         let __logStart = autoLogger.shouldMeasureTiming(for: event, runtime: runtime) ? ContinuousClock.now : nil
         func _ping() {
         }
-        let _ = _ping()
+        let _ = AutoLogSource.withCallSiteDepth(event.callSiteDepth ?? AutoLogSource.nextCallSiteDepth) {
+          _ping()
+        }
         if let __logStart {
           event.duration = ContinuousClock.now - __logStart
         }

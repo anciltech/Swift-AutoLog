@@ -56,7 +56,7 @@ extension CodeBlockItemSyntax {
                       : .result
                   )
                 ),
-                initializer: function.initializer
+                initializer: function.scopedInitializer
               )
             )
           )
