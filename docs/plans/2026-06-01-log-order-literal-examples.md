@@ -114,29 +114,40 @@ Why this is new:
 
 This view emphasizes where execution moves between main actor and background work. It is useful for concurrency-heavy flows where logical depth is correct but actor hops are hard to see.
 
+Expanded connected variant:
+
 ```text
 tap-FF7  Trigger Network Error
 
-main  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-      UI tap
-        └─ ViewModel.triggerNetworkError()
-             └─ UseCase.executeWithError()
-                  └─ Repository.fetchOrdersForcingError()
-                       └─ DataSource.fetchOrdersForcingError()
-                            ✕ networkUnavailable
-                       └─ noteCacheUpdate(ui)
-             └─ recovered error state
+[main]
+UI tap
+  └─ ViewModel.triggerNetworkError()
+   |   └─ UseCase.executeWithError()
+   |    |   └─ Repository.fetchOrdersForcingError()
+   |    |    |   └─ DataSource.fetchOrdersForcingError()
+   |    |    |        ✕ networkUnavailable
+   |    |    |
+   |    |    ├─ publishes cache revision 2
+   |    |    |
+   |    |    └─ handles networkUnavailable
+   |    |
+   |    └─ rethrows networkUnavailable
+   |
+   └─ recovered error state
 
-bg    ────────────────────────────────━━━━━━━━━━━━━━──────────────
-                                      Cache.publish(revision: 2)
-                                        ├─ yielded to audit
-                                        ├─ yielded to ui
-                                        ├─ ack audit
-                                        ├─ ack ui
-                                        └─ complete
+[bg]
+                 Repo -> Cache.publish(r2)
+                         ├─ yielded to audit listener
+                         ├─ yielded to ui listener
+                         ├─ ack audit
+                         ├─ ack ui
+                         └─ complete
+
+[main callback]
+                         UI listener -> noteCacheUpdate(ui)
 ```
 
-Token-style variant for narrow terminals:
+Compact connected variant:
 
 ```text
 [main] tap -> VM -> UC -> Repo -> DS ✕ networkUnavailable
@@ -149,6 +160,8 @@ Why this is new:
 - It makes actor hops the primary visual dimension.
 - It can show background delivery without pretending it is a normal synchronous return.
 - It gives async side effects a timeline position while preserving the origin badge.
+- Connector pipes make parent calls remain visible while child calls, errors, cache publishes, and recoveries interleave.
+- The compact variant keeps the same causal shape in three lines for logs, comments, and narrow review panes.
 
 ## Example 4: Depth Receipt
 
