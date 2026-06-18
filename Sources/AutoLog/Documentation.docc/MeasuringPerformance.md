@@ -200,6 +200,23 @@ The stripped executable column applies `strip -x` to a copy of each local SwiftP
 probe binary. Use it as a closer release-style size signal than the raw
 executable bytes when comparing SwiftPM command-line probes.
 
+To keep a project-level history, append a completed probe and regenerate the
+charts:
+
+```bash
+AutoLogSourceCode/swift-autolog/scripts/append-impact-summary.py \
+  /tmp/autolog-impact-run/summary.csv \
+  --output docs/performance/impact-history.csv \
+  --append \
+  --run-id "$(date -u +%Y%m%dT%H%M%SZ)" \
+  --label "release impact" \
+  --notable-change "describe the measured change"
+
+AutoLogSourceCode/swift-autolog/scripts/render-impact-history.py \
+  docs/performance/impact-history.csv \
+  --output docs/performance/impact-history.md
+```
+
 ## Profile the benchmark with Instruments
 
 Start with **Time Profiler**. It is the best first-pass Instruments template for
