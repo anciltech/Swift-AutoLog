@@ -90,19 +90,42 @@ repeated lock reads when a failure fans out to multiple outputs.
 
 The next hot-path targets worth exploring are:
 
+- measure logical call-depth propagation separately from formatting and output
+  work; the current macro-generated wrappers always read
+  `AutoLogSource.nextCallSiteDepth` and scope the body with
+  `AutoLogSource.withCallSiteDepth(...)`
+- avoid runtime-filtered start work when a build or output profile never emits
+  `.start` events
+- collapse duplicate output matching on the common `emitIfEnabled` to
+  `AutoLogLogger.emit` path while keeping direct protocol `emit` defensive
+- add benchmarks for start-disabled wrappers, output fan-out, parameter privacy,
+  custom formats, and failure-context-heavy paths
 - continue looking for macro-generation opportunities that reduce work without
   making expansion snapshots harder to audit
 
 ## Latest local evaluation
 
-The 2026-05-18 architecture review reran the release benchmark helper and
-appended the result to the project history. On that machine, the release helper
-reported roughly `8-11us` of added sync overhead per logged call with the
-benchmark logger depending on tag shape, with route-only calls cheapest,
-no-tag calls in the middle, and visible/mixed tag output higher because those
-scenarios render more user-facing text. The normal `AutoLogLogger` no-tag path
-added roughly `15us` per sync call, while the logged `TaskGroup` scenario added
-roughly `32us` per measured call against the async baseline.
+The 2026-06-18 main-branch review reran the release benchmark helper and
+appended normal and loaded runs to the project history. On that machine, the
+normal release helper reported roughly `17-20us` of added sync overhead per
+logged call with the benchmark logger depending on tag shape. The normal
+`AutoLogLogger` no-tag path added roughly `23us` per sync call, the complex
+normal logger path added roughly `28us`, and the logged `TaskGroup` scenario
+added roughly `49us` per measured call against the async baseline.
+
+Those numbers are higher than the 2026-05-18 release baseline, where the same
+benchmark logger scenarios were roughly `8-11us`, the normal logger no-tag path
+was roughly `15us`, and the logged `TaskGroup` scenario was roughly `32us`.
+Plain baseline and direct OSLog timings stayed close, so the current working
+hypothesis is added AutoLog wrapper/runtime work rather than machine-wide
+noise. The strongest suspects are always-on logical call-depth propagation,
+runtime-filtered start emission, and additional output-profile matching.
+
+The same review also ran a stress profile with seven CPU workers, `2048 MB` of
+memory pressure, and one I/O worker. That loaded run roughly doubled stable
+sync logging overhead and pushed the logged `TaskGroup` scenario to about
+`125us`. Treat loaded rows as sensitivity data and repeat them before making a
+regression call.
 
 Those numbers support the same practical guidance as the benchmark design:
 `@Log` is appropriate for interaction workflows, service boundaries,

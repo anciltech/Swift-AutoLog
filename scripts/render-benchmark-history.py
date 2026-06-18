@@ -60,17 +60,21 @@ def run_aliases(rows: list[dict[str, str]]) -> dict[str, str]:
     return aliases
 
 
+def latest_normal_row(rows: list[dict[str, str]], scenario: str) -> dict[str, str] | None:
+    return latest_row(rows, scenario, load_contains="normal-load") or latest_row(rows, scenario)
+
+
 def reference_rows(rows: list[dict[str, str]], scenario: str) -> list[tuple[str, dict[str, str]]]:
     if scenario == "Logged task group":
-        baseline = latest_row(rows, "Baseline task group")
+        baseline = latest_normal_row(rows, "Baseline task group")
         return [("no logging", baseline)] if baseline else []
 
     if "complex" in scenario.lower():
-        baseline = latest_row(rows, "Baseline complex")
-        oslog = latest_row(rows, "Direct OSLog complex")
+        baseline = latest_normal_row(rows, "Baseline complex")
+        oslog = latest_normal_row(rows, "Direct OSLog complex")
     else:
-        baseline = latest_row(rows, "Baseline")
-        oslog = latest_row(rows, "Direct OSLog")
+        baseline = latest_normal_row(rows, "Baseline")
+        oslog = latest_normal_row(rows, "Direct OSLog")
 
     references: list[tuple[str, dict[str, str]]] = []
     if baseline:
@@ -149,13 +153,14 @@ def logger_profile_comparison(rows: list[dict[str, str]]) -> list[str]:
         row for row in rows
         if row["scenario"] == "Logged without tags"
         and "benchmark-logger" in row["load_profile"]
+        and "normal-load" in row["load_profile"]
     ]
-    simple_baseline = latest_row(rows, "Baseline")
-    simple_oslog = latest_row(rows, "Direct OSLog")
-    simple_autolog = latest_row(rows, "Logged without tags (normal logger)")
-    complex_baseline = latest_row(rows, "Baseline complex")
-    complex_oslog = latest_row(rows, "Direct OSLog complex")
-    complex_autolog = latest_row(rows, "AutoLog complex (normal logger)")
+    simple_baseline = latest_normal_row(rows, "Baseline")
+    simple_oslog = latest_normal_row(rows, "Direct OSLog")
+    simple_autolog = latest_normal_row(rows, "Logged without tags (normal logger)")
+    complex_baseline = latest_normal_row(rows, "Baseline complex")
+    complex_oslog = latest_normal_row(rows, "Direct OSLog complex")
+    complex_autolog = latest_normal_row(rows, "AutoLog complex (normal logger)")
 
     lines = [
         "## Logging Profile Comparison",
@@ -163,7 +168,8 @@ def logger_profile_comparison(rows: list[dict[str, str]]) -> list[str]:
         "These tables compare no logging, direct `OSLog.Logger`, and the",
         "default `AutoLogLogger` path. The benchmark logger remains useful for",
         "isolating formatter/routing work, but the normal logger rows are the",
-        "real-world baseline.",
+        "real-world baseline. These comparisons use the latest normal-load rows",
+        "so stress-run data does not replace the stable baseline.",
         "",
     ]
 
