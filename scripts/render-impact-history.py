@@ -11,6 +11,7 @@ from pathlib import Path
 
 CORE_SCENARIO = "autolog"
 BASELINE_SCENARIO = "baseline"
+THROWING_SCENARIO = "autolog-throwing"
 SWIFTUI_SCENARIO = "autolog-swiftui"
 POLICY_SCENARIOS = [
     ("failures output", "autolog-failures-only-output"),
@@ -23,7 +24,14 @@ BUILD_SCENARIOS = [
     ("baseline", "baseline"),
     ("direct OSLog", "direct-oslog"),
     ("AutoLog", "autolog"),
+    ("throwing", "autolog-throwing"),
     ("SwiftUI", "autolog-swiftui"),
+]
+FAILURES_SCENARIOS = [
+    ("throwing all", "autolog-throwing", CORE_SCENARIO),
+    ("runtime failures", "autolog-failures-only-output", THROWING_SCENARIO),
+    ("compile failures", "autolog-compile-failures-only", THROWING_SCENARIO),
+    ("diagnostics", "autolog-compile-diagnostics", THROWING_SCENARIO),
 ]
 
 
@@ -195,6 +203,38 @@ def latest_policy_chart(
     ]
 
 
+def latest_failures_chart(
+    aliases: dict[str, str],
+    grouped: dict[str, dict[str, dict[str, str]]],
+    run_id: str,
+) -> list[str]:
+    labels: list[str] = []
+    values: list[float] = []
+
+    for label, scenario, baseline in FAILURES_SCENARIOS:
+        value = delta(grouped, run_id, scenario, baseline, "executable_bytes")
+        if value is None:
+            continue
+        labels.append(label)
+        values.append(bytes_to_kb(value))
+
+    if not values:
+        return []
+
+    return [
+        "### Latest Failures-Only Deltas",
+        "",
+        chart(
+            f"Failures-oriented raw executable deltas ({aliases[run_id]})",
+            labels,
+            values,
+            unit="KB",
+            chart_type="bar",
+        ),
+        "",
+    ]
+
+
 def latest_build_chart(
     aliases: dict[str, str],
     grouped: dict[str, dict[str, dict[str, str]]],
@@ -218,6 +258,48 @@ def latest_build_chart(
     ]
 
 
+def latest_second_build_chart(
+    aliases: dict[str, str],
+    grouped: dict[str, dict[str, dict[str, str]]],
+    run_id: str,
+) -> list[str]:
+    labels: list[str] = []
+    first_values: list[float] = []
+    second_values: list[float] = []
+
+    for label, scenario in BUILD_SCENARIOS:
+        first = number(grouped[run_id].get(scenario), "build_seconds")
+        second = number(grouped[run_id].get(scenario), "second_build_seconds")
+        if first is None or second is None:
+            continue
+        labels.append(label)
+        first_values.append(first)
+        second_values.append(second)
+
+    if not labels:
+        return []
+
+    max_value = max(first_values + second_values)
+    upper = max(1, int(max_value * 1.2) + 1)
+    label_text = ", ".join(f'"{label}"' for label in labels)
+    first_text = ", ".join(f"{value:.2f}" for value in first_values)
+    second_text = ", ".join(f"{value:.2f}" for value in second_values)
+
+    return [
+        "### Latest First Vs Second Build Seconds",
+        "",
+        f"""```mermaid
+xychart-beta
+  title "First vs second build seconds ({aliases[run_id]})"
+  x-axis [{label_text}]
+  y-axis "seconds" 0 --> {upper}
+  line [{first_text}]
+  line [{second_text}]
+```""",
+        "",
+    ]
+
+
 def summary_table(
     rows: list[dict[str, str]],
     aliases: dict[str, str],
@@ -226,8 +308,8 @@ def summary_table(
     lines = [
         "## Delta Summary",
         "",
-        "| Key | Core raw delta | Core stripped delta | Core `__TEXT` delta | SwiftUI raw increment | AutoLog build seconds |",
-        "|---|---:|---:|---:|---:|---:|",
+        "| Key | Core raw delta | Core stripped delta | Core `__TEXT` delta | SwiftUI raw increment | AutoLog first build | AutoLog second build |",
+        "|---|---:|---:|---:|---:|---:|---:|",
     ]
 
     for run_id, _ in run_rows(rows):
@@ -236,6 +318,7 @@ def summary_table(
         core_text = delta(grouped, run_id, CORE_SCENARIO, BASELINE_SCENARIO, "text_segment_bytes")
         swiftui_raw = delta(grouped, run_id, SWIFTUI_SCENARIO, CORE_SCENARIO, "executable_bytes")
         build_seconds = number(grouped[run_id].get(CORE_SCENARIO), "build_seconds")
+        second_build_seconds = number(grouped[run_id].get(CORE_SCENARIO), "second_build_seconds")
         lines.append(
             "| "
             + " | ".join(
@@ -246,6 +329,7 @@ def summary_table(
                     format_kb(core_text),
                     format_kb(swiftui_raw),
                     format_seconds(build_seconds),
+                    format_seconds(second_build_seconds),
                 ]
             )
             + " |"
@@ -271,8 +355,8 @@ def data_table(rows: list[dict[str, str]], aliases: dict[str, str]) -> list[str]
     lines = [
         "## Data",
         "",
-        "| Key | Scenario | Executable | Stripped | `__TEXT` | Linked dylibs | Build seconds |",
-        "|---|---|---:|---:|---:|---:|---:|",
+        "| Key | Scenario | Executable | Stripped | `__TEXT` | Linked dylibs | First build | Second build |",
+        "|---|---|---:|---:|---:|---:|---:|---:|",
     ]
 
     for row in rows:
@@ -287,6 +371,7 @@ def data_table(rows: list[dict[str, str]], aliases: dict[str, str]) -> list[str]
                     cell(row, "text_segment_bytes"),
                     cell(row, "linked_dylib_count"),
                     cell(row, "build_seconds"),
+                    cell(row, "second_build_seconds"),
                 ]
             )
             + " |"
@@ -335,7 +420,9 @@ def markdown(rows: list[dict[str, str]]) -> str:
     lines.extend(core_delta_charts(rows, aliases, grouped))
     lines.extend(swiftui_delta_chart(rows, aliases, grouped))
     lines.extend(latest_policy_chart(aliases, grouped, latest))
+    lines.extend(latest_failures_chart(aliases, grouped, latest))
     lines.extend(latest_build_chart(aliases, grouped, latest))
+    lines.extend(latest_second_build_chart(aliases, grouped, latest))
     lines.extend(data_table(rows, aliases))
     return "\n".join(lines)
 

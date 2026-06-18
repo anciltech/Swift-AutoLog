@@ -25,6 +25,7 @@ FIELDNAMES = [
     "linkedit_segment_bytes",
     "linked_dylib_count",
     "build_seconds",
+    "second_build_seconds",
     "notable_change",
 ]
 
@@ -84,6 +85,7 @@ def history_row(
         "linkedit_segment_bytes": summary_row.get("linkedit_segment_bytes", ""),
         "linked_dylib_count": summary_row["linked_dylib_count"],
         "build_seconds": summary_row["build_seconds"],
+        "second_build_seconds": summary_row.get("second_build_seconds", ""),
         "notable_change": notable_change,
     }
 

@@ -15,6 +15,7 @@ Builds equivalent release executables and records binary-size impact:
   - BaselineProbe: plain Swift control-flow probe
   - DirectOSLogProbe: same probe with manual OSLog calls
   - AutoLogProbe: same probe using @AutoLog from this checkout
+  - AutoLogThrowingProbe: same throwing probe with default @AutoLog emission
   - AutoLogSwiftUIProbe: imports the opt-in SwiftUI helper product
   - AutoLogFailuresOnlyProbe: @AutoLog with output configured for failures only
   - AutoLogTypeFilteredProbe: @AutoLog with output filtered to another type
@@ -23,7 +24,9 @@ Builds equivalent release executables and records binary-size impact:
   - AutoLogCompileDiagnosticsProbe: @AutoLog(emit: [.failures, .warnings])
 
 The output directory receives summary.csv, summary.md, per-build logs, and
-linked-dylib lists. It also reports a strip -x executable size so local SwiftPM
+linked-dylib lists. Each scenario uses its own build path so first-build timings
+are comparable, then immediately runs the same build again to capture warm
+second-build timing. It also reports a strip -x executable size so local SwiftPM
 probe binaries can be compared with release-style symbol stripping.
 USAGE
 }
@@ -100,6 +103,7 @@ write_autolog_probe_package() {
 
   mkdir -p \
     "$dir/Sources/AutoLogProbe" \
+    "$dir/Sources/AutoLogThrowingProbe" \
     "$dir/Sources/AutoLogSwiftUIProbe" \
     "$dir/Sources/AutoLogFailuresOnlyProbe" \
     "$dir/Sources/AutoLogTypeFilteredProbe" \
@@ -116,6 +120,7 @@ let package = Package(
   platforms: [.macOS(.v15)],
   products: [
     .executable(name: "AutoLogProbe", targets: ["AutoLogProbe"]),
+    .executable(name: "AutoLogThrowingProbe", targets: ["AutoLogThrowingProbe"]),
     .executable(name: "AutoLogSwiftUIProbe", targets: ["AutoLogSwiftUIProbe"]),
     .executable(name: "AutoLogFailuresOnlyProbe", targets: ["AutoLogFailuresOnlyProbe"]),
     .executable(name: "AutoLogTypeFilteredProbe", targets: ["AutoLogTypeFilteredProbe"]),
@@ -129,6 +134,12 @@ let package = Package(
   targets: [
     .executableTarget(
       name: "AutoLogProbe",
+      dependencies: [
+        .product(name: "AutoLog", package: "Swift-AutoLog"),
+      ]
+    ),
+    .executableTarget(
+      name: "AutoLogThrowingProbe",
       dependencies: [
         .product(name: "AutoLog", package: "Swift-AutoLog"),
       ]
@@ -268,6 +279,33 @@ let button = Button.log("Run") {
 }
 print(result)
 _ = button
+EOF
+}
+
+write_autolog_throwing_source() {
+  local file="$1"
+  cat > "$file" <<'EOF'
+import AutoLog
+
+enum ImpactError: Error {
+  case oddValue
+}
+
+@AutoLog
+struct ImpactWorker {
+  func compute(_ value: Int) throws -> Int {
+    if value.isMultiple(of: 2) {
+      return value / 2
+    }
+    throw ImpactError.oddValue
+  }
+}
+
+let worker = ImpactWorker()
+let result = (0..<100).reduce(0) { total, value in
+  total + ((try? worker.compute(value)) ?? 0)
+}
+print(result)
 EOF
 }
 
@@ -456,7 +494,9 @@ build_and_measure() {
   local scenario="$1"
   local product="$2"
   local dir="$3"
-  local log_file="$OUTPUT_DIR/${scenario}-build.log"
+  local build_path="$WORK_ROOT/.build-$scenario"
+  local first_log_file="$OUTPUT_DIR/${scenario}-first-build.log"
+  local second_log_file="$OUTPUT_DIR/${scenario}-second-build.log"
   local dylib_file="$OUTPUT_DIR/${scenario}-dylibs.txt"
 
   local start
@@ -464,13 +504,28 @@ build_and_measure() {
   start="$(timestamp)"
   swift build \
     --package-path "$dir" \
+    --build-path "$build_path" \
     --configuration release \
     --product "$product" \
-    > "$log_file" \
+    > "$first_log_file" \
     2>&1
   end="$(timestamp)"
+  local first_elapsed
+  first_elapsed="$(elapsed_seconds "$start" "$end")"
 
-  local exe="$dir/.build/release/$product"
+  start="$(timestamp)"
+  swift build \
+    --package-path "$dir" \
+    --build-path "$build_path" \
+    --configuration release \
+    --product "$product" \
+    > "$second_log_file" \
+    2>&1
+  end="$(timestamp)"
+  local second_elapsed
+  second_elapsed="$(elapsed_seconds "$start" "$end")"
+
+  local exe="$build_path/release/$product"
   local executable_bytes
   local stripped_executable_bytes
   local text_bytes
@@ -478,7 +533,6 @@ build_and_measure() {
   local data_bytes
   local linkedit_bytes
   local dylib_count
-  local elapsed
 
   executable_bytes="$(stat -f%z "$exe")"
   local stripped_exe="$OUTPUT_DIR/${scenario}-stripped-executable"
@@ -492,9 +546,8 @@ build_and_measure() {
   linkedit_bytes="$(segment_bytes "$exe" "__LINKEDIT")"
   otool -L "$exe" | sed '1d' > "$dylib_file"
   dylib_count="$(wc -l < "$dylib_file" | tr -d ' ')"
-  elapsed="$(elapsed_seconds "$start" "$end")"
 
-  printf '%s,%s,%s,%s,%s,%s,%s,%s,%s,%s\n' \
+  printf '%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s\n' \
     "$scenario" \
     "$product" \
     "$executable_bytes" \
@@ -504,7 +557,8 @@ build_and_measure() {
     "$data_bytes" \
     "$linkedit_bytes" \
     "$dylib_count" \
-    "$elapsed" \
+    "$first_elapsed" \
+    "$second_elapsed" \
     >> "$OUTPUT_DIR/summary.csv"
 }
 
@@ -520,6 +574,7 @@ write_direct_oslog_source "$direct_dir/Sources/DirectOSLogProbe/main.swift"
 
 write_autolog_probe_package "$autolog_dir"
 write_autolog_source "$autolog_dir/Sources/AutoLogProbe/main.swift"
+write_autolog_throwing_source "$autolog_dir/Sources/AutoLogThrowingProbe/main.swift"
 write_autolog_swiftui_source "$autolog_dir/Sources/AutoLogSwiftUIProbe/main.swift"
 write_autolog_failures_only_source "$autolog_dir/Sources/AutoLogFailuresOnlyProbe/main.swift"
 write_autolog_type_filtered_source "$autolog_dir/Sources/AutoLogTypeFilteredProbe/main.swift"
@@ -528,12 +583,13 @@ write_autolog_compile_failures_only_source "$autolog_dir/Sources/AutoLogCompileF
 write_autolog_compile_diagnostics_source "$autolog_dir/Sources/AutoLogCompileDiagnosticsProbe/main.swift"
 
 cat > "$OUTPUT_DIR/summary.csv" <<'EOF'
-scenario,product,executable_bytes,stripped_executable_bytes,text_segment_bytes,data_const_segment_bytes,data_segment_bytes,linkedit_segment_bytes,linked_dylib_count,build_seconds
+scenario,product,executable_bytes,stripped_executable_bytes,text_segment_bytes,data_const_segment_bytes,data_segment_bytes,linkedit_segment_bytes,linked_dylib_count,build_seconds,second_build_seconds
 EOF
 
 build_and_measure "baseline" "BaselineProbe" "$baseline_dir"
 build_and_measure "direct-oslog" "DirectOSLogProbe" "$direct_dir"
 build_and_measure "autolog" "AutoLogProbe" "$autolog_dir"
+build_and_measure "autolog-throwing" "AutoLogThrowingProbe" "$autolog_dir"
 build_and_measure "autolog-swiftui" "AutoLogSwiftUIProbe" "$autolog_dir"
 build_and_measure "autolog-failures-only-output" "AutoLogFailuresOnlyProbe" "$autolog_dir"
 build_and_measure "autolog-type-filtered-output" "AutoLogTypeFilteredProbe" "$autolog_dir"
@@ -550,15 +606,16 @@ awk -F, '
     text[$1] = $5
     dylibs[$1] = $9
     build[$1] = $10
+    secondBuild[$1] = $11
   }
   END {
     print "# AutoLog Impact Probe"
     print ""
-    print "| Scenario | Executable bytes | Stripped executable bytes | __TEXT bytes | Linked dylibs | Build seconds |"
-    print "|---|---:|---:|---:|---:|---:|"
+    print "| Scenario | Executable bytes | Stripped executable bytes | __TEXT bytes | Linked dylibs | First build seconds | Second build seconds |"
+    print "|---|---:|---:|---:|---:|---:|---:|"
     for (i = 1; i <= length(rows); i++) {
       split(rows[i], fields, ",")
-      printf "| %s | %d | %d | %d | %d | %.3f |\n", fields[1], fields[3], fields[4], fields[5], fields[9], fields[10]
+      printf "| %s | %d | %d | %d | %d | %.3f | %.3f |\n", fields[1], fields[3], fields[4], fields[5], fields[9], fields[10], fields[11]
     }
     print ""
     printf "- AutoLog vs baseline executable delta: %+d bytes\n", executable["autolog"] - executable["baseline"]
@@ -566,6 +623,9 @@ awk -F, '
     printf "- AutoLog vs direct OSLog executable delta: %+d bytes\n", executable["autolog"] - executable["direct-oslog"]
     printf "- AutoLog vs baseline __TEXT delta: %+d bytes\n", text["autolog"] - text["baseline"]
     printf "- AutoLog vs direct OSLog __TEXT delta: %+d bytes\n", text["autolog"] - text["direct-oslog"]
+    printf "- AutoLog throwing vs AutoLog executable delta: %+d bytes\n", executable["autolog-throwing"] - executable["autolog"]
+    printf "- AutoLog failures-only output vs AutoLog throwing executable delta: %+d bytes\n", executable["autolog-failures-only-output"] - executable["autolog-throwing"]
+    printf "- AutoLog compile failures-only vs AutoLog throwing executable delta: %+d bytes\n", executable["autolog-compile-failures-only"] - executable["autolog-throwing"]
     printf "- AutoLogSwiftUI vs AutoLog executable delta: %+d bytes\n", executable["autolog-swiftui"] - executable["autolog"]
     printf "- AutoLog failures-only output vs AutoLog executable delta: %+d bytes\n", executable["autolog-failures-only-output"] - executable["autolog"]
     printf "- AutoLog type-filtered output vs AutoLog executable delta: %+d bytes\n", executable["autolog-type-filtered-output"] - executable["autolog"]

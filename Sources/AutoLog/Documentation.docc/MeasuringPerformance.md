@@ -182,12 +182,15 @@ AutoLogSourceCode/swift-autolog/scripts/measure-impact.sh
 ```
 
 The probe builds release executables with equivalent control flow: a plain
-Swift baseline, a direct `OSLog.Logger` variant, a core `@AutoLog` variant, an
-`AutoLogSwiftUI` opt-in helper variant, runtime-filtered output variants, and
-compile-time `emit:` variants such as
+Swift baseline, a direct `OSLog.Logger` variant, a core `@AutoLog` variant, a
+default throwing `@AutoLog` variant, an `AutoLogSwiftUI` opt-in helper variant,
+runtime-filtered output variants, and compile-time `emit:` variants such as
 `@AutoLog(emit: "failuresOnly")` and
 `@AutoLog(emit: [.failures, .warnings])`. It writes `summary.csv`,
 `summary.md`, build logs, and linked-dylib lists under `.build/impact-runs/`.
+Each scenario uses its own build path, so first-build timings are comparable
+across products. The probe immediately repeats the same build to capture
+second-build/no-op timing for that scenario.
 
 Treat this as a small-probe fixed-cost measurement. It is useful for spotting
 package-level footprint movement, but production apps should still measure
@@ -196,6 +199,9 @@ linked before AutoLog is added.
 Runtime output filters are expected to reduce emitted log volume and sink work,
 not the linked footprint: the AutoLog runtime and macro-generated wrapper code
 are already present before output matching runs.
+Use the default throwing `@AutoLog` scenario as the baseline for failures-only
+production analysis, because failures-only probes necessarily include throwing
+control flow that the simple core `@AutoLog` probe does not.
 The stripped executable column applies `strip -x` to a copy of each local SwiftPM
 probe binary. Use it as a closer release-style size signal than the raw
 executable bytes when comparing SwiftPM command-line probes.
