@@ -105,6 +105,23 @@ The next hot-path targets worth exploring are:
 
 ## Latest local evaluation
 
+The 2026-06-19 production failures-only review reran the impact probe after
+adding an equivalent throwing `@AutoLog` baseline and isolated first/second
+build paths per scenario. That matters because failures-only instrumentation
+necessarily includes throwing control flow. Against the default throwing
+baseline, runtime-filtered failures-only added `960` raw executable bytes,
+compile-time `@AutoLog(emit: "failuresOnly")` added `840` raw bytes, and
+`@AutoLog(emit: [.failures, .warnings])` added `760` raw bytes. All three
+variants added only `24` stripped bytes and no `__TEXT` growth.
+
+The practical production guidance is to use compile-time `emit:` pruning for
+targets that only need failure diagnostics, while treating runtime output
+filters as log-volume, routing, and privacy policy rather than binary-size
+reduction. The remaining binary-size lever is a smaller product/logger split
+that avoids linking the full default formatter, live configuration store,
+route fan-out, and rolling failure-context machinery when an app only needs
+minimal failure telemetry.
+
 The 2026-06-18 main-branch review reran the release benchmark helper and
 appended normal and loaded runs to the project history. On that machine, the
 normal release helper reported roughly `17-20us` of added sync overhead per
