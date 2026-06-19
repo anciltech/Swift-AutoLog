@@ -22,6 +22,8 @@ Builds equivalent release executables and records binary-size impact:
   - AutoLogCompileSuccessesOnlyProbe: @AutoLog(emit: .successes)
   - AutoLogCompileFailuresOnlyProbe: @AutoLog(emit: .failures)
   - AutoLogCompileDiagnosticsProbe: @AutoLog(emit: [.failures, .warnings])
+  - AutoLogManyThrowingProbe: many throwing @AutoLog call sites
+  - AutoLogManyCompileFailuresOnlyProbe: many throwing @AutoLog(emit: .failures) call sites
 
 The output directory receives summary.csv, summary.md, per-build logs, and
 linked-dylib lists. Each scenario uses its own build path so first-build timings
@@ -109,7 +111,9 @@ write_autolog_probe_package() {
     "$dir/Sources/AutoLogTypeFilteredProbe" \
     "$dir/Sources/AutoLogCompileSuccessesOnlyProbe" \
     "$dir/Sources/AutoLogCompileFailuresOnlyProbe" \
-    "$dir/Sources/AutoLogCompileDiagnosticsProbe"
+    "$dir/Sources/AutoLogCompileDiagnosticsProbe" \
+    "$dir/Sources/AutoLogManyThrowingProbe" \
+    "$dir/Sources/AutoLogManyCompileFailuresOnlyProbe"
 
   cat > "$dir/Package.swift" <<EOF
 // swift-tools-version: 6.0
@@ -127,6 +131,8 @@ let package = Package(
     .executable(name: "AutoLogCompileSuccessesOnlyProbe", targets: ["AutoLogCompileSuccessesOnlyProbe"]),
     .executable(name: "AutoLogCompileFailuresOnlyProbe", targets: ["AutoLogCompileFailuresOnlyProbe"]),
     .executable(name: "AutoLogCompileDiagnosticsProbe", targets: ["AutoLogCompileDiagnosticsProbe"]),
+    .executable(name: "AutoLogManyThrowingProbe", targets: ["AutoLogManyThrowingProbe"]),
+    .executable(name: "AutoLogManyCompileFailuresOnlyProbe", targets: ["AutoLogManyCompileFailuresOnlyProbe"]),
   ],
   dependencies: [
     .package(path: "$PACKAGE_DIR"),
@@ -176,6 +182,18 @@ let package = Package(
     ),
     .executableTarget(
       name: "AutoLogCompileDiagnosticsProbe",
+      dependencies: [
+        .product(name: "AutoLog", package: "Swift-AutoLog"),
+      ]
+    ),
+    .executableTarget(
+      name: "AutoLogManyThrowingProbe",
+      dependencies: [
+        .product(name: "AutoLog", package: "Swift-AutoLog"),
+      ]
+    ),
+    .executableTarget(
+      name: "AutoLogManyCompileFailuresOnlyProbe",
       dependencies: [
         .product(name: "AutoLog", package: "Swift-AutoLog"),
       ]
@@ -473,6 +491,54 @@ print(result)
 EOF
 }
 
+write_autolog_many_throwing_source() {
+  local file="$1"
+  local attribute="$2"
+  local function_count=64
+
+  {
+    cat <<EOF
+import AutoLog
+
+enum ManyImpactError: Error {
+  case oddValue(Int)
+}
+
+$attribute
+struct ManyImpactWorker {
+EOF
+
+    for index in $(seq 0 $((function_count - 1))); do
+      cat <<EOF
+  func compute$index(_ value: Int) throws -> Int {
+    if value.isMultiple(of: 2) {
+      return value + $index
+    }
+    throw ManyImpactError.oddValue(value)
+  }
+
+EOF
+    done
+
+    cat <<'EOF'
+}
+
+let worker = ManyImpactWorker()
+var result = 0
+for value in 0..<100 {
+EOF
+
+    for index in $(seq 0 $((function_count - 1))); do
+      echo "  result += ((try? worker.compute$index(value)) ?? 0)"
+    done
+
+    cat <<'EOF'
+}
+print(result)
+EOF
+  } > "$file"
+}
+
 segment_bytes() {
   local exe="$1"
   local segment="$2"
@@ -581,6 +647,8 @@ write_autolog_type_filtered_source "$autolog_dir/Sources/AutoLogTypeFilteredProb
 write_autolog_compile_successes_only_source "$autolog_dir/Sources/AutoLogCompileSuccessesOnlyProbe/main.swift"
 write_autolog_compile_failures_only_source "$autolog_dir/Sources/AutoLogCompileFailuresOnlyProbe/main.swift"
 write_autolog_compile_diagnostics_source "$autolog_dir/Sources/AutoLogCompileDiagnosticsProbe/main.swift"
+write_autolog_many_throwing_source "$autolog_dir/Sources/AutoLogManyThrowingProbe/main.swift" "@AutoLog"
+write_autolog_many_throwing_source "$autolog_dir/Sources/AutoLogManyCompileFailuresOnlyProbe/main.swift" "@AutoLog(emit: .failures)"
 
 cat > "$OUTPUT_DIR/summary.csv" <<'EOF'
 scenario,product,executable_bytes,stripped_executable_bytes,text_segment_bytes,data_const_segment_bytes,data_segment_bytes,linkedit_segment_bytes,linked_dylib_count,build_seconds,second_build_seconds
@@ -596,6 +664,8 @@ build_and_measure "autolog-type-filtered-output" "AutoLogTypeFilteredProbe" "$au
 build_and_measure "autolog-compile-successes-only" "AutoLogCompileSuccessesOnlyProbe" "$autolog_dir"
 build_and_measure "autolog-compile-failures-only" "AutoLogCompileFailuresOnlyProbe" "$autolog_dir"
 build_and_measure "autolog-compile-diagnostics" "AutoLogCompileDiagnosticsProbe" "$autolog_dir"
+build_and_measure "autolog-many-throwing" "AutoLogManyThrowingProbe" "$autolog_dir"
+build_and_measure "autolog-many-compile-failures-only" "AutoLogManyCompileFailuresOnlyProbe" "$autolog_dir"
 
 awk -F, '
   NR == 1 { next }
@@ -632,6 +702,9 @@ awk -F, '
     printf "- AutoLog compile successes-only vs AutoLog executable delta: %+d bytes\n", executable["autolog-compile-successes-only"] - executable["autolog"]
     printf "- AutoLog compile failures-only vs AutoLog executable delta: %+d bytes\n", executable["autolog-compile-failures-only"] - executable["autolog"]
     printf "- AutoLog compile diagnostics vs AutoLog executable delta: %+d bytes\n", executable["autolog-compile-diagnostics"] - executable["autolog"]
+    printf "- AutoLog many throwing vs AutoLog throwing executable delta: %+d bytes\n", executable["autolog-many-throwing"] - executable["autolog-throwing"]
+    printf "- AutoLog many compile failures-only vs many throwing executable delta: %+d bytes\n", executable["autolog-many-compile-failures-only"] - executable["autolog-many-throwing"]
+    printf "- AutoLog many compile failures-only vs many throwing __TEXT delta: %+d bytes\n", text["autolog-many-compile-failures-only"] - text["autolog-many-throwing"]
   }
 ' "$OUTPUT_DIR/summary.csv" > "$OUTPUT_DIR/summary.md"
 

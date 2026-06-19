@@ -33,6 +33,14 @@ FAILURES_SCENARIOS = [
     ("compile failures", "autolog-compile-failures-only", THROWING_SCENARIO),
     ("diagnostics", "autolog-compile-diagnostics", THROWING_SCENARIO),
 ]
+MANY_SCENARIOS = [
+    ("many throwing", "autolog-many-throwing", THROWING_SCENARIO),
+    (
+        "many compile failures",
+        "autolog-many-compile-failures-only",
+        "autolog-many-throwing",
+    ),
+]
 
 
 def read_rows(path: Path) -> list[dict[str, str]]:
@@ -258,6 +266,49 @@ def latest_build_chart(
     ]
 
 
+def latest_many_callsite_charts(
+    aliases: dict[str, str],
+    grouped: dict[str, dict[str, dict[str, str]]],
+    run_id: str,
+) -> list[str]:
+    labels: list[str] = []
+    raw_values: list[float] = []
+    text_values: list[float] = []
+
+    for label, scenario, baseline in MANY_SCENARIOS:
+        raw_value = delta(grouped, run_id, scenario, baseline, "executable_bytes")
+        text_value = delta(grouped, run_id, scenario, baseline, "text_segment_bytes")
+        if raw_value is None or text_value is None:
+            continue
+        labels.append(label)
+        raw_values.append(bytes_to_kb(raw_value))
+        text_values.append(bytes_to_kb(text_value))
+
+    if not labels:
+        return []
+
+    return [
+        "### Latest Many-Call-Site Deltas",
+        "",
+        chart(
+            f"Many-call-site raw executable deltas ({aliases[run_id]})",
+            labels,
+            raw_values,
+            unit="KB",
+            chart_type="bar",
+        ),
+        "",
+        chart(
+            f"Many-call-site __TEXT deltas ({aliases[run_id]})",
+            labels,
+            text_values,
+            unit="KB",
+            chart_type="bar",
+        ),
+        "",
+    ]
+
+
 def latest_second_build_chart(
     aliases: dict[str, str],
     grouped: dict[str, dict[str, dict[str, str]]],
@@ -421,6 +472,7 @@ def markdown(rows: list[dict[str, str]]) -> str:
     lines.extend(swiftui_delta_chart(rows, aliases, grouped))
     lines.extend(latest_policy_chart(aliases, grouped, latest))
     lines.extend(latest_failures_chart(aliases, grouped, latest))
+    lines.extend(latest_many_callsite_charts(aliases, grouped, latest))
     lines.extend(latest_build_chart(aliases, grouped, latest))
     lines.extend(latest_second_build_chart(aliases, grouped, latest))
     lines.extend(data_table(rows, aliases))

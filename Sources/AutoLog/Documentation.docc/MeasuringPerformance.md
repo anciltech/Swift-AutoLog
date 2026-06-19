@@ -97,7 +97,8 @@ The next hot-path targets worth exploring are:
 - avoid runtime-filtered start work when a build or output profile never emits
   `.start` events
 - add benchmarks for start-disabled wrappers, output fan-out, parameter privacy,
-  custom formats, and failure-context-heavy paths
+  custom formats, failure-context-heavy paths, and many-call-site app-style
+  mixes beyond the current throwing failures-only scale probe
 - continue looking for macro-generation opportunities that reduce work without
   making expansion snapshots harder to audit
 
@@ -132,6 +133,15 @@ Against the default throwing baseline, runtime-filtered failures-only added
 `15,688` raw bytes, `16,488` stripped bytes, and one `16,384` byte `__TEXT`
 page. `@AutoLog(emit: [.failures, .warnings])` stayed close to the throwing
 baseline, adding `728` raw bytes, `24` stripped bytes, and no `__TEXT` growth.
+
+The next repeated run added a many-call-site impact probe with 64 throwing
+methods. Against the single throwing fixed-cost probe, 64 default throwing
+call sites added `150,176` raw bytes and `131,904` stripped bytes. Switching
+that many-call-site target to `@AutoLog(emit: .failures)` saved `14,392` raw
+bytes, `16,464` stripped bytes, and one `16,384` byte `__TEXT` page against
+the many default throwing target. This confirms compile-time pruning scales
+with annotated call sites, but it also confirms the dominant first-order
+production lever is still avoiding or splitting the fixed runtime payload.
 
 The practical production guidance is to use compile-time `emit:` pruning for
 targets that only need failure diagnostics, while treating runtime output
@@ -240,6 +250,9 @@ are already present before output matching runs.
 Use the default throwing `@AutoLog` scenario as the baseline for failures-only
 production analysis, because failures-only probes necessarily include throwing
 control flow that the simple core `@AutoLog` probe does not.
+Use the many-call-site throwing scenarios when judging whether compile-time
+`emit:` pruning pays off across an app-scale number of annotated throwing
+functions.
 The stripped executable column applies `strip -x` to a copy of each local SwiftPM
 probe binary. Use it as a closer release-style size signal than the raw
 executable bytes when comparing SwiftPM command-line probes.
