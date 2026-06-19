@@ -94,17 +94,20 @@ struct AutoLogRuntimeTests {
       .failures,
       .warnings,
     ])
+    #expect(buildConfiguration.measureTiming)
     #expect(buildConfiguration.macroEmitArgument == "[.starts, .successes, .failures, .warnings]")
+    #expect(buildConfiguration.macroMeasureArgument == nil)
   }
 
   @Test
-  func buildConfiguration_derivesDiagnosticsFromOutputEventTypes() {
+  func buildConfiguration_derivesDiagnosticsAndTimingFromOutputProfiles() {
     let configuration = AutoLogConfiguration(
       outputs: [
         AutoLogOutput(
           name: "Production Console",
           route: .console,
-          eventTypes: [.failure, .warning]
+          eventTypes: [.failure, .warning],
+          measureTiming: false
         )
       ]
     )
@@ -112,7 +115,13 @@ struct AutoLogRuntimeTests {
     let buildConfiguration = configuration.derivedBuildConfiguration
 
     #expect(buildConfiguration.emissions == [.failures, .warnings])
+    #expect(!buildConfiguration.measureTiming)
     #expect(buildConfiguration.macroEmitArgument == "[.failures, .warnings]")
+    #expect(buildConfiguration.macroMeasureArgument == "false")
+    #expect(buildConfiguration.macroEnvironment == [
+      AutoLogBuildConfiguration.macroEmitEnvironmentKey: "[.failures, .warnings]",
+      AutoLogBuildConfiguration.macroMeasureEnvironmentKey: "false",
+    ])
   }
 
   @Test

@@ -1,8 +1,45 @@
 import AutoLogMacro
+#if canImport(Darwin)
+import Darwin
+#elseif canImport(Glibc)
+import Glibc
+#endif
 import MacroTesting
 import Testing
 
+private func withMacroEnvironment(
+  _ updates: [String: String?],
+  operation: () -> Void
+) {
+  let previousValues = Dictionary(
+    uniqueKeysWithValues: updates.keys.map { key in
+      (key, getenv(key).map { String(cString: $0) })
+    }
+  )
+
+  for (key, value) in updates {
+    if let value {
+      setenv(key, value, 1)
+    } else {
+      unsetenv(key)
+    }
+  }
+
+  defer {
+    for (key, value) in previousValues {
+      if let value {
+        setenv(key, value, 1)
+      } else {
+        unsetenv(key)
+      }
+    }
+  }
+
+  operation()
+}
+
 @Suite(
+  .serialized,
   .macros(
     [LogMacro.self],
     indentationWidth: .spaces(2),
@@ -503,6 +540,74 @@ struct LogMacroTests {
         "ok"
       }
       """
+    }
+  }
+
+  @Test
+  func nonthrowingFunction_defaultEnvironmentFailuresOnly_skipsInstrumentation() throws {
+    withMacroEnvironment([
+      "AUTOLOG_MACRO_EMIT": ".failures",
+      "AUTOLOG_MACRO_MEASURE": "false",
+    ]) {
+      assertMacro {
+        #"""
+        @Log
+        func foo() -> String {
+          "ok"
+        }
+        """#
+      } expansion: {
+        """
+        func foo() -> String {
+          "ok"
+        }
+        """
+      }
+    }
+  }
+
+  @Test
+  func throwingFunction_defaultEnvironmentFailuresOnlyMeasureFalse_skipsStartSuccessAndTiming() throws {
+    withMacroEnvironment([
+      "AUTOLOG_MACRO_EMIT": ".failures",
+      "AUTOLOG_MACRO_MEASURE": "false",
+    ]) {
+      assertMacro {
+        #"""
+        @Log
+        func foo() throws -> String {
+          try risky()
+        }
+        """#
+      } expansion: {
+        """
+        func foo() throws -> String {
+          let runtime = AutoLog.runtimeSnapshot()
+          let autoLogger: any AutoLogger = runtime.logger
+          var event = AutoLogEvent(
+            source: AutoLogSource.current,
+
+            callSiteDepth: AutoLogSource.nextCallSiteDepth,
+
+            location: "TestModule/Test.swift:1:1",
+            declaration: "func foo() throws -> String"
+          )
+          func _foo() throws -> String {
+            try risky()
+          }
+          do {
+            let result = try AutoLogSource.withCallSiteDepth(event.callSiteDepth ?? AutoLogSource.nextCallSiteDepth) {
+              try _foo()
+            }
+            return result
+          } catch {
+            event.result = .failure(error)
+            autoLogger.emitIfEnabled(event: event, runtime: runtime)
+            throw error
+          }
+        }
+        """
+      }
     }
   }
 

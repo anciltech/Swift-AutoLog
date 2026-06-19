@@ -331,10 +331,11 @@ public struct AutoLogConfiguration: Sendable, Codable, Equatable {
   /// This is the default build configuration for the runtime outputs already
   /// defined here. It intentionally ignores route and type-name filters because
   /// those are runtime routing decisions; only event-type membership can safely
-  /// become a global macro emission ceiling.
+  /// become a global macro emission ceiling. Timing is included when any
+  /// enabled output profile can display timing.
   public var derivedBuildConfiguration: AutoLogBuildConfiguration {
-    let emissions = effectiveOutputs
-      .filter(\.isEnabled)
+    let enabledOutputs = effectiveOutputs.filter(\.isEnabled)
+    let emissions = enabledOutputs
       .reduce(into: Set<AutoLogEmission>()) { partialResult, output in
         for eventType in output.eventTypes {
           if let emission = eventType.buildEmission {
@@ -343,7 +344,10 @@ public struct AutoLogConfiguration: Sendable, Codable, Equatable {
         }
       }
 
-    return AutoLogBuildConfiguration(emissions: emissions)
+    return AutoLogBuildConfiguration(
+      emissions: emissions,
+      measureTiming: enabledOutputs.contains(where: \.measureTiming)
+    )
   }
 
   public func shouldEmit(_ event: AutoLogEvent) -> Bool {

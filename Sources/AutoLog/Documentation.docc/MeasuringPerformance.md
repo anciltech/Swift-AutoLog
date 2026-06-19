@@ -158,15 +158,21 @@ the many default throwing target. This confirms compile-time pruning scales
 with annotated call sites, but it also confirms the dominant first-order
 production lever is still avoiding or splitting the fixed runtime payload.
 
-The practical production guidance is to use compile-time `emit:` pruning for
-targets that only need failure diagnostics, while treating runtime output
-filters as log-volume, routing, and privacy policy rather than binary-size
-reduction. A runtime fast path that tried to collapse duplicate output matching
-was measured and rejected because it added roughly `30 KB` and another
-`__TEXT` page to the release probes. The remaining large binary-size lever is a
-smaller product/logger split that avoids linking the full default formatter,
-live configuration store, route fan-out, and rolling failure-context machinery
-when an app only needs minimal failure telemetry.
+The practical production guidance is to use config-derived compile-time
+pruning for targets that only need failure diagnostics. App code can stay
+annotated as plain `@AutoLog`; build tooling should export
+`AutoLogConfiguration.derivedBuildConfiguration.macroEnvironment` so the macro
+sees the production default before it expands. Explicit spellings such as
+`@AutoLog(emit: .failures)` or
+`@AutoLog(emit: [.failures, .warnings])` are still useful for benchmarks,
+experiments, and local overrides, but they should not be required across an app
+target. Runtime output filters remain log-volume, routing, and privacy policy
+rather than binary-size reduction. A runtime fast path that tried to collapse
+duplicate output matching was measured and rejected because it added roughly
+`30 KB` and another `__TEXT` page to the release probes. The remaining large
+binary-size lever is a smaller product/logger split that avoids linking the
+full default formatter, live configuration store, route fan-out, and rolling
+failure-context machinery when an app only needs minimal failure telemetry.
 
 The 2026-06-18 main-branch review reran the release benchmark helper and
 appended normal and loaded runs to the project history. On that machine, the

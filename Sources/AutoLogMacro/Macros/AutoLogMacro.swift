@@ -112,6 +112,15 @@ struct AutoLogEmissionPlan {
     emitsHandledErrors: true
   )
 
+  static let none = AutoLogEmissionPlan(
+    emitsStart: false,
+    emitsSuccess: false,
+    emitsFailure: false,
+    emitsHandledErrors: false
+  )
+
+  static let environmentKey = "AUTOLOG_MACRO_EMIT"
+
   struct UnsupportedEmissionDiagnostic: DiagnosticMessage {
     let value: String
 
@@ -128,21 +137,55 @@ struct AutoLogEmissionPlan {
     }
   }
 
+  struct UnsupportedDefaultEmissionDiagnostic: DiagnosticMessage {
+    let value: String
+
+    var message: String {
+      "\(AutoLogEmissionPlan.environmentKey) expects values such as .failures, [.failures, .warnings], failures,warnings, all, or none; received \(value)"
+    }
+
+    var diagnosticID: MessageID {
+      MessageID(domain: "AutoLogEmission", id: "unsupported-default")
+    }
+
+    var severity: DiagnosticSeverity {
+      .error
+    }
+  }
+
   static func resolved(
     from node: AttributeSyntax,
     in context: some MacroExpansionContext
   ) -> Self {
-    guard let expression = node.extract(argument: .emit, as: ExprSyntax.self) else {
+    if let expression = node.extract(argument: .emit, as: ExprSyntax.self) {
+      guard let tokens = emissionTokens(from: expression),
+            let plan = plan(for: tokens)
+      else {
+        context.diagnose(
+          Diagnostic(
+            node: Syntax(expression),
+            message: UnsupportedEmissionDiagnostic(value: expression.trimmedDescription)
+          )
+        )
+        return .all
+      }
+
+      return plan
+    }
+
+    guard let environmentValue = ProcessInfo.processInfo.environment[environmentKey],
+          !environmentValue.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    else {
       return .all
     }
 
-    guard let tokens = emissionTokens(from: expression),
-          let plan = plan(for: tokens)
+    guard let tokens = emissionTokens(fromEnvironmentValue: environmentValue),
+          let plan = plan(for: tokens, allowsNone: true)
     else {
       context.diagnose(
         Diagnostic(
-          node: Syntax(expression),
-          message: UnsupportedEmissionDiagnostic(value: expression.trimmedDescription)
+          node: Syntax(node),
+          message: UnsupportedDefaultEmissionDiagnostic(value: environmentValue)
         )
       )
       return .all
@@ -151,7 +194,10 @@ struct AutoLogEmissionPlan {
     return plan
   }
 
-  private static func plan(for tokens: [String]) -> Self? {
+  private static func plan(
+    for tokens: [String],
+    allowsNone: Bool = false
+  ) -> Self? {
     guard !tokens.isEmpty else { return nil }
 
     var emitsStart = false
@@ -163,6 +209,9 @@ struct AutoLogEmissionPlan {
       switch normalizedToken(token) {
       case "all":
         return .all
+      case "none", "off", "disabled":
+        guard allowsNone else { return nil }
+        return AutoLogEmissionPlan.none
       case "completions":
         emitsSuccess = true
         emitsFailure = true
@@ -199,6 +248,22 @@ struct AutoLogEmissionPlan {
     return [value]
   }
 
+  private static func emissionTokens(fromEnvironmentValue value: String) -> [String]? {
+    let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard !trimmed.isEmpty else { return nil }
+    let unwrapped = trimmed
+      .trimmingCharacters(in: CharacterSet(charactersIn: "[]"))
+      .replacingOccurrences(of: "AutoLogEmission.", with: "")
+
+    let tokens = unwrapped
+      .split { character in
+        character == "," || character == " " || character == "\n" || character == "\t"
+      }
+      .map(String.init)
+
+    return tokens.isEmpty ? nil : tokens
+  }
+
   private static func tokenValue(_ expression: ExprSyntax) -> String? {
     guard !expression.is(StringLiteralExprSyntax.self) else { return nil }
     return expression.trimmedDescription
@@ -215,6 +280,80 @@ struct AutoLogEmissionPlan {
       .replacingOccurrences(of: "_", with: "")
       .replacingOccurrences(of: "-", with: "")
       .lowercased()
+  }
+}
+
+struct AutoLogMeasurePlan {
+  let shouldMeasure: Bool
+  let isMeasuredExplicitly: Bool
+
+  static let environmentKey = "AUTOLOG_MACRO_MEASURE"
+
+  struct UnsupportedDefaultMeasureDiagnostic: DiagnosticMessage {
+    let value: String
+
+    var message: String {
+      "\(AutoLogMeasurePlan.environmentKey) expects true, false, 1, or 0; received \(value)"
+    }
+
+    var diagnosticID: MessageID {
+      MessageID(domain: "AutoLogMeasure", id: "unsupported-default")
+    }
+
+    var severity: DiagnosticSeverity {
+      .error
+    }
+  }
+
+  static func resolved(
+    from node: AttributeSyntax,
+    in context: some MacroExpansionContext
+  ) -> Self {
+    if let measureTrait = node.extract(argument: .measure, as: BooleanLiteralExprSyntax.self) {
+      let shouldMeasure = measureTrait.literal.tokenKind == .keyword(.true)
+      return AutoLogMeasurePlan(
+        shouldMeasure: shouldMeasure,
+        isMeasuredExplicitly: shouldMeasure
+      )
+    }
+
+    guard let environmentValue = ProcessInfo.processInfo.environment[environmentKey],
+          !environmentValue.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    else {
+      return AutoLogMeasurePlan(
+        shouldMeasure: true,
+        isMeasuredExplicitly: false
+      )
+    }
+
+    guard let shouldMeasure = boolValue(from: environmentValue) else {
+      context.diagnose(
+        Diagnostic(
+          node: Syntax(node),
+          message: UnsupportedDefaultMeasureDiagnostic(value: environmentValue)
+        )
+      )
+      return AutoLogMeasurePlan(
+        shouldMeasure: true,
+        isMeasuredExplicitly: false
+      )
+    }
+
+    return AutoLogMeasurePlan(
+      shouldMeasure: shouldMeasure,
+      isMeasuredExplicitly: false
+    )
+  }
+
+  private static func boolValue(from value: String) -> Bool? {
+    switch value.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() {
+    case "true", "yes", "1", "on":
+      return true
+    case "false", "no", "0", "off":
+      return false
+    default:
+      return nil
+    }
   }
 }
 
@@ -272,20 +411,7 @@ extension AutoLogMacro {
       return function.body
     }
 
-    // Extract measure: Bool? from @Log(measure: ...).
-    // nil → default (generate timing, not explicitly requested)
-    // true → generate timing, mark as explicitly requested
-    // false → suppress timing code entirely
-    let measureTrait = node.extract(argument: .measure, as: BooleanLiteralExprSyntax.self)
-    let shouldMeasure: Bool
-    let isMeasuredExplicitly: Bool
-    if let measureTrait {
-      shouldMeasure = measureTrait.literal.tokenKind == .keyword(.true)
-      isMeasuredExplicitly = shouldMeasure
-    } else {
-      shouldMeasure = true
-      isMeasuredExplicitly = false
-    }
+    let measure = AutoLogMeasurePlan.resolved(from: node, in: context)
 
     let emission = AutoLogEmissionPlan.resolved(from: node, in: context)
     let tagTraits = function.syntax.attributes.extractTagTraitsInSourceOrder()
@@ -308,7 +434,7 @@ extension AutoLogMacro {
       of: function,
       capturesHandledErrors: emission.emitsHandledErrors
     )
-    let capturesTiming = shouldMeasure && (emission.emitsSuccess || emitsThrownFailure)
+    let capturesTiming = measure.shouldMeasure && (emission.emitsSuccess || emitsThrownFailure)
     let metadata = AutoLogDeclarationMetadata(
       location: self.location(of: function, in: context),
       description: function.description,
@@ -328,7 +454,7 @@ extension AutoLogMacro {
         omitRuleTraits: omitRuleTraits
       )
 
-      if isMeasuredExplicitly && capturesTiming {
+      if measure.isMeasuredExplicitly && capturesTiming {
         self.captureExplicitMeasure()
       }
 
@@ -411,16 +537,7 @@ extension AutoLogMacro {
       return initializer.body
     }
 
-    let measureTrait = node.extract(argument: .measure, as: BooleanLiteralExprSyntax.self)
-    let shouldMeasure: Bool
-    let isMeasuredExplicitly: Bool
-    if let measureTrait {
-      shouldMeasure = measureTrait.literal.tokenKind == .keyword(.true)
-      isMeasuredExplicitly = shouldMeasure
-    } else {
-      shouldMeasure = true
-      isMeasuredExplicitly = false
-    }
+    let measure = AutoLogMeasurePlan.resolved(from: node, in: context)
 
     let emission = AutoLogEmissionPlan.resolved(from: node, in: context)
     let tagTraits = initializer.syntax.attributes.extractTagTraitsInSourceOrder()
@@ -438,7 +555,7 @@ extension AutoLogMacro {
       return initializer.body
     }
 
-    let capturesTiming = shouldMeasure && (
+    let capturesTiming = measure.shouldMeasure && (
       emission.emitsSuccess || emitsThrownFailure
     )
     let metadata = AutoLogDeclarationMetadata(
@@ -460,7 +577,7 @@ extension AutoLogMacro {
         omitRuleTraits: omitRuleTraits
       )
 
-      if isMeasuredExplicitly && capturesTiming {
+      if measure.isMeasuredExplicitly && capturesTiming {
         self.captureExplicitMeasure()
       }
 

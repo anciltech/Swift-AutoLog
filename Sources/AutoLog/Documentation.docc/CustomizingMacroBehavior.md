@@ -45,17 +45,48 @@ Emits a success event only when the function returns the supplied value.
 
 ### Compile-time event emission
 
-Use `emit:` when a function or type should never compile some event paths into
-the wrapper:
+Most app code should stay annotated as plain `@AutoLog`. The runtime
+``AutoLogConfiguration`` controls which events are emitted, routed, formatted,
+and timed for the active profile:
 
 ```swift
-@AutoLog(emit: .failures)
+@AutoLog
 struct PaymentService {
   func submit(_ payment: Payment) async throws -> Receipt {
     // ...
   }
 }
 ```
+
+Runtime filtering happens after macro expansion. When binary size matters, feed
+the same output profile into the build environment so bare `@AutoLog` and
+`@Log` annotations inherit a compile-time ceiling:
+
+```swift
+let configuration = AutoLogConfiguration(
+  outputs: [
+    AutoLogOutput(
+      name: "Production Console",
+      route: .console,
+      eventTypes: [.failure, .warning],
+      measureTiming: false
+    )
+  ]
+)
+
+let buildConfiguration = configuration.derivedBuildConfiguration
+// buildConfiguration.macroEnvironment == [
+//   "AUTOLOG_MACRO_EMIT": "[.failures, .warnings]",
+//   "AUTOLOG_MACRO_MEASURE": "false"
+// ]
+```
+
+With those environment values present during compilation, plain `@AutoLog`
+generates only the selected paths. `AUTOLOG_MACRO_EMIT` accepts values such as
+`.failures`, `[.failures, .warnings]`, `failures,warnings`, `all`, or `none`.
+`AUTOLOG_MACRO_MEASURE` accepts `true` or `false`. Treat these values as build
+inputs: when they change, clean the target or make the values part of the CI
+cache key so affected macro expansions are rebuilt.
 
 The typed values are ``AutoLogEmission/all``, ``AutoLogEmission/starts``,
 ``AutoLogEmission/successes``, ``AutoLogEmission/failures``,
@@ -66,8 +97,9 @@ keep locally handled catch-site diagnostics. Prefer runtime output filters when
 you still want the same generated instrumentation available for live settings
 or per-destination routing.
 
-For production targets that only need thrown failures, type-level timing can be
-compiled out at the same call site:
+Explicit `emit:` and `measure:` arguments are still available for local
+overrides, experiments, and generated source. They are not required for the
+normal production workflow:
 
 ```swift
 @AutoLog(emit: .failures, measure: false)
@@ -81,24 +113,6 @@ struct PaymentService {
     // body uninstrumented.
   }
 }
-```
-
-To keep output definitions as the source of truth, derive the build-time
-ceiling from the same ``AutoLogConfiguration``:
-
-```swift
-let configuration = AutoLogConfiguration(
-  outputs: [
-    AutoLogOutput(
-      name: "Production Console",
-      route: .console,
-      eventTypes: [.failure, .warning]
-    )
-  ]
-)
-
-let buildConfiguration = configuration.derivedBuildConfiguration
-// buildConfiguration.macroEmitArgument == "[.failures, .warnings]"
 ```
 
 Only output event types become build-time emissions. Route filters,

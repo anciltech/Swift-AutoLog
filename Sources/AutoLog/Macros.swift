@@ -147,6 +147,8 @@ public macro AutoLog() = #externalMacro(
 /// Introduces ``Log(measure:)`` to all methods in the attached declaration.
 ///
 /// Use `measure: false` when a whole type should skip generated timing work.
+/// Prefer a build-profile default when the same policy should apply across a
+/// target while app source stays annotated as plain `@AutoLog`.
 @attached(memberAttribute)
 public macro AutoLog(measure: Bool) = #externalMacro(
   module: "AutoLogMacro",
@@ -157,6 +159,8 @@ public macro AutoLog(measure: Bool) = #externalMacro(
 /// attached declaration using a typed compile-time emission policy.
 ///
 /// Example: `@AutoLog(emit: .failures)`.
+/// Prefer a build-profile default when the same policy should apply across a
+/// target while app source stays annotated as plain `@AutoLog`.
 @attached(memberAttribute)
 public macro AutoLog(emit emission: AutoLogEmission) = #externalMacro(
   module: "AutoLogMacro",
@@ -167,6 +171,8 @@ public macro AutoLog(emit emission: AutoLogEmission) = #externalMacro(
 /// attached declaration using typed emission and type-wide timing policy.
 ///
 /// Example: `@AutoLog(emit: .failures, measure: false)`.
+/// Prefer a build-profile default when the same policy should apply across a
+/// target while app source stays annotated as plain `@AutoLog`.
 @attached(memberAttribute)
 public macro AutoLog(
   emit emission: AutoLogEmission,
@@ -180,6 +186,8 @@ public macro AutoLog(
 /// attached declaration using a typed compile-time emission policy.
 ///
 /// Example: `@AutoLog(emit: [.failures, .warnings])`.
+/// Prefer a build-profile default when the same policy should apply across a
+/// target while app source stays annotated as plain `@AutoLog`.
 @attached(memberAttribute)
 public macro AutoLog(emit emissions: [AutoLogEmission]) = #externalMacro(
   module: "AutoLogMacro",
@@ -190,6 +198,8 @@ public macro AutoLog(emit emissions: [AutoLogEmission]) = #externalMacro(
 /// attached declaration using typed emissions and type-wide timing policy.
 ///
 /// Example: `@AutoLog(emit: [.failures, .warnings], measure: false)`.
+/// Prefer a build-profile default when the same policy should apply across a
+/// target while app source stays annotated as plain `@AutoLog`.
 @attached(memberAttribute)
 public macro AutoLog(
   emit emissions: [AutoLogEmission],
@@ -320,7 +330,10 @@ public macro Log(
 ///
 /// Runtime ``AutoLogConfiguration`` output filters still control what is
 /// printed or routed after an event exists. `emit:` is different: the macro
-/// skips code generation for event paths that can never be emitted.
+/// skips code generation for event paths that can never be emitted. If a
+/// source annotation omits `emit:` or `measure:`, macro expansion uses
+/// `AUTOLOG_MACRO_EMIT` and `AUTOLOG_MACRO_MEASURE` when the build environment
+/// provides them.
 @attached(body)
 public macro Log(
   emit emission: AutoLogEmission,

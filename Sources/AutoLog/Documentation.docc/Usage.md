@@ -467,17 +467,45 @@ If we invoke both `fetchFavoriteFacts` and `deleteFromFavoriteButtonTapped`, the
 
 Runtime output filters are useful when a target wants to keep the same
 instrumentation but route or display fewer events. They do not reduce the
-wrapper code emitted by the macro. Use `emit:` when the source itself should
-compile a narrower wrapper:
+wrapper code emitted by the macro. In normal app source, keep types marked with
+plain `@AutoLog` and let ``AutoLogConfiguration`` define the active output
+profile:
 
 ```swift
-@AutoLog(emit: .failures)
+@AutoLog
 struct PaymentService {
   func submit(_ payment: Payment) async throws -> Receipt {
-    // Successful completions return normally without start/success event code.
+    // Runtime configuration decides which events emit for this build or run.
   }
 }
 ```
+
+When a production target should also shrink generated wrapper code, derive a
+build profile from that same configuration and export it before compilation:
+
+```swift
+let configuration = AutoLogConfiguration(
+  outputs: [
+    AutoLogOutput(
+      name: "Production Failures",
+      route: .console,
+      eventTypes: [.failure],
+      measureTiming: false
+    )
+  ]
+)
+
+let buildConfiguration = configuration.derivedBuildConfiguration
+// AUTOLOG_MACRO_EMIT=.failures
+// AUTOLOG_MACRO_MEASURE=false
+```
+
+Bare `@AutoLog` and `@Log` annotations read `AUTOLOG_MACRO_EMIT` and
+`AUTOLOG_MACRO_MEASURE` when explicit macro arguments are absent. This lets a
+production build compile only the selected event paths without adding
+`@AutoLog(emit: .failures, measure: false)` across every type. Treat those
+environment values as build inputs: when they change, clean the target or make
+the values part of the CI cache key so affected macro expansions are rebuilt.
 
 Use ``AutoLogEmission/completions`` to skip start rows while keeping successes
 and failures, ``AutoLogEmission/successes`` for success-only probes,
@@ -485,21 +513,17 @@ and failures, ``AutoLogEmission/successes`` for success-only probes,
 ``AutoLogEmission/warnings`` for locally handled catch-site diagnostics. Pass
 a single case for one generated path or an array such as
 `@AutoLog(emit: [.failures, .warnings])` when multiple paths are required.
-`emit:` is intentionally explicit at the macro call site; mutable
-``AutoLogConfiguration`` settings still run after an event exists and cannot
-remove generated code from the binary.
-
-`@AutoLog(emit: .failures, measure: false)` applies the same failures-only
-policy to every method in a type and suppresses generated timing work. Methods
-that cannot emit any selected event path, such as nonthrowing methods under
-`.failures`, are left uninstrumented.
+Explicit `emit:` and `measure:` arguments remain useful for local overrides,
+benchmarks, and generated source. Methods that cannot emit any selected event
+path, such as nonthrowing methods under `.failures`, are left uninstrumented.
 
 If the runtime outputs are the desired source of truth, use
 ``AutoLogConfiguration/derivedBuildConfiguration`` to generate the default
 build ceiling from enabled output event types. For example, outputs containing
 only `.failure` and `.warning` derive `macroEmitArgument ==
-"[.failures, .warnings]"`. Route filters and type-name filters remain runtime
-matching rules and are not used to prune generated wrapper paths.
+"[.failures, .warnings]"` and a matching `macroEnvironment` dictionary. Route
+filters and type-name filters remain runtime matching rules and are not used to
+prune generated wrapper paths.
 
 ## Omit methods from being logged
 
