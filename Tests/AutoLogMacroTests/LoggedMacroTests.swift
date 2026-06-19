@@ -128,6 +128,29 @@ struct LoggedMacroTests {
   }
 
   @Test
+  func struct_emitSingleFailuresAndMeasureFalse_preservesCompileTimeArguments() throws {
+    assertMacro {
+      #"""
+      @Logged(emit: .failures, measure: false)
+      struct Foo {
+        func bar() {
+          print("bar")
+        }
+      }
+      """#
+    } expansion: {
+      """
+      struct Foo {
+        @Log(emit: .failures, measure: false)
+        func bar() {
+          print("bar")
+        }
+      }
+      """
+    }
+  }
+
+  @Test
   func struct_emitTypedFailuresAndWarnings_preservesCompileTimeEmissionArgument() throws {
     assertMacro {
       #"""

@@ -430,6 +430,27 @@ struct AutoLogRuntimeTests {
       return
     }
   }
+
+  @Test
+  func typeLevelFailuresOnlyMeasureFalse_skipsSuccessAndDuration() {
+    let logger = MockLogger()
+    let runtime = AutoLogRuntime(
+      logger: logger,
+      configuration: .testConsoleWithoutStart
+    )
+
+    AutoLog.withRuntime(runtime) {
+      let fixture = TypeLevelFailuresOnlyNoTimingFixture()
+      fixture.succeed()
+      #expect(throws: TypeLevelFailuresOnlyNoTimingFixture.FixtureError.failed) {
+        try fixture.fail()
+      }
+    }
+
+    #expect(logger.events.count == 1)
+    #expect(logger.events.first?.outputEventType == .failure)
+    #expect(logger.events.first?.duration == nil)
+  }
 }
 
 private struct SnapshotFixture {
@@ -487,6 +508,19 @@ private struct TypedEmissionFixture {
     }
 
     throw FixtureError.fatal
+  }
+}
+
+@AutoLog(emit: .failures, measure: false)
+private struct TypeLevelFailuresOnlyNoTimingFixture {
+  enum FixtureError: Error {
+    case failed
+  }
+
+  func succeed() {}
+
+  func fail() throws {
+    throw FixtureError.failed
   }
 }
 

@@ -87,6 +87,9 @@ emit and derive each output profile's context limit from that snapshot, avoiding
 repeated lock reads when a failure fans out to multiple outputs.
 Filtered events now also avoid capturing execution context before output and
 deduplication checks pass.
+Macro expansion now skips function and initializer bodies that cannot emit any
+selected event path, so nonthrowing methods inside
+`@AutoLog(emit: .failures)` types are left uninstrumented.
 
 ## Current performance TODOs
 
@@ -99,8 +102,8 @@ The next hot-path targets worth exploring are:
 - avoid generated start calls entirely when build policy guarantees no `.start`
   events
 - add benchmarks for start-disabled wrappers, output fan-out, parameter privacy,
-  custom formats, failure-context-heavy paths, and many-call-site app-style
-  mixes beyond the current throwing failures-only scale probe
+  custom formats, failure-context-heavy paths, and broader app-style mixes
+  beyond the current throwing and mixed failures-only scale probes
 - continue looking for macro-generation opportunities that reduce work without
   making expansion snapshots harder to audit
 
@@ -109,7 +112,8 @@ The next hot-path targets worth exploring are:
 The 2026-06-19 follow-up pass removed the legacy string-literal `emit:` macro
 overloads and singular/error aliases, kept the typed case API
 (`@AutoLog(emit: .failures)` and
-`@AutoLog(emit: [.failures, .warnings])`), and reran the impact probe with
+`@AutoLog(emit: [.failures, .warnings])`), added type-level
+`@AutoLog(..., measure: false)` support, and reran the impact probe with
 isolated first/second build paths per scenario.
 
 The retained emission representation is a trimmed `RawRepresentable` value:
@@ -123,11 +127,14 @@ The final follow-up probe reported:
 
 | Scenario | Executable bytes | Stripped bytes | `__TEXT` bytes | First build | Second build |
 |---|---:|---:|---:|---:|---:|
-| `autolog` | `897,056` | `498,600` | `327,680` | `19.097s` | `1.112s` |
-| `autolog-throwing` | `934,696` | `532,360` | `344,064` | `16.698s` | `1.191s` |
-| `autolog-failures-only-output` | `935,624` | `532,368` | `344,064` | `16.892s` | `1.210s` |
-| `autolog-compile-failures-only` | `919,008` | `515,872` | `327,680` | `17.155s` | `1.242s` |
-| `autolog-compile-diagnostics` | `935,424` | `532,384` | `344,064` | `16.986s` | `1.494s` |
+| `autolog` | `896,992` | `498,600` | `327,680` | `17.806s` | `1.404s` |
+| `autolog-throwing` | `934,632` | `532,360` | `344,064` | `16.510s` | `1.224s` |
+| `autolog-failures-only-output` | `935,560` | `532,368` | `344,064` | `17.209s` | `1.220s` |
+| `autolog-compile-failures-only` | `918,944` | `515,872` | `327,680` | `16.616s` | `1.248s` |
+| `autolog-compile-failures-no-measure` | `919,208` | `515,896` | `327,680` | `16.918s` | `1.197s` |
+| `autolog-compile-diagnostics` | `935,360` | `532,384` | `344,064` | `16.792s` | `1.265s` |
+| `autolog-many-compile-failures-only` | `1,070,416` | `647,800` | `458,752` | `17.787s` | `1.576s` |
+| `autolog-mixed-failures-no-measure` | `977,120` | `565,096` | `376,832` | `17.392s` | `1.184s` |
 
 Against the default throwing baseline, runtime-filtered failures-only added
 `928` raw bytes, `8` stripped bytes, and no `__TEXT` growth. Compile-time
@@ -135,6 +142,12 @@ Against the default throwing baseline, runtime-filtered failures-only added
 `15,688` raw bytes, `16,488` stripped bytes, and one `16,384` byte `__TEXT`
 page. `@AutoLog(emit: [.failures, .warnings])` stayed close to the throwing
 baseline, adding `728` raw bytes, `24` stripped bytes, and no `__TEXT` growth.
+Adding `measure: false` to the single throwing failures-only probe did not
+reduce binary size, but it does compile out timing work. The mixed 64-method
+failures-only/no-timing probe, with 32 throwing and 32 nonthrowing methods,
+measured `93,296` raw bytes, `82,704` stripped bytes, and `81,920` `__TEXT`
+bytes smaller than the all-throwing failures-only many-call-site probe because
+nonthrowing methods cannot emit `.failures` and are now left uninstrumented.
 
 The next repeated run added a many-call-site impact probe with 64 throwing
 methods. Against the single throwing fixed-cost probe, 64 default throwing

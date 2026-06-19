@@ -489,6 +489,11 @@ a single case for one generated path or an array such as
 ``AutoLogConfiguration`` settings still run after an event exists and cannot
 remove generated code from the binary.
 
+`@AutoLog(emit: .failures, measure: false)` applies the same failures-only
+policy to every method in a type and suppresses generated timing work. Methods
+that cannot emit any selected event path, such as nonthrowing methods under
+`.failures`, are left uninstrumented.
+
 If the runtime outputs are the desired source of truth, use
 ``AutoLogConfiguration/derivedBuildConfiguration`` to generate the default
 build ceiling from enabled output event types. For example, outputs containing

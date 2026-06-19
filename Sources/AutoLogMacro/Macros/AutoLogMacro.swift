@@ -294,11 +294,20 @@ extension AutoLogMacro {
     let deduplicationTrait = function.syntax.attributes.extractTraits(for: .deduplicate).first
     let resultFilterTrait = function.syntax.attributes.extractTraits(for: .when).first
     let omitRuleTraits = function.syntax.attributes.extractOmitRuleTraits()
+    let emitsThrownFailure = function.isThrowing && emission.emitsFailure
+    let emitsAnyEvent = emission.emitsStart
+      || emission.emitsSuccess
+      || emitsThrownFailure
+      || emission.emitsHandledErrors
+
+    guard emitsAnyEvent else {
+      return function.body
+    }
+
     let instrumentedPlain = self.instrumentedPlain(
       of: function,
       capturesHandledErrors: emission.emitsHandledErrors
     )
-    let emitsThrownFailure = function.isThrowing && emission.emitsFailure
     let capturesTiming = shouldMeasure && (emission.emitsSuccess || emitsThrownFailure)
     let metadata = AutoLogDeclarationMetadata(
       location: self.location(of: function, in: context),
@@ -419,8 +428,18 @@ extension AutoLogMacro {
     let levelTrait = initializer.syntax.attributes.extractTraits(for: .level).first
     let deduplicationTrait = initializer.syntax.attributes.extractTraits(for: .deduplicate).first
     let omitRuleTraits = initializer.syntax.attributes.extractOmitRuleTraits()
+    let emitsThrownFailure = initializer.isThrowing && emission.emitsFailure
+    let emitsAnyEvent = emission.emitsStart
+      || emission.emitsSuccess
+      || emitsThrownFailure
+      || emission.emitsHandledErrors
+
+    guard emitsAnyEvent else {
+      return initializer.body
+    }
+
     let capturesTiming = shouldMeasure && (
-      emission.emitsSuccess || (initializer.isThrowing && emission.emitsFailure)
+      emission.emitsSuccess || emitsThrownFailure
     )
     let metadata = AutoLogDeclarationMetadata(
       location: self.location(of: initializer, in: context),

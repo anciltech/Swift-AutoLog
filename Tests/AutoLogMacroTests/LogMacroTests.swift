@@ -489,6 +489,24 @@ struct LogMacroTests {
   }
 
   @Test
+  func nonthrowingFunction_emitSingleFailures_skipsInstrumentation() throws {
+    assertMacro {
+      #"""
+      @Log(emit: .failures)
+      func foo() -> String {
+        "ok"
+      }
+      """#
+    } expansion: {
+      """
+      func foo() -> String {
+        "ok"
+      }
+      """
+    }
+  }
+
+  @Test
   func boolFunction_withDeduplicateTrait_includesPerEventWindow() throws {
     assertMacro {
       #"""

@@ -144,6 +144,15 @@ public macro AutoLog() = #externalMacro(
   type: "LoggedMacro"
 )
 
+/// Introduces ``Log(measure:)`` to all methods in the attached declaration.
+///
+/// Use `measure: false` when a whole type should skip generated timing work.
+@attached(memberAttribute)
+public macro AutoLog(measure: Bool) = #externalMacro(
+  module: "AutoLogMacro",
+  type: "LoggedMacro"
+)
+
 /// Introduces ``Log(emit:level:omit:tag:measure:)`` to all methods in the
 /// attached declaration using a typed compile-time emission policy.
 ///
@@ -155,11 +164,37 @@ public macro AutoLog(emit emission: AutoLogEmission) = #externalMacro(
 )
 
 /// Introduces ``Log(emit:level:omit:tag:measure:)`` to all methods in the
+/// attached declaration using typed emission and type-wide timing policy.
+///
+/// Example: `@AutoLog(emit: .failures, measure: false)`.
+@attached(memberAttribute)
+public macro AutoLog(
+  emit emission: AutoLogEmission,
+  measure: Bool
+) = #externalMacro(
+  module: "AutoLogMacro",
+  type: "LoggedMacro"
+)
+
+/// Introduces ``Log(emit:level:omit:tag:measure:)`` to all methods in the
 /// attached declaration using a typed compile-time emission policy.
 ///
 /// Example: `@AutoLog(emit: [.failures, .warnings])`.
 @attached(memberAttribute)
 public macro AutoLog(emit emissions: [AutoLogEmission]) = #externalMacro(
+  module: "AutoLogMacro",
+  type: "LoggedMacro"
+)
+
+/// Introduces ``Log(emit:level:omit:tag:measure:)`` to all methods in the
+/// attached declaration using typed emissions and type-wide timing policy.
+///
+/// Example: `@AutoLog(emit: [.failures, .warnings], measure: false)`.
+@attached(memberAttribute)
+public macro AutoLog(
+  emit emissions: [AutoLogEmission],
+  measure: Bool
+) = #externalMacro(
   module: "AutoLogMacro",
   type: "LoggedMacro"
 )

@@ -18,6 +18,7 @@ POLICY_SCENARIOS = [
     ("type filtered", "autolog-type-filtered-output"),
     ("success emit", "autolog-compile-successes-only"),
     ("failure emit", "autolog-compile-failures-only"),
+    ("failure no timing", "autolog-compile-failures-no-measure"),
     ("diagnostics", "autolog-compile-diagnostics"),
 ]
 BUILD_SCENARIOS = [
@@ -31,6 +32,7 @@ FAILURES_SCENARIOS = [
     ("throwing all", "autolog-throwing", CORE_SCENARIO),
     ("runtime failures", "autolog-failures-only-output", THROWING_SCENARIO),
     ("compile failures", "autolog-compile-failures-only", THROWING_SCENARIO),
+    ("compile failures no timing", "autolog-compile-failures-no-measure", THROWING_SCENARIO),
     ("diagnostics", "autolog-compile-diagnostics", THROWING_SCENARIO),
 ]
 MANY_SCENARIOS = [
@@ -39,6 +41,11 @@ MANY_SCENARIOS = [
         "many compile failures",
         "autolog-many-compile-failures-only",
         "autolog-many-throwing",
+    ),
+    (
+        "mixed failures no timing",
+        "autolog-mixed-failures-no-measure",
+        "autolog-many-compile-failures-only",
     ),
 ]
 

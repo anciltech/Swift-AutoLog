@@ -66,6 +66,23 @@ keep locally handled catch-site diagnostics. Prefer runtime output filters when
 you still want the same generated instrumentation available for live settings
 or per-destination routing.
 
+For production targets that only need thrown failures, type-level timing can be
+compiled out at the same call site:
+
+```swift
+@AutoLog(emit: .failures, measure: false)
+struct PaymentService {
+  func submit(_ payment: Payment) async throws -> Receipt {
+    // Failures are emitted without generated duration timing.
+  }
+
+  func cachedReceiptID() -> String {
+    // Nonthrowing methods cannot emit `.failures`, so the macro leaves this
+    // body uninstrumented.
+  }
+}
+```
+
 To keep output definitions as the source of truth, derive the build-time
 ceiling from the same ``AutoLogConfiguration``:
 
