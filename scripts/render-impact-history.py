@@ -5,14 +5,26 @@ from __future__ import annotations
 
 import argparse
 import csv
+import html
 from collections import defaultdict
 from pathlib import Path
 
 
 CORE_SCENARIO = "autolog"
 BASELINE_SCENARIO = "baseline"
+DIRECT_OSLOG_SCENARIO = "direct-oslog"
 THROWING_SCENARIO = "autolog-throwing"
 SWIFTUI_SCENARIO = "autolog-swiftui"
+TEN_PERCENT_BUDGET = 1.10
+RED = "#d32f2f"
+AMBER = "#f59e0b"
+BLUE = "#2563eb"
+BAR = "#6d8fb3"
+TEXT = "#111827"
+MUTED = "#6b7280"
+GRID = "#e5e7eb"
+BACKGROUND = "#ffffff"
+PREVIOUS = "#374151"
 POLICY_SCENARIOS = [
     ("failures output", "autolog-failures-only-output"),
     ("type filtered", "autolog-type-filtered-output"),
@@ -27,6 +39,18 @@ BUILD_SCENARIOS = [
     ("AutoLog", "autolog"),
     ("throwing", "autolog-throwing"),
     ("SwiftUI", "autolog-swiftui"),
+]
+DASHBOARD_SCENARIOS = [
+    ("direct OSLog", "direct-oslog"),
+    ("AutoLog", "autolog"),
+    ("throwing", "autolog-throwing"),
+    ("SwiftUI", "autolog-swiftui"),
+    ("runtime failures", "autolog-failures-only-output"),
+    ("compile failures", "autolog-compile-failures-only"),
+    ("failure no timing", "autolog-compile-failures-no-measure"),
+    ("diagnostics", "autolog-compile-diagnostics"),
+    ("many throwing", "autolog-many-throwing"),
+    ("mixed failures", "autolog-mixed-failures-no-measure"),
 ]
 FAILURES_SCENARIOS = [
     ("throwing all", "autolog-throwing", CORE_SCENARIO),
@@ -132,6 +156,148 @@ xychart-beta
   y-axis "{unit}" {lower} --> {upper}
   {chart_type} [{value_text}]
 ```"""
+
+
+def xml(value: str) -> str:
+    return html.escape(value, quote=True)
+
+
+def svg_number(value: float) -> str:
+    if abs(value) >= 100:
+        return f"{value:.0f}"
+    if abs(value) >= 10:
+        return f"{value:.1f}"
+    return f"{value:.2f}"
+
+
+def nice_unit(value: float, unit: str) -> str:
+    return f"{svg_number(value)} {unit}".strip()
+
+
+def write_bar_svg(
+    path: Path,
+    *,
+    title: str,
+    labels: list[str],
+    values: list[float],
+    unit: str,
+    references: list[tuple[str, float, str]],
+    previous_values: list[float | None] | None = None,
+) -> None:
+    if not labels or not values:
+        return
+
+    previous_values = previous_values or [None] * len(values)
+    reference_values = [value for _, value, _ in references]
+    previous_numeric = [value for value in previous_values if value is not None]
+    max_value = max(values + reference_values + previous_numeric + [1])
+    y_max = max_value * 1.15
+    if y_max <= 0:
+        y_max = 1
+
+    width = max(860, 120 + len(labels) * 96)
+    height = 500
+    left = 78
+    right = 36
+    top = 76
+    plot_height = 270
+    plot_width = width - left - right
+    bottom = top + plot_height
+    slot = plot_width / len(labels)
+    bar_width = min(48, slot * 0.54)
+
+    def y(value: float) -> float:
+        return bottom - (value / y_max) * plot_height
+
+    parts = [
+        f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" viewBox="0 0 {width} {height}">',
+        f'<rect width="{width}" height="{height}" fill="{BACKGROUND}"/>',
+        f'<text x="{left}" y="34" fill="{TEXT}" font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif" font-size="20" font-weight="700">{xml(title)}</text>',
+    ]
+    legend_x = left
+    legend_y = 56
+    for name, value, color in references:
+        dash = ' stroke-dasharray="6 5"' if "10%" in name or "direct" in name.lower() else ""
+        parts.append(f'<line x1="{legend_x}" x2="{legend_x + 24}" y1="{legend_y}" y2="{legend_y}" stroke="{color}" stroke-width="3"{dash}/>')
+        parts.append(f'<text x="{legend_x + 30}" y="{legend_y + 4}" fill="{TEXT}" font-size="12" font-family="Inter, ui-sans-serif, system-ui">{xml(name)} {xml(nice_unit(value, unit))}</text>')
+        legend_x += 178
+    parts.append(f'<line x1="{legend_x}" x2="{legend_x + 24}" y1="{legend_y}" y2="{legend_y}" stroke="{PREVIOUS}" stroke-width="3"/>')
+    parts.append(f'<text x="{legend_x + 30}" y="{legend_y + 4}" fill="{TEXT}" font-size="12" font-family="Inter, ui-sans-serif, system-ui">previous implementation</text>')
+
+    tick_count = 5
+    for tick in range(tick_count + 1):
+        value = y_max * tick / tick_count
+        yy = y(value)
+        parts.append(f'<line x1="{left}" x2="{width - right}" y1="{yy:.1f}" y2="{yy:.1f}" stroke="{GRID}" stroke-width="1"/>')
+        parts.append(f'<text x="{left - 10}" y="{yy + 4:.1f}" text-anchor="end" fill="{MUTED}" font-size="11" font-family="Inter, ui-sans-serif, system-ui">{xml(svg_number(value))}</text>')
+
+    baseline_reference = next((value for name, value, _ in references if "baseline" in name.lower()), None)
+    budget_reference = next((value for name, value, _ in references if "10%" in name), None)
+    if baseline_reference is not None and budget_reference is not None:
+        y1 = min(y(baseline_reference), y(budget_reference))
+        y2 = max(y(baseline_reference), y(budget_reference))
+        parts.append(f'<rect x="{left}" y="{y1:.1f}" width="{plot_width}" height="{max(1, y2 - y1):.1f}" fill="{AMBER}" opacity="0.12"/>')
+
+    for name, value, color in references:
+        yy = y(value)
+        dash = ' stroke-dasharray="6 5"' if "10%" in name or "direct" in name.lower() else ""
+        parts.append(f'<line x1="{left}" x2="{width - right}" y1="{yy:.1f}" y2="{yy:.1f}" stroke="{color}" stroke-width="2.5"{dash}/>')
+
+    for index, (label, value) in enumerate(zip(labels, values)):
+        center = left + slot * index + slot / 2
+        yy = y(value)
+        height_value = max(1, bottom - yy)
+        parts.append(f'<rect x="{center - bar_width / 2:.1f}" y="{yy:.1f}" width="{bar_width:.1f}" height="{height_value:.1f}" rx="4" fill="{BAR}"/>')
+        parts.append(f'<text x="{center:.1f}" y="{yy - 7:.1f}" text-anchor="middle" fill="{TEXT}" font-size="11" font-family="Inter, ui-sans-serif, system-ui">{xml(nice_unit(value, unit))}</text>')
+        previous = previous_values[index]
+        if previous is not None:
+            py = y(previous)
+            parts.append(f'<line x1="{center - bar_width * 0.65:.1f}" x2="{center + bar_width * 0.65:.1f}" y1="{py:.1f}" y2="{py:.1f}" stroke="{PREVIOUS}" stroke-width="3"/>')
+        parts.append(f'<text x="{center:.1f}" y="{bottom + 48:.1f}" text-anchor="end" transform="rotate(-35 {center:.1f} {bottom + 48:.1f})" fill="{TEXT}" font-size="11" font-family="Inter, ui-sans-serif, system-ui">{xml(label)}</text>')
+
+    axis_label = f"{unit}"
+    parts.append(f'<line x1="{left}" x2="{left}" y1="{top}" y2="{bottom}" stroke="{MUTED}" stroke-width="1"/>')
+    parts.append(f'<line x1="{left}" x2="{width - right}" y1="{bottom}" y2="{bottom}" stroke="{MUTED}" stroke-width="1"/>')
+    parts.append(f'<text x="{left}" y="{height - 22}" fill="{MUTED}" font-size="12" font-family="Inter, ui-sans-serif, system-ui">Red = no-logging baseline. Amber band/line = +10% budget. Blue = direct OSLog reference. Gray tick = previous implementation.</text>')
+    parts.append(f'<text x="{left}" y="{top - 22}" fill="{MUTED}" font-size="12" font-family="Inter, ui-sans-serif, system-ui">{xml(axis_label)}</text>')
+    parts.append("</svg>")
+    path.write_text("\n".join(parts) + "\n")
+
+
+def previous_run_id(rows: list[dict[str, str]], run_id: str) -> str | None:
+    run_ids = [candidate for candidate, _ in run_rows(rows)]
+    try:
+        index = run_ids.index(run_id)
+    except ValueError:
+        return None
+    if index == 0:
+        return None
+    return run_ids[index - 1]
+
+
+def percent_over(value: float | None, baseline: float | None) -> float | None:
+    if value is None or baseline in (None, 0):
+        return None
+    return ((value - baseline) / baseline) * 100
+
+
+def format_delta(value: float | None, formatter) -> str:
+    if value is None:
+        return ""
+    prefix = "+" if value > 0 else ""
+    return f"{prefix}{formatter(value)}"
+
+
+def format_percent(value: float | None) -> str:
+    if value is None:
+        return ""
+    return f"{value:+.1f}%"
+
+
+def budget_status(value: float | None, baseline: float | None) -> str:
+    if value is None or baseline in (None, 0):
+        return ""
+    return "ok" if value <= baseline * TEN_PERCENT_BUDGET else "over"
 
 
 def core_delta_charts(
@@ -409,6 +575,186 @@ def format_seconds(value: float | None) -> str:
     return f"{value:.3f}s"
 
 
+def latest_reference_table(
+    aliases: dict[str, str],
+    grouped: dict[str, dict[str, dict[str, str]]],
+    latest: str,
+    previous: str | None,
+    *,
+    field: str,
+    title: str,
+    value_formatter,
+) -> list[str]:
+    baseline = number(grouped[latest].get(BASELINE_SCENARIO), field)
+    direct = number(grouped[latest].get(DIRECT_OSLOG_SCENARIO), field)
+    lines = [
+        f"### {title}",
+        "",
+        "| Scenario | Latest | vs no logging | vs direct OSLog | vs previous implementation | Impact vs no logging | 10% budget |",
+        "|---|---:|---:|---:|---:|---:|---|",
+    ]
+
+    for label, scenario in DASHBOARD_SCENARIOS:
+        latest_value = number(grouped[latest].get(scenario), field)
+        if latest_value is None:
+            continue
+        previous_value = number(grouped[previous].get(scenario), field) if previous else None
+        lines.append(
+            "| "
+            + " | ".join(
+                [
+                    label,
+                    value_formatter(latest_value),
+                    format_delta(latest_value - baseline, value_formatter) if baseline is not None else "",
+                    format_delta(latest_value - direct, value_formatter) if direct is not None else "",
+                    format_delta(latest_value - previous_value, value_formatter) if previous_value is not None else "",
+                    format_percent(percent_over(latest_value, baseline)),
+                    budget_status(latest_value, baseline),
+                ]
+            )
+            + " |"
+        )
+
+    lines.append("")
+    return lines
+
+
+def latest_dashboard_charts(
+    output: Path,
+    aliases: dict[str, str],
+    grouped: dict[str, dict[str, dict[str, str]]],
+    latest: str,
+    previous: str | None,
+) -> list[str]:
+    asset_dir = output.parent / "assets"
+    asset_dir.mkdir(parents=True, exist_ok=True)
+
+    def chart_for_field(
+        *,
+        filename: str,
+        title: str,
+        field: str,
+        unit: str,
+        scenarios: list[tuple[str, str]],
+        scale: float = 1,
+    ) -> str | None:
+        baseline = number(grouped[latest].get(BASELINE_SCENARIO), field)
+        direct = number(grouped[latest].get(DIRECT_OSLOG_SCENARIO), field)
+        if baseline is None:
+            return None
+
+        labels: list[str] = []
+        values: list[float] = []
+        previous_values: list[float | None] = []
+        for label, scenario in scenarios:
+            latest_value = number(grouped[latest].get(scenario), field)
+            if latest_value is None:
+                continue
+            labels.append(label)
+            values.append(latest_value / scale)
+            previous_value = number(grouped[previous].get(scenario), field) if previous else None
+            previous_values.append(previous_value / scale if previous_value is not None else None)
+
+        if not values:
+            return None
+
+        references = [
+            ("baseline", baseline / scale, RED),
+            ("10% budget", (baseline * TEN_PERCENT_BUDGET) / scale, AMBER),
+        ]
+        if direct is not None:
+            references.append(("direct OSLog", direct / scale, BLUE))
+
+        path = asset_dir / filename
+        write_bar_svg(
+            path,
+            title=title,
+            labels=labels,
+            values=values,
+            unit=unit,
+            references=references,
+            previous_values=previous_values,
+        )
+        return f"![{title}](assets/{filename})"
+
+    executable_chart = chart_for_field(
+        filename="impact-latest-raw-executable.svg",
+        title=f"Latest raw executable size vs baseline ({aliases[latest]})",
+        field="executable_bytes",
+        unit="KB",
+        scenarios=DASHBOARD_SCENARIOS,
+        scale=1000,
+    )
+    first_build_chart = chart_for_field(
+        filename="impact-latest-first-build.svg",
+        title=f"Latest first build seconds vs baseline ({aliases[latest]})",
+        field="build_seconds",
+        unit="seconds",
+        scenarios=BUILD_SCENARIOS[1:],
+    )
+    second_build_chart = chart_for_field(
+        filename="impact-latest-second-build.svg",
+        title=f"Latest second build seconds vs baseline ({aliases[latest]})",
+        field="second_build_seconds",
+        unit="seconds",
+        scenarios=BUILD_SCENARIOS[1:],
+    )
+
+    lines = [
+        "## Comparison Dashboard",
+        "",
+        "Use this section first. Red is the no-logging baseline, amber is the",
+        "`+10%` budget over that baseline, blue is direct `OSLog.Logger`, and the",
+        "gray tick on each bar is the previous implementation for the same",
+        "scenario when that scenario existed in the prior run.",
+        "",
+    ]
+    for chart_markup in [executable_chart, first_build_chart, second_build_chart]:
+        if chart_markup:
+            lines.extend([chart_markup, ""])
+
+    lines.extend(
+        latest_reference_table(
+            aliases,
+            grouped,
+            latest,
+            previous,
+            field="executable_bytes",
+            title="Latest Raw Executable Comparison",
+            value_formatter=format_bytes,
+        )
+    )
+    lines.extend(
+        latest_reference_table(
+            aliases,
+            grouped,
+            latest,
+            previous,
+            field="build_seconds",
+            title="Latest First Build Comparison",
+            value_formatter=format_seconds,
+        )
+    )
+    lines.extend(
+        latest_reference_table(
+            aliases,
+            grouped,
+            latest,
+            previous,
+            field="second_build_seconds",
+            title="Latest Second Build Comparison",
+            value_formatter=format_seconds,
+        )
+    )
+    return lines
+
+
+def format_bytes(value: float | None) -> str:
+    if value is None:
+        return ""
+    return f"{value:,.0f} B"
+
+
 def data_table(rows: list[dict[str, str]], aliases: dict[str, str]) -> list[str]:
     lines = [
         "## Data",
@@ -439,10 +785,11 @@ def data_table(rows: list[dict[str, str]], aliases: dict[str, str]) -> list[str]
     return lines
 
 
-def markdown(rows: list[dict[str, str]]) -> str:
+def markdown(rows: list[dict[str, str]], output: Path) -> str:
     aliases = run_aliases(rows)
     grouped = rows_by_run_and_scenario(rows)
     latest = latest_run_id(rows)
+    previous = previous_run_id(rows, latest)
 
     lines = [
         "# AutoLog Binary And Build Impact History",
@@ -473,7 +820,8 @@ def markdown(rows: list[dict[str, str]]) -> str:
             + " |"
         )
 
-    lines.extend(["", *summary_table(rows, aliases, grouped)])
+    lines.extend(["", *latest_dashboard_charts(output, aliases, grouped, latest, previous)])
+    lines.extend(summary_table(rows, aliases, grouped))
     lines.extend(["## Charts", ""])
     lines.extend(core_delta_charts(rows, aliases, grouped))
     lines.extend(swiftui_delta_chart(rows, aliases, grouped))
@@ -493,7 +841,7 @@ def main() -> None:
     args = parser.parse_args()
 
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_text(markdown(read_rows(args.csv)))
+    args.output.write_text(markdown(read_rows(args.csv), args.output))
     print(f"Wrote {args.output}")
 
 
