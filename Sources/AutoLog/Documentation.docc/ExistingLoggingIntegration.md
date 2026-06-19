@@ -78,10 +78,14 @@ Use the smallest bridge that matches the app.
 | Existing stack | Recommended bridge |
 |---|---|
 | OSLog-only app that wants Apple's `Logger` directly | Use `@OSLogger` and `@OSLogged` |
+| swift-log app with an existing `LoggingSystem` backend | Add `AutoLogSwiftLog` and pass `SwiftLogAutoLogger` to `AutoLog.start(logger:configuration:)` |
 | Existing backend plus AutoLog console formatting | Use `AutoLogEventSink` with `AutoLog.start(configuration:sinks:)` |
 | Existing backend owns all formatting, routing, privacy, and delivery | Implement `AutoLogger` and pass it to `AutoLog.start(logger:configuration:)` |
 | Crashlytics, Sentry, Splunk, Datadog, or similar destination | Model the destination as an `AutoLogEventSink` selected by an `AutoLogOutput.route` |
 | Very hot code path | Prefer `@Log` on the specific function, `@Deduplicate`, `@Omit`, `@When`, or explicit `emit:` pruning instead of broad type-level logging |
+
+For named backend examples, see <doc:BackendSinkExamples>. For release gates and
+install checks, see <doc:ProductionInstallChecklist>.
 
 ## Sink Bridge
 
@@ -179,6 +183,38 @@ Use `AutoLogLogger` instead when the app needs route sinks, failure context,
 runtime output filtering, SwiftUI interaction sources, or custom `LogFormat`
 output.
 
+## swift-log Apps
+
+If the app already uses Apple's swift-log facade, add the optional
+`AutoLogSwiftLog` product and route AutoLog events into the existing
+`LoggingSystem` backend:
+
+```swift
+import AutoLog
+import AutoLogSwiftLog
+import Logging
+
+let logger = Logger(label: "com.example.autolog")
+
+AutoLog.start(
+  logger: SwiftLogAutoLogger(logger: logger),
+  configuration: AutoLogConfiguration(
+    outputs: [
+      AutoLogOutput(
+        name: "SwiftLog Failures",
+        route: .console,
+        eventTypes: [.failure, .warning],
+        parameterPrivacy: .omit
+      )
+    ]
+  )
+)
+```
+
+`SwiftLogAutoLogger` respects `AutoLogOutput` event filters and parameter
+privacy before forwarding formatted events and `autolog.*` metadata into
+swift-log.
+
 ## Production Profiles
 
 The verified customer-package production path is explicit macro emission:
@@ -210,6 +246,6 @@ brownfield path:
 scripts/customer-adoption-smoke.sh
 ```
 
-It builds a separate package, calls `AutoLog.start(...)`, routes events to an
-`AutoLogEventSink`, and verifies both default and explicit failures-only macro
-profiles.
+It builds a separate package, verifies the no-sink quick start, calls
+`AutoLog.start(...)`, routes events to an `AutoLogEventSink`, and verifies both
+default and explicit failures-only macro profiles.

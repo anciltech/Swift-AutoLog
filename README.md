@@ -83,6 +83,19 @@ SwiftUI convenience APIs such as `Button.log`, `Binding.log`,
 )
 ```
 
+Apps that already use Apple's swift-log package can add the optional
+`AutoLogSwiftLog` bridge product:
+
+```swift
+.target(
+  name: "MyApp",
+  dependencies: [
+    .product(name: "AutoLog", package: "Swift-AutoLog"),
+    .product(name: "AutoLogSwiftLog", package: "Swift-AutoLog")
+  ]
+)
+```
+
 The `AutoLog` library product supports iOS 17, macOS, and watchOS 11 or newer. The
 runtime uses package-local locking instead of Swift's iOS 18-only
 `Synchronization.Mutex`, so the deployment floor is not tied to that newer API.
@@ -226,8 +239,8 @@ struct PaymentService {
 }
 ```
 
-See <doc:ExistingLoggingIntegration> for OSLog, custom logger, sink, privacy,
-and production-profile guidance.
+See <doc:ExistingLoggingIntegration> for OSLog, swift-log, custom logger, sink,
+privacy, backend examples, release checklist, and production-profile guidance.
 
 ## Add Swift AutoLog to your project
 
