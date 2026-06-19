@@ -23,6 +23,8 @@ public struct AutoLogDeduplication: Sendable, Hashable, Codable {
 }
 
 struct AutoLogDeduplicationState: Sendable {
+  private static let maximumTrackedOmissionFingerprints = 512
+
   var lastEmissionByFingerprint: [String: ContinuousClock.Instant] = [:]
   var omissionCountByFingerprint: [String: Int] = [:]
 
@@ -48,6 +50,7 @@ struct AutoLogDeduplicationState: Sendable {
   ) -> Bool {
     let count = (omissionCountByFingerprint[fingerprint] ?? 0) + 1
     omissionCountByFingerprint[fingerprint] = count
+    pruneOmissionCountsIfNeeded(preserving: fingerprint, count: count)
     return count > upToCount
   }
 
@@ -58,6 +61,15 @@ struct AutoLogDeduplicationState: Sendable {
     lastEmissionByFingerprint = lastEmissionByFingerprint.filter { _, instant in
       now - instant < retentionWindow
     }
+  }
+
+  private mutating func pruneOmissionCountsIfNeeded(
+    preserving fingerprint: String,
+    count: Int
+  ) {
+    guard omissionCountByFingerprint.count > Self.maximumTrackedOmissionFingerprints else { return }
+    omissionCountByFingerprint.removeAll(keepingCapacity: true)
+    omissionCountByFingerprint[fingerprint] = count
   }
 }
 

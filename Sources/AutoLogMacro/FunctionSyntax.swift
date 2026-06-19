@@ -1,7 +1,7 @@
 import SwiftSyntax
 
 @dynamicMemberLookup
-public struct FunctionSyntax {
+struct FunctionSyntax {
   let syntax: FunctionDeclSyntax
   let attributes: [Attribute]
   let signature: Signature
@@ -281,7 +281,7 @@ public struct FunctionSyntax {
 }
 
 @dynamicMemberLookup
-public struct InitializerSyntax {
+struct InitializerSyntax {
   let syntax: InitializerDeclSyntax
   let attributes: [FunctionSyntax.Attribute]
   let signature: FunctionSyntax.Signature

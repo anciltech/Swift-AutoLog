@@ -365,10 +365,10 @@ struct LogMacroTests {
   }
 
   @Test
-  func stringFunction_emitSuccessesOnly_skipsStartEvent() throws {
+  func stringFunction_emitSingleSuccesses_skipsStartEvent() throws {
     assertMacro {
       #"""
-      @Log(emit: "successesOnly")
+      @Log(emit: .successes)
       func foo() -> String {
         return "Foo"
       }
@@ -445,10 +445,10 @@ struct LogMacroTests {
   }
 
   @Test
-  func throwingFunction_emitFailuresOnly_skipsStartAndSuccessEvent() throws {
+  func throwingFunction_emitSingleFailures_skipsStartAndSuccessEvent() throws {
     assertMacro {
       #"""
-      @Log(emit: "failuresOnly")
+      @Log(emit: .failures)
       func foo() throws -> String {
         try risky()
       }

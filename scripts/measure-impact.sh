@@ -19,8 +19,8 @@ Builds equivalent release executables and records binary-size impact:
   - AutoLogSwiftUIProbe: imports the opt-in SwiftUI helper product
   - AutoLogFailuresOnlyProbe: @AutoLog with output configured for failures only
   - AutoLogTypeFilteredProbe: @AutoLog with output filtered to another type
-  - AutoLogCompileSuccessesOnlyProbe: @AutoLog(emit: "successesOnly")
-  - AutoLogCompileFailuresOnlyProbe: @AutoLog(emit: "failuresOnly")
+  - AutoLogCompileSuccessesOnlyProbe: @AutoLog(emit: .successes)
+  - AutoLogCompileFailuresOnlyProbe: @AutoLog(emit: .failures)
   - AutoLogCompileDiagnosticsProbe: @AutoLog(emit: [.failures, .warnings])
 
 The output directory receives summary.csv, summary.md, per-build logs, and
@@ -392,7 +392,7 @@ write_autolog_compile_successes_only_source() {
   cat > "$file" <<'EOF'
 import AutoLog
 
-@AutoLog(emit: "successesOnly")
+@AutoLog(emit: .successes)
 struct ImpactWorker {
   func compute(_ value: Int) -> Int {
     if value.isMultiple(of: 2) {
@@ -419,7 +419,7 @@ enum ImpactError: Error {
   case oddValue
 }
 
-@AutoLog(emit: "failuresOnly")
+@AutoLog(emit: .failures)
 struct ImpactWorker {
   func compute(_ value: Int) throws -> Int {
     if value.isMultiple(of: 2) {

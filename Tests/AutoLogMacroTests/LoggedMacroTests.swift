@@ -105,10 +105,10 @@ struct LoggedMacroTests {
   }
 
   @Test
-  func struct_emitFailuresOnly_preservesCompileTimeEmissionArgument() throws {
+  func struct_emitSingleFailures_preservesCompileTimeEmissionArgument() throws {
     assertMacro {
       #"""
-      @Logged(emit: "failuresOnly")
+      @Logged(emit: .failures)
       struct Foo {
         func bar() {
           print("bar")
@@ -118,7 +118,7 @@ struct LoggedMacroTests {
     } expansion: {
       """
       struct Foo {
-        @Log(emit: "failuresOnly")
+        @Log(emit: .failures)
         func bar() {
           print("bar")
         }

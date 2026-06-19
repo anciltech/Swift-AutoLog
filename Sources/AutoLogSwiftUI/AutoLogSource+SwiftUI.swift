@@ -1587,7 +1587,7 @@ extension View {
         column: Int = #column,
         perform action: @escaping @MainActor (Value) -> Void
     ) -> some View {
-        onChange(of: value) { newValue in
+        onChange(of: value) { _, newValue in
             source.log(fileID: fileID, line: line, column: column) {
                 action(newValue)
             }

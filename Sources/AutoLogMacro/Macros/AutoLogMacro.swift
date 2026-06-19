@@ -112,32 +112,11 @@ struct AutoLogEmissionPlan {
     emitsHandledErrors: true
   )
 
-  static let completionsOnly = AutoLogEmissionPlan(
-    emitsStart: false,
-    emitsSuccess: true,
-    emitsFailure: true,
-    emitsHandledErrors: true
-  )
-
-  static let successesOnly = AutoLogEmissionPlan(
-    emitsStart: false,
-    emitsSuccess: true,
-    emitsFailure: false,
-    emitsHandledErrors: false
-  )
-
-  static let failuresOnly = AutoLogEmissionPlan(
-    emitsStart: false,
-    emitsSuccess: false,
-    emitsFailure: true,
-    emitsHandledErrors: true
-  )
-
   struct UnsupportedEmissionDiagnostic: DiagnosticMessage {
     let value: String
 
     var message: String {
-      "AutoLog emit: expects \"all\", \"completionsOnly\", \"successesOnly\", \"failuresOnly\", a comma-separated string, or a typed array such as [.failures, .warnings]; received \(value)"
+      "AutoLog emit: expects a typed value such as .failures or a typed array such as [.failures, .warnings]; received \(value)"
     }
 
     var diagnosticID: MessageID {
@@ -184,20 +163,17 @@ struct AutoLogEmissionPlan {
       switch normalizedToken(token) {
       case "all":
         return .all
-      case "completions", "completion", "completionsonly":
+      case "completions":
         emitsSuccess = true
         emitsFailure = true
         emitsHandledErrors = true
-      case "successes", "success", "successesonly":
+      case "successes":
         emitsSuccess = true
-      case "failuresonly":
+      case "failures":
         emitsFailure = true
+      case "warnings":
         emitsHandledErrors = true
-      case "failures", "failure", "errors", "error":
-        emitsFailure = true
-      case "warnings", "warning":
-        emitsHandledErrors = true
-      case "starts", "start":
+      case "starts":
         emitsStart = true
       default:
         return nil
@@ -220,17 +196,15 @@ struct AutoLogEmissionPlan {
     }
 
     guard let value = tokenValue(expression) else { return nil }
-    return value
-      .split(separator: ",", omittingEmptySubsequences: true)
-      .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+    return [value]
   }
 
   private static func tokenValue(_ expression: ExprSyntax) -> String? {
-    stringLiteralValue(expression)
-      ?? expression.trimmedDescription
-        .replacingOccurrences(of: " ", with: "")
-        .replacingOccurrences(of: "AutoLogEmission.", with: "")
-        .replacingOccurrences(of: ".", with: "")
+    guard !expression.is(StringLiteralExprSyntax.self) else { return nil }
+    return expression.trimmedDescription
+      .replacingOccurrences(of: " ", with: "")
+      .replacingOccurrences(of: "AutoLogEmission.", with: "")
+      .replacingOccurrences(of: ".", with: "")
   }
 
   private static func normalizedToken(_ value: String) -> String {
@@ -241,13 +215,6 @@ struct AutoLogEmissionPlan {
       .replacingOccurrences(of: "_", with: "")
       .replacingOccurrences(of: "-", with: "")
       .lowercased()
-  }
-
-  private static func stringLiteralValue(_ expression: ExprSyntax) -> String? {
-    guard let literal = expression.as(StringLiteralExprSyntax.self) else { return nil }
-    return literal.segments.compactMap { segment in
-      segment.as(StringSegmentSyntax.self)?.content.text
-    }.joined()
   }
 }
 

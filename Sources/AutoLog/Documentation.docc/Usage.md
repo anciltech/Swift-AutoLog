@@ -471,7 +471,7 @@ wrapper code emitted by the macro. Use `emit:` when the source itself should
 compile a narrower wrapper:
 
 ```swift
-@AutoLog(emit: [.failures, .warnings])
+@AutoLog(emit: .failures)
 struct PaymentService {
   func submit(_ payment: Payment) async throws -> Receipt {
     // Successful completions return normally without start/success event code.
@@ -482,10 +482,10 @@ struct PaymentService {
 Use ``AutoLogEmission/completions`` to skip start rows while keeping successes
 and failures, ``AutoLogEmission/successes`` for success-only probes,
 ``AutoLogEmission/failures`` for thrown failures, and
-``AutoLogEmission/warnings`` for locally handled catch-site diagnostics. String
-aliases such as `"failuresOnly"` and comma-separated strings such as
-`"failures,warnings"` remain accepted for compatibility. `emit:` is
-intentionally explicit at the macro call site; mutable
+``AutoLogEmission/warnings`` for locally handled catch-site diagnostics. Pass
+a single case for one generated path or an array such as
+`@AutoLog(emit: [.failures, .warnings])` when multiple paths are required.
+`emit:` is intentionally explicit at the macro call site; mutable
 ``AutoLogConfiguration`` settings still run after an event exists and cannot
 remove generated code from the binary.
 

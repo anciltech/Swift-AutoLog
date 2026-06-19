@@ -168,7 +168,7 @@ emission pruning over runtime output filtering:
 ```swift
 import AutoLog
 
-@AutoLog(emit: [.failures, .warnings])
+@AutoLog(emit: .failures)
 struct PaymentService {
   func submit(_ payment: Payment) async throws -> Receipt {
     // Successes return normally without generating start/success log code.
@@ -177,11 +177,12 @@ struct PaymentService {
 ```
 
 The typed values include `.starts`, `.successes`, `.failures`, `.warnings`,
-`.completions`, and `.all`. String aliases such as `"failuresOnly"` and
-comma-separated strings such as `"failures,warnings"` are still accepted for
-compatibility. Runtime `AutoLogConfiguration` filters still decide which
-constructed events reach each output, but `emit:` changes what wrapper code the
-macro generates in the first place.
+`.completions`, and `.all`. Use a single case for one path, such as
+`@AutoLog(emit: .failures)`, or an array for combined policies, such as
+`@AutoLog(emit: [.failures, .warnings])`. Runtime
+`AutoLogConfiguration` filters still decide which constructed events reach each
+output, but `emit:` changes what wrapper code the macro generates in the first
+place.
 
 When outputs are the source of truth, derive the build ceiling from the same
 configuration:

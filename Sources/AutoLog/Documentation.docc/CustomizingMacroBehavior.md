@@ -49,7 +49,7 @@ Use `emit:` when a function or type should never compile some event paths into
 the wrapper:
 
 ```swift
-@AutoLog(emit: [.failures, .warnings])
+@AutoLog(emit: .failures)
 struct PaymentService {
   func submit(_ payment: Payment) async throws -> Receipt {
     // ...
@@ -60,14 +60,11 @@ struct PaymentService {
 The typed values are ``AutoLogEmission/all``, ``AutoLogEmission/starts``,
 ``AutoLogEmission/successes``, ``AutoLogEmission/failures``,
 ``AutoLogEmission/warnings``, and ``AutoLogEmission/completions``.
-`.failures` keeps thrown-error rows, while `.warnings` keeps locally handled
-catch-site diagnostics. The legacy string values remain available:
-`emit: "all"` keeps the default start, success, failure, and handled-error
-behavior, `emit: "completionsOnly"` skips start events,
-`emit: "successesOnly"` keeps only successful completion rows, and
-`emit: "failuresOnly"` keeps thrown and handled-error rows. Prefer runtime
-output filters when you still want the same generated instrumentation available
-for live settings or per-destination routing.
+`.failures` keeps thrown-error rows. Use an array when a call site needs more
+than one path, for example `@AutoLog(emit: [.failures, .warnings])` to also
+keep locally handled catch-site diagnostics. Prefer runtime output filters when
+you still want the same generated instrumentation available for live settings
+or per-destination routing.
 
 To keep output definitions as the source of truth, derive the build-time
 ceiling from the same ``AutoLogConfiguration``:

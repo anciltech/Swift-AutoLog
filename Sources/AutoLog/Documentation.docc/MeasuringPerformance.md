@@ -96,8 +96,6 @@ The next hot-path targets worth exploring are:
   `AutoLogSource.withCallSiteDepth(...)`
 - avoid runtime-filtered start work when a build or output profile never emits
   `.start` events
-- collapse duplicate output matching on the common `emitIfEnabled` to
-  `AutoLogLogger.emit` path while keeping direct protocol `emit` defensive
 - add benchmarks for start-disabled wrappers, output fan-out, parameter privacy,
   custom formats, and failure-context-heavy paths
 - continue looking for macro-generation opportunities that reduce work without
@@ -105,22 +103,45 @@ The next hot-path targets worth exploring are:
 
 ## Latest local evaluation
 
-The 2026-06-19 production failures-only review reran the impact probe after
-adding an equivalent throwing `@AutoLog` baseline and isolated first/second
-build paths per scenario. That matters because failures-only instrumentation
-necessarily includes throwing control flow. Against the default throwing
-baseline, runtime-filtered failures-only added `960` raw executable bytes,
-compile-time `@AutoLog(emit: "failuresOnly")` added `840` raw bytes, and
-`@AutoLog(emit: [.failures, .warnings])` added `760` raw bytes. All three
-variants added only `24` stripped bytes and no `__TEXT` growth.
+The 2026-06-19 follow-up pass removed the legacy string-literal `emit:` macro
+overloads and singular/error aliases, kept the typed case API
+(`@AutoLog(emit: .failures)` and
+`@AutoLog(emit: [.failures, .warnings])`), and reran the impact probe with
+isolated first/second build paths per scenario.
+
+The retained emission representation is a trimmed `RawRepresentable` value:
+it keeps the typed macro syntax while measuring smaller than the enum and
+static-value alternatives. The rejected emission-shape experiments are worth
+remembering: a public enum was semantically tidy but pushed the core probe over
+an extra `__TEXT` page, while static `String` and `UInt8` wrappers measured
+larger for the production failures-only probe.
+
+The final follow-up probe reported:
+
+| Scenario | Executable bytes | Stripped bytes | `__TEXT` bytes | First build | Second build |
+|---|---:|---:|---:|---:|---:|
+| `autolog` | `897,056` | `498,600` | `327,680` | `19.097s` | `1.112s` |
+| `autolog-throwing` | `934,696` | `532,360` | `344,064` | `16.698s` | `1.191s` |
+| `autolog-failures-only-output` | `935,624` | `532,368` | `344,064` | `16.892s` | `1.210s` |
+| `autolog-compile-failures-only` | `919,008` | `515,872` | `327,680` | `17.155s` | `1.242s` |
+| `autolog-compile-diagnostics` | `935,424` | `532,384` | `344,064` | `16.986s` | `1.494s` |
+
+Against the default throwing baseline, runtime-filtered failures-only added
+`928` raw bytes, `8` stripped bytes, and no `__TEXT` growth. Compile-time
+`@AutoLog(emit: .failures)` was smaller than the throwing baseline by
+`15,688` raw bytes, `16,488` stripped bytes, and one `16,384` byte `__TEXT`
+page. `@AutoLog(emit: [.failures, .warnings])` stayed close to the throwing
+baseline, adding `728` raw bytes, `24` stripped bytes, and no `__TEXT` growth.
 
 The practical production guidance is to use compile-time `emit:` pruning for
 targets that only need failure diagnostics, while treating runtime output
 filters as log-volume, routing, and privacy policy rather than binary-size
-reduction. The remaining binary-size lever is a smaller product/logger split
-that avoids linking the full default formatter, live configuration store,
-route fan-out, and rolling failure-context machinery when an app only needs
-minimal failure telemetry.
+reduction. A runtime fast path that tried to collapse duplicate output matching
+was measured and rejected because it added roughly `30 KB` and another
+`__TEXT` page to the release probes. The remaining large binary-size lever is a
+smaller product/logger split that avoids linking the full default formatter,
+live configuration store, route fan-out, and rolling failure-context machinery
+when an app only needs minimal failure telemetry.
 
 The 2026-06-18 main-branch review reran the release benchmark helper and
 appended normal and loaded runs to the project history. On that machine, the
@@ -202,8 +223,8 @@ The probe builds release executables with equivalent control flow: a plain
 Swift baseline, a direct `OSLog.Logger` variant, a core `@AutoLog` variant, a
 default throwing `@AutoLog` variant, an `AutoLogSwiftUI` opt-in helper variant,
 runtime-filtered output variants, and compile-time `emit:` variants such as
-`@AutoLog(emit: "failuresOnly")` and
-`@AutoLog(emit: [.failures, .warnings])`. It writes `summary.csv`,
+`@AutoLog(emit: .failures)` and `@AutoLog(emit: [.failures, .warnings])`.
+It writes `summary.csv`,
 `summary.md`, build logs, and linked-dylib lists under `.build/impact-runs/`.
 Each scenario uses its own build path, so first-build timings are comparable
 across products. The probe immediately repeats the same build to capture

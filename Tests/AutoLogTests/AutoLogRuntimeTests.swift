@@ -1,4 +1,4 @@
-import AutoLog
+@testable import AutoLog
 import Foundation
 import Testing
 
@@ -142,7 +142,7 @@ struct AutoLogRuntimeTests {
     let buildConfiguration = configuration.derivedBuildConfiguration
 
     #expect(buildConfiguration.emissions == [.failures])
-    #expect(buildConfiguration.macroEmitArgument == "[.failures]")
+    #expect(buildConfiguration.macroEmitArgument == ".failures")
   }
 
   @Test
@@ -388,6 +388,20 @@ struct AutoLogRuntimeTests {
       "func sampleSelection(frameID: Int) -> Bool",
     ])
     #expect((logger.events.first?.deduplicateWithin) == .seconds(1))
+  }
+
+  @Test
+  func omissionRuleTrackingPrunesFingerprints() {
+    var state = AutoLogDeduplicationState()
+
+    for index in 0...600 {
+      _ = state.shouldEmitForOmissionRule(
+        fingerprint: "omitted-\(index)",
+        upToCount: 1
+      )
+    }
+
+    #expect(state.omissionCountByFingerprint.count <= 512)
   }
 
   @Test
