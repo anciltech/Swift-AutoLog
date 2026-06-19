@@ -103,6 +103,73 @@ In Xcode:
 
 When you first build after importing the package, Xcode will prompt you to enable macros from the dependency.
 
+## Add to a project with existing logging
+
+For brownfield apps, keep the existing backend and let Swift AutoLog generate
+function-boundary events:
+
+1. Add the `AutoLog` product.
+2. Bootstrap once with `AutoLog.start(...)`.
+3. Add an `AutoLogEventSink` for the existing backend.
+4. Tag app-owned service, view-model, use-case, repository, or data-source
+   types with `@AutoLog`.
+
+```swift
+import AutoLog
+
+struct ExistingBackendSink: AutoLogEventSink {
+  let route: AutoLogRoute = .splunk
+
+  func emit(event: AutoLogEvent, configuration: AutoLogConfiguration) {
+    ExistingBackend.shared.send([
+      "type": event.inferredTypeName,
+      "function": event.functionName,
+      "outcome": event.outputEventType.rawValue
+    ])
+  }
+}
+
+AutoLog.start(
+  configuration: AutoLogConfiguration(
+    outputs: [
+      AutoLogOutput(
+        name: "Existing Backend",
+        route: .splunk,
+        eventTypes: [.failure, .warning],
+        parameterPrivacy: .omit
+      )
+    ]
+  ),
+  sinks: [ExistingBackendSink()]
+)
+```
+
+Then annotate the behavior you want to observe:
+
+```swift
+@AutoLog
+struct PaymentService {
+  func submit(_ payment: Payment) async throws -> Receipt {
+    try await api.submit(payment)
+  }
+}
+```
+
+For production targets that only need thrown failures, the verified customer
+path is explicit compile-time emission:
+
+```swift
+@AutoLog(emit: .failures, measure: false)
+struct PaymentService {
+  func submit(_ payment: Payment) async throws -> Receipt {
+    try await api.submit(payment)
+  }
+}
+```
+
+See <doc:ExistingLoggingIntegration> for OSLog, custom logger, sink, privacy,
+and production-profile guidance.
+
 ## Add Swift AutoLog to your project
 
 Import the package in the files where you want to use it:
