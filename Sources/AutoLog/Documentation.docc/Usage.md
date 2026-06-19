@@ -501,11 +501,16 @@ let buildConfiguration = configuration.derivedBuildConfiguration
 ```
 
 Bare `@AutoLog` and `@Log` annotations read `AUTOLOG_MACRO_EMIT` and
-`AUTOLOG_MACRO_MEASURE` when explicit macro arguments are absent. This lets a
-production build compile only the selected event paths without adding
+`AUTOLOG_MACRO_MEASURE` when explicit macro arguments are absent and those
+values are visible to macro expansion. This can let a production build compile
+only the selected event paths without adding
 `@AutoLog(emit: .failures, measure: false)` across every type. Treat those
 environment values as build inputs: when they change, clean the target or make
 the values part of the CI cache key so affected macro expansions are rebuilt.
+Before relying on this in a customer build, verify that the build system passes
+those variables to macro expansion. The repository's customer SwiftPM smoke
+fixture currently verifies the explicit `emit:` form because raw environment
+variables did not propagate there.
 
 Use ``AutoLogEmission/completions`` to skip start rows while keeping successes
 and failures, ``AutoLogEmission/successes`` for success-only probes,
@@ -513,9 +518,10 @@ and failures, ``AutoLogEmission/successes`` for success-only probes,
 ``AutoLogEmission/warnings`` for locally handled catch-site diagnostics. Pass
 a single case for one generated path or an array such as
 `@AutoLog(emit: [.failures, .warnings])` when multiple paths are required.
-Explicit `emit:` and `measure:` arguments remain useful for local overrides,
-benchmarks, and generated source. Methods that cannot emit any selected event
-path, such as nonthrowing methods under `.failures`, are left uninstrumented.
+Explicit `emit:` and `measure:` arguments remain useful for production source,
+local overrides, benchmarks, and generated source. Methods that cannot emit any
+selected event path, such as nonthrowing methods under `.failures`, are left
+uninstrumented.
 
 If the runtime outputs are the desired source of truth, use
 ``AutoLogConfiguration/derivedBuildConfiguration`` to generate the default

@@ -81,12 +81,15 @@ let buildConfiguration = configuration.derivedBuildConfiguration
 // ]
 ```
 
-With those environment values present during compilation, plain `@AutoLog`
+With those environment values present during macro expansion, plain `@AutoLog`
 generates only the selected paths. `AUTOLOG_MACRO_EMIT` accepts values such as
 `.failures`, `[.failures, .warnings]`, `failures,warnings`, `all`, or `none`.
 `AUTOLOG_MACRO_MEASURE` accepts `true` or `false`. Treat these values as build
 inputs: when they change, clean the target or make the values part of the CI
-cache key so affected macro expansions are rebuilt.
+cache key so affected macro expansions are rebuilt. Also verify propagation in
+the customer's build system before relying on this path; the repository's
+current customer SwiftPM smoke fixture verifies the explicit `emit:` form
+because raw environment variables did not reach macro expansion there.
 
 The typed values are ``AutoLogEmission/all``, ``AutoLogEmission/starts``,
 ``AutoLogEmission/successes``, ``AutoLogEmission/failures``,
@@ -97,9 +100,9 @@ keep locally handled catch-site diagnostics. Prefer runtime output filters when
 you still want the same generated instrumentation available for live settings
 or per-destination routing.
 
-Explicit `emit:` and `measure:` arguments are still available for local
-overrides, experiments, and generated source. They are not required for the
-normal production workflow:
+Explicit `emit:` and `measure:` arguments are still available for production
+profiles, local overrides, experiments, and generated source. They are the
+verified customer-package path today:
 
 ```swift
 @AutoLog(emit: .failures, measure: false)
