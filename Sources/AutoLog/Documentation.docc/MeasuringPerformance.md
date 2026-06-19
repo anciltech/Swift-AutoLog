@@ -85,6 +85,8 @@ formatter passes for the same event do not re-sort multi-parameter labels.
 Failure events now also snapshot the logger's recent-context buffer once per
 emit and derive each output profile's context limit from that snapshot, avoiding
 repeated lock reads when a failure fans out to multiple outputs.
+Filtered events now also avoid capturing execution context before output and
+deduplication checks pass.
 
 ## Current performance TODOs
 
@@ -94,8 +96,8 @@ The next hot-path targets worth exploring are:
   work; the current macro-generated wrappers always read
   `AutoLogSource.nextCallSiteDepth` and scope the body with
   `AutoLogSource.withCallSiteDepth(...)`
-- avoid runtime-filtered start work when a build or output profile never emits
-  `.start` events
+- avoid generated start calls entirely when build policy guarantees no `.start`
+  events
 - add benchmarks for start-disabled wrappers, output fan-out, parameter privacy,
   custom formats, failure-context-heavy paths, and many-call-site app-style
   mixes beyond the current throwing failures-only scale probe

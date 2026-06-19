@@ -859,10 +859,11 @@ extension AutoLogger {
     configuration: AutoLogConfiguration,
     deduplicator: AutoLogDeduplicator
   ) {
+    guard configuration.shouldEmit(event) else { return }
+    guard deduplicator.shouldEmit(event: event, configuration: configuration) else { return }
+
     var enrichedEvent = event
     enrichedEvent.executionContext = .capture()
-    guard configuration.shouldEmit(enrichedEvent) else { return }
-    guard deduplicator.shouldEmit(event: enrichedEvent, configuration: configuration) else { return }
     emit(event: enrichedEvent, configuration: configuration)
   }
 

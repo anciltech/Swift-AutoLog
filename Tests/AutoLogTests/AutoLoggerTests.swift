@@ -275,6 +275,55 @@ struct AutoLoggerTests {
   }
 
   @Test
+  func emitStartSkipsOutputsWithoutStartEvents() {
+    let logger = MockLogger()
+    let configuration = AutoLogConfiguration(
+      outputs: [
+        AutoLogOutput(
+          name: "Failures",
+          route: .console,
+          eventTypes: [.failure]
+        )
+      ]
+    )
+
+    logger.emitStart(
+      event: AutoLogEvent(
+        location: "App/AuthViewModel.swift:1:1",
+        declaration: "func login()"
+      ),
+      configuration: configuration
+    )
+
+    #expect(logger.events.isEmpty)
+  }
+
+  @Test
+  func emitStartStillHonorsTypeFiltersWhenStartOutputExists() {
+    let logger = MockLogger()
+    let configuration = AutoLogConfiguration(
+      outputs: [
+        AutoLogOutput(
+          name: "Other Starts",
+          route: .console,
+          eventTypes: [.start],
+          typeNameFilters: ["OtherViewModel"]
+        )
+      ]
+    )
+
+    logger.emitStart(
+      event: AutoLogEvent(
+        location: "App/AuthViewModel.swift:1:1",
+        declaration: "func login()"
+      ),
+      configuration: configuration
+    )
+
+    #expect(logger.events.isEmpty)
+  }
+
+  @Test
   func startEventsAreControlledByOutputEventTypes() {
     let sink = MockEventSink(route: .firebase)
     let logger = AutoLogLogger(formatter: MockFormatter(), sinks: [sink])
