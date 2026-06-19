@@ -10,13 +10,30 @@ instrumentation and keep their existing destination as an output sink. The
 customer-facing setup is:
 
 1. Add the `AutoLog` product.
-2. Bootstrap the runtime once with `AutoLog.start(...)`.
-3. Add one or more sinks for existing backends.
-4. Tag app-owned service, view-model, use-case, repository, or data-source
+2. Bootstrap the runtime once with `AutoLog.start()`.
+3. Tag app-owned service, view-model, use-case, repository, or data-source
    types with `@AutoLog`.
+4. Add one or more sinks for existing backends when events should leave the
+   default console path.
 5. Use explicit production macro profiles such as
    `@AutoLog(emit: .failures, measure: false)` when the build should prune
    success rows.
+
+```swift
+import AutoLog
+
+AutoLog.start()
+
+@AutoLog
+struct PaymentService {
+  func refreshStatus(id: String) async throws -> PaymentStatus {
+    try await api.status(id: id)
+  }
+}
+```
+
+When the existing backend should receive selected events, keep the same tagged
+types and add a sink-backed configuration:
 
 ```swift
 import AutoLog

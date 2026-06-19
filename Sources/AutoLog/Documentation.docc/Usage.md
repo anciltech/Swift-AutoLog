@@ -34,6 +34,66 @@ import AutoLog
 // ...
 ```
 
+## Quick start
+
+The minimum setup is:
+
+1. Add the `AutoLog` product to the target you want to observe.
+2. Call ``AutoLog/start(logger:configuration:configurationStore:refreshInterval:)``
+   once during app startup. Use `AutoLog.start()` when the default console
+   logger and default configuration are enough.
+3. Mark the main app-owned types with ``AutoLog(using:)``.
+
+```swift
+// MyApp.swift
+import AutoLog
+import SwiftUI
+
+@main
+struct MyApp: App {
+  init() {
+    AutoLog.start()
+  }
+
+  var body: some Scene {
+    WindowGroup {
+      ContentView()
+    }
+  }
+}
+```
+
+```swift
+// PaymentsViewModel.swift
+import AutoLog
+
+@AutoLog
+@MainActor
+final class PaymentsViewModel {
+  private let service: PaymentService
+
+  init(service: PaymentService) {
+    self.service = service
+  }
+
+  func submit(orderID: String) async throws {
+    try await service.submit(orderID: orderID)
+  }
+}
+
+@AutoLog
+struct PaymentService {
+  func submit(orderID: String) async throws {
+    try await api.submit(orderID: orderID)
+  }
+}
+```
+
+Start with view models, services, use cases, repositories, and data sources so
+the first logs show architecture flow. Use method-level ``Log(using:)`` for
+very hot functions, framework adapter callbacks, or isolated events that should
+not make an entire type noisy.
+
 ## Mark a declaration with the @AutoLog macro
 Mark `FavoriteFactsModel` with ``AutoLog(using:)`` annotation. Order in which this annotation is attached does not matter.
 ```swift

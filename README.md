@@ -103,6 +103,65 @@ In Xcode:
 
 When you first build after importing the package, Xcode will prompt you to enable macros from the dependency.
 
+## Quick start
+
+The fastest path is deliberately small:
+
+1. Add the `AutoLog` product to the app, framework, or package target you want
+   to observe.
+2. Call `AutoLog.start()` once during startup.
+3. Mark your main app-owned types with `@AutoLog`.
+
+For a SwiftUI app, bootstrap in the app entry point:
+
+```swift
+import AutoLog
+import SwiftUI
+
+@main
+struct MyApp: App {
+  init() {
+    AutoLog.start()
+  }
+
+  var body: some Scene {
+    WindowGroup {
+      ContentView()
+    }
+  }
+}
+```
+
+Then tag the behavior that explains the app flow:
+
+```swift
+import AutoLog
+
+@AutoLog
+final class PaymentsViewModel {
+  private let service: PaymentService
+
+  init(service: PaymentService) {
+    self.service = service
+  }
+
+  func submit(orderID: String) async throws {
+    try await service.submit(orderID: orderID)
+  }
+}
+
+@AutoLog
+struct PaymentService {
+  func submit(orderID: String) async throws {
+    try await api.submit(orderID: orderID)
+  }
+}
+```
+
+Start with view models, services, use cases, repositories, and data sources.
+For very hot paths or framework adapter callbacks, add `@Log` only where that
+specific function is useful signal.
+
 ## Add to a project with existing logging
 
 For brownfield apps, keep the existing backend and let Swift AutoLog generate
