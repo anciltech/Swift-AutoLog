@@ -78,7 +78,7 @@ Use the smallest bridge that matches the app.
 | Existing stack | Recommended bridge |
 |---|---|
 | OSLog-only app that wants Apple's `Logger` directly | Use `@OSLogger` and `@OSLogged` |
-| swift-log app with an existing `LoggingSystem` backend | Add `AutoLogSwiftLog` and pass `SwiftLogAutoLogger` to `AutoLog.start(logger:configuration:)` |
+| App with an existing logging facade | Implement `AutoLogEventSink` or `AutoLogger` and pass it to `AutoLog.start(...)` |
 | Existing backend plus AutoLog console formatting | Use `AutoLogEventSink` with `AutoLog.start(configuration:sinks:)` |
 | Existing backend owns all formatting, routing, privacy, and delivery | Implement `AutoLogger` and pass it to `AutoLog.start(logger:configuration:)` |
 | Crashlytics, Sentry, Splunk, Datadog, or similar destination | Model the destination as an `AutoLogEventSink` selected by an `AutoLogOutput.route` |
@@ -183,37 +183,32 @@ Use `AutoLogLogger` instead when the app needs route sinks, failure context,
 runtime output filtering, SwiftUI interaction sources, or custom `LogFormat`
 output.
 
-## swift-log Apps
+## Existing Logging Facades
 
-If the app already uses Apple's swift-log facade, add the optional
-`AutoLogSwiftLog` product and route AutoLog events into the existing
-`LoggingSystem` backend:
+If the app already uses another logging facade, keep that dependency in the app
+target and bridge AutoLog through a small sink:
 
 ```swift
 import AutoLog
-import AutoLogSwiftLog
-import Logging
 
-let logger = Logger(label: "com.example.autolog")
+struct ExistingLoggerSink: AutoLogEventSink {
+  let route = AutoLogRoute("existingLogger")
 
-AutoLog.start(
-  logger: SwiftLogAutoLogger(logger: logger),
-  configuration: AutoLogConfiguration(
-    outputs: [
-      AutoLogOutput(
-        name: "SwiftLog Failures",
-        route: .console,
-        eventTypes: [.failure, .warning],
-        parameterPrivacy: .omit
-      )
-    ]
-  )
-)
+  func emit(event: AutoLogEvent, configuration _: AutoLogConfiguration) {
+    ExistingLogger.shared.log(
+      level: event.outputEventType == .failure ? .error : .info,
+      message: "\(event.inferredTypeName).\(event.functionName)",
+      metadata: [
+        "autolog.event": event.outputEventType.rawValue,
+        "autolog.location": event.shortLocation
+      ]
+    )
+  }
+}
 ```
 
-`SwiftLogAutoLogger` respects `AutoLogOutput` event filters and parameter
-privacy before forwarding formatted events and `autolog.*` metadata into
-swift-log.
+Use `AutoLogOutput` event filters and parameter privacy to decide which events
+reach that sink before forwarding into the app-owned logging facade.
 
 ## Production Profiles
 

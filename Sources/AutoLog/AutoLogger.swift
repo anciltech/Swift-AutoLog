@@ -608,7 +608,7 @@ public struct AutoLogEvent: @unchecked Sendable, CustomStringConvertible, Custom
   }
 }
 
-// TODO: 23122K - Consider using swift-log as a fallback when not running on Apple platforms
+// TODO: 23122K - Consider a portable fallback sink when not running on Apple platforms.
 public protocol AutoLogEventSink: Sendable {
   /// The route name this sink listens for.
   var route: AutoLogRoute { get }

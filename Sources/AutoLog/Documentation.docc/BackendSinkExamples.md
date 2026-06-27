@@ -171,32 +171,28 @@ struct DatadogAutoLogSink: AutoLogEventSink {
 }
 ```
 
-## swift-log
+## Existing Logging Facade
 
-Use the optional `AutoLogSwiftLog` product when the app already bootstraps
-swift-log:
+If an app already has a logging facade, bridge AutoLog with an app-owned sink so
+the base package does not need another logging dependency:
 
 ```swift
 import AutoLog
-import AutoLogSwiftLog
-import Logging
 
-let logger = Logger(label: "com.example.autolog")
+struct ExistingLoggerSink: AutoLogEventSink {
+  let route = AutoLogRoute("existingLogger")
 
-AutoLog.start(
-  logger: SwiftLogAutoLogger(logger: logger),
-  configuration: AutoLogConfiguration(
-    outputs: [
-      AutoLogOutput(
-        name: "SwiftLog",
-        eventTypes: [.failure, .warning],
-        parameterPrivacy: .omit
-      )
-    ]
-  )
-)
+  func emit(event: AutoLogEvent, configuration _: AutoLogConfiguration) {
+    ExistingLogger.shared.log(
+      level: event.outputEventType == .failure ? .error : .info,
+      message: "\(event.inferredTypeName).\(event.functionName)",
+      metadata: [
+        "autolog.event": event.outputEventType.rawValue,
+        "autolog.type": event.inferredTypeName,
+        "autolog.function": event.functionName,
+        "autolog.location": event.shortLocation,
+      ]
+    )
+  }
+}
 ```
-
-The bridge forwards formatted messages and metadata keys such as
-`autolog.event`, `autolog.type`, `autolog.function`, `autolog.location`, and
-`autolog.route`.

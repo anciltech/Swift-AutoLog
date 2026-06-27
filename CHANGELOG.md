@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.10.0 - 2026-06-27
+
+### Changed
+
+- Removed the optional `AutoLogSwiftLog` bridge product so the base
+  `Swift-AutoLog` package no longer resolves Apple's `swift-log` dependency for
+  clients that only use `AutoLog` or `AutoLogSwiftUI`.
+- Updated backend integration docs to recommend app-owned `AutoLogEventSink` or
+  `AutoLogger` adapters for existing logging facades.
+
 ## 0.9.2 - 2026-06-27
 
 ### Changed

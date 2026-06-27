@@ -19,10 +19,6 @@ let package = Package(
       targets: ["AutoLogSwiftUI"]
     ),
     .library(
-      name: "AutoLogSwiftLog",
-      targets: ["AutoLogSwiftLog"]
-    ),
-    .library(
       name: "AutoLogSettingsUI",
       targets: ["AutoLogSettingsUI"]
     ),
@@ -43,10 +39,6 @@ let package = Package(
     .package(
       url: "https://github.com/swiftlang/swift-docc-plugin",
       from: "1.4.4"
-    ),
-    .package(
-      url: "https://github.com/apple/swift-log.git",
-      from: "1.6.0"
     ),
   ],
   targets: [
@@ -75,16 +67,6 @@ let package = Package(
         "AutoLog"
       ]
     ),
-    .target(
-      name: "AutoLogSwiftLog",
-      dependencies: [
-        "AutoLog",
-        .product(
-          name: "Logging",
-          package: "swift-log"
-        ),
-      ]
-    ),
     .testTarget(
       name: "AutoLogMacroTests",
       dependencies: [
@@ -104,7 +86,6 @@ let package = Package(
       dependencies: [
         "AutoLog",
         "AutoLogSwiftUI",
-        "AutoLogSwiftLog",
       ]
     ),
     .target(

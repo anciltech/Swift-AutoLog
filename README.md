@@ -56,7 +56,7 @@ Swift AutoLog can record when a function exits early from `guard`, `if`, `else i
 Add the dependency to your `Package.swift`:
 
 ```swift
-.package(url: "https://github.com/anciltech/Swift-AutoLog.git", from: "0.9.2"),
+.package(url: "https://github.com/anciltech/Swift-AutoLog.git", from: "0.10.0"),
 ```
 
 Then add `AutoLog` to the target that should use the macros:
@@ -79,19 +79,6 @@ SwiftUI convenience APIs such as `Button.log`, `Binding.log`,
   dependencies: [
     .product(name: "AutoLog", package: "Swift-AutoLog"),
     .product(name: "AutoLogSwiftUI", package: "Swift-AutoLog")
-  ]
-)
-```
-
-Apps that already use Apple's swift-log package can add the optional
-`AutoLogSwiftLog` bridge product:
-
-```swift
-.target(
-  name: "MyApp",
-  dependencies: [
-    .product(name: "AutoLog", package: "Swift-AutoLog"),
-    .product(name: "AutoLogSwiftLog", package: "Swift-AutoLog")
   ]
 )
 ```
@@ -239,7 +226,7 @@ struct PaymentService {
 }
 ```
 
-See <doc:ExistingLoggingIntegration> for OSLog, swift-log, custom logger, sink,
+See <doc:ExistingLoggingIntegration> for OSLog, custom logger, sink,
 privacy, backend examples, release checklist, and production-profile guidance.
 
 ## Add Swift AutoLog to your project
