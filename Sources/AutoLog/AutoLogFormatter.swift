@@ -970,7 +970,7 @@ public struct CompactFormatter: AutoLogFormatter {
       if isClearlyValueDescription(description) {
         return mode == .collectionElement
           ? truncatedDescription(description)
-          : description
+          : prettyPrintedDescriptionIfNeeded(description)
       }
     }
 
@@ -983,7 +983,7 @@ public struct CompactFormatter: AutoLogFormatter {
       return truncatedDescription(description)
     }
 
-    return description
+    return prettyPrintedDescriptionIfNeeded(description)
   }
 
   private func formatOptional(
@@ -1220,6 +1220,126 @@ public struct CompactFormatter: AutoLogFormatter {
   private func truncatedDescription(_ description: String, limit: Int = 160) -> String {
     guard description.count > limit else { return description }
     return String(description.prefix(limit)) + "..."
+  }
+
+  private func prettyPrintedDescriptionIfNeeded(_ description: String) -> String {
+    guard shouldPrettyPrintDescription(description) else { return description }
+    return prettyPrintedStructuredDescription(description)
+  }
+
+  private func shouldPrettyPrintDescription(_ description: String) -> Bool {
+    description.count > 160 &&
+      description.contains(":") &&
+      (description.contains("(") || description.contains("["))
+  }
+
+  private func prettyPrintedStructuredDescription(_ description: String) -> String {
+    let characters = Array(description)
+    let indentUnit = "  "
+    var result = ""
+    var depth = 0
+    var index = 0
+    var isInsideString = false
+    var isEscaped = false
+    var skipWhitespaceAfterBreak = false
+    var lastNonWhitespace: Character?
+
+    func indentation(_ depth: Int) -> String {
+      String(repeating: indentUnit, count: max(0, depth))
+    }
+
+    func appendBreak(depth: Int) {
+      result.append("\n")
+      result.append(indentation(depth))
+      skipWhitespaceAfterBreak = true
+    }
+
+    func nextNonWhitespace(after index: Int) -> Character? {
+      var nextIndex = index + 1
+      while nextIndex < characters.count {
+        let next = characters[nextIndex]
+        if !next.isWhitespace {
+          return next
+        }
+        nextIndex += 1
+      }
+      return nil
+    }
+
+    while index < characters.count {
+      let character = characters[index]
+
+      if isInsideString {
+        result.append(character)
+        if isEscaped {
+          isEscaped = false
+        } else if character == "\\" {
+          isEscaped = true
+        } else if character == "\"" {
+          isInsideString = false
+          lastNonWhitespace = character
+        }
+        index += 1
+        continue
+      }
+
+      if skipWhitespaceAfterBreak, character.isWhitespace {
+        index += 1
+        continue
+      }
+      skipWhitespaceAfterBreak = false
+
+      switch character {
+      case "\"":
+        result.append(character)
+        isInsideString = true
+        lastNonWhitespace = character
+      case "(", "[":
+        result.append(character)
+        depth += 1
+        lastNonWhitespace = character
+        if nextNonWhitespace(after: index) != matchingClose(for: character) {
+          appendBreak(depth: depth)
+        }
+      case ")", "]":
+        let matchingOpen = matchingOpen(for: character)
+        depth = max(0, depth - 1)
+        if lastNonWhitespace != matchingOpen {
+          appendBreak(depth: depth)
+        }
+        result.append(character)
+        lastNonWhitespace = character
+      case ",":
+        result.append(character)
+        lastNonWhitespace = character
+        appendBreak(depth: depth)
+      default:
+        result.append(character)
+        if !character.isWhitespace {
+          lastNonWhitespace = character
+        }
+      }
+
+      index += 1
+    }
+
+    return result
+  }
+
+  private func matchingClose(for character: Character) -> Character? {
+    switch character {
+    case "(": return ")"
+    case "[": return "]"
+    default: return nil
+    }
+  }
+
+  private func matchingOpen(for character: Character) -> Character? {
+    switch character {
+    case ")": return "("
+    case "]": return "["
+    default: return nil
+    }
   }
 
   private func isClearlyValueDescription(_ description: String) -> Bool {

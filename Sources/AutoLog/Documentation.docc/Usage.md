@@ -214,6 +214,10 @@ abbreviated, nested collections collapse to counts, and continuation lines stay
 aligned under the compact output columns. Pass
 `CompactFormatter(collectionPreviewLimit:)` when a console sink should show more
 or fewer entries before the formatter adds `... +N more`.
+Single long structured objects keep their full captured description, but the
+formatter inserts indentation around nested parentheses, brackets, and commas so
+values such as `ScoringDefinition(...)` can be read before adding any length
+truncation policy.
 For isolated hot paths, add `measure: false` to ``Log(using:level:omit:tag:measure:)``
 to suppress generated timing capture for that function, including when the
 function routes through a custom ``AutoLogger``. Use `measure: true` when a

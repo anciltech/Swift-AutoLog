@@ -2,6 +2,27 @@ import AutoLog
 import Foundation
 import Testing
 
+private struct PrettyPrintedRuleDefinition {
+    let id: String
+    let isUserInput: Bool
+    let priority: Int
+}
+
+private struct PrettyPrintedStageDefinition {
+    let id: String
+    let name: String
+    let level: Int
+    let rules: [PrettyPrintedRuleDefinition]
+}
+
+private struct PrettyPrintedScoringDefinition {
+    let name: String
+    let version: String
+    let description: String?
+    let stages: [PrettyPrintedStageDefinition]
+    let defaultForSportNames: [String]
+}
+
 @Suite
 struct CompactFormatterTests {
     let configuration = AutoLogConfiguration.default
@@ -446,6 +467,52 @@ struct CompactFormatterTests {
         #expect(lines[1].contains("1. Player(id: ...1h73, name: Player)"))
         #expect(lines[2].contains("... +1 more"))
         #expect(lines[3].contains("]"))
+    }
+
+    @Test func complexObjectReturnValue_prettyPrintsLongStructuredDescription() {
+        let event = makeEvent(
+            declaration: "func defaultScoring(sport: String) -> PrettyPrintedScoringDefinition",
+            parameters: ["sport": "tennis"],
+            result: .success(
+                PrettyPrintedScoringDefinition(
+                    name: "Traditional (TieBreak Set)",
+                    version: "2.1.5",
+                    description: "Set is won when player wins 6 games, and leads by at least 2. At 6-6 a 7-point tiebreak is played.",
+                    stages: [
+                        PrettyPrintedStageDefinition(
+                            id: "844D1DB1-4B4E-40F3-B7EC-DDD98DD65C7E",
+                            name: "Point",
+                            level: 0,
+                            rules: [
+                                PrettyPrintedRuleDefinition(
+                                    id: "148637E4-EAF4-41FC-80B9-916334788ED3",
+                                    isUserInput: true,
+                                    priority: 0
+                                ),
+                            ]
+                        ),
+                    ],
+                    defaultForSportNames: ["Tennis", "Padel"]
+                )
+            )
+        )
+        let format = LogFormat(mainLine: [.functionName, .parameters, .returnValue])
+
+        let output = CompactFormatter(format: format).format(
+            event: event,
+            configuration: configuration
+        )
+
+        #expect(output.contains("defaultScoring(sport: tennis) → PrettyPrintedScoringDefinition(\n"))
+        #expect(output.contains("\n  name: \"Traditional (TieBreak Set)\","))
+        #expect(output.contains("\n  description: Optional(\n    \"Set is won when player wins 6 games, and leads by at least 2. At 6-6 a 7-point tiebreak is played.\"\n  ),"))
+        #expect(output.contains("\n  stages: ["))
+        #expect(output.contains("PrettyPrintedStageDefinition(\n"))
+        #expect(output.contains("\n      rules: ["))
+        #expect(output.contains("PrettyPrintedRuleDefinition(\n"))
+        #expect(output.contains("\n  defaultForSportNames: [\n    \"Tennis\","))
+        #expect(output.contains("games, and leads"))
+        #expect(!output.contains("games,\n"))
     }
 
     // MARK: - Second line

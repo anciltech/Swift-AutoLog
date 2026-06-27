@@ -298,6 +298,29 @@ identifier fields are abbreviated, and nested collections collapse to counts:
 Use `CompactFormatter(collectionPreviewLimit:)` to tune how many collection
 entries the formatter shows before adding the `... +N more` line.
 
+Single large structured objects keep their full description, but the formatter
+now inserts indentation around nested parentheses, brackets, and commas so a
+return value such as `ScoringDefinition(...)` is readable before any length
+truncation policy is added:
+
+```swift
+-> 🟢 AppStoreLogic.defaultScoring(sport: tennis) → ScoringDefinition(
+  name: "Traditional (TieBreak Set)",
+  version: "2.1.5",
+  description: Optional(
+    "Set is won when player wins 6 games, and leads by at least 2."
+  ),
+  stages: [
+    StageDefinition(
+      name: "Point",
+      rules: [
+        RuleDefinition(...)
+      ]
+    )
+  ]
+)
+```
+
 ### Per-function logging with `@Log`
 
 Use `@Log` when you only want to instrument a specific function:

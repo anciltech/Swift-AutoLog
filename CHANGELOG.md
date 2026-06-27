@@ -7,6 +7,9 @@
 - `CompactFormatter` now renders complex collection parameters and return values
   as bounded multi-line previews with per-element summaries instead of dumping
   the full object graph inline.
+- Long structured object parameters and return values are now pretty-printed
+  with indentation so nested fields are readable before any truncation policy is
+  applied.
 
 ## 0.9.0 - 2026-05-22
 
