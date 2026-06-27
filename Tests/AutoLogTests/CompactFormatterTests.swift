@@ -469,7 +469,7 @@ struct CompactFormatterTests {
         #expect(lines[3].contains("]"))
     }
 
-    @Test func complexObjectReturnValue_prettyPrintsLongStructuredDescription() {
+    @Test func complexObjectReturnValue_rendersBoundedMultilineSummary() {
         let event = makeEvent(
             declaration: "func defaultScoring(sport: String) -> PrettyPrintedScoringDefinition",
             parameters: ["sport": "tennis"],
@@ -502,17 +502,67 @@ struct CompactFormatterTests {
             event: event,
             configuration: configuration
         )
+        let lines = output.split(separator: "\n", omittingEmptySubsequences: false)
 
         #expect(output.contains("defaultScoring(sport: tennis) → PrettyPrintedScoringDefinition(\n"))
-        #expect(output.contains("\n  name: \"Traditional (TieBreak Set)\","))
-        #expect(output.contains("\n  description: Optional(\n    \"Set is won when player wins 6 games, and leads by at least 2. At 6-6 a 7-point tiebreak is played.\"\n  ),"))
-        #expect(output.contains("\n  stages: ["))
-        #expect(output.contains("PrettyPrintedStageDefinition(\n"))
-        #expect(output.contains("\n      rules: ["))
-        #expect(output.contains("PrettyPrintedRuleDefinition(\n"))
-        #expect(output.contains("\n  defaultForSportNames: [\n    \"Tennis\","))
+        #expect(lines.count == 7)
+        #expect(output.contains("\n  name: Traditional (TieBreak Set),"))
+        #expect(output.contains("\n  version: 2.1.5,"))
+        #expect(output.contains("\n  description: Set is won when player wins 6 games, and leads by at least 2. At 6-6 a 7-point tiebreak is played.,"))
+        #expect(output.contains("\n  stages: 1 item,"))
+        #expect(output.contains("\n  defaultForSportNames: [\"Tennis\", \"Padel\"]"))
         #expect(output.contains("games, and leads"))
-        #expect(!output.contains("games,\n"))
+        #expect(!output.contains("PrettyPrintedStageDefinition(\n"))
+        #expect(!output.contains("PrettyPrintedRuleDefinition("))
+    }
+
+    @Test func complexObjectReturnValue_respectsObjectLineLimit() {
+        struct VerboseDefinition {
+            let id: String
+            let name: String
+            let version: String
+            let description: String
+            let stages: [PrettyPrintedStageDefinition]
+            let defaultForSportNames: [String]
+        }
+
+        let event = makeEvent(
+            declaration: "func defaultScoring() -> VerboseDefinition",
+            result: .success(
+                VerboseDefinition(
+                    id: "844D1DB1-4B4E-40F3-B7EC-DDD98DD65C7E",
+                    name: "Traditional",
+                    version: "2.1.5",
+                    description: "A verbose scoring definition",
+                    stages: [
+                        PrettyPrintedStageDefinition(
+                            id: "148637E4-EAF4-41FC-80B9-916334788ED3",
+                            name: "Point",
+                            level: 0,
+                            rules: []
+                        ),
+                    ],
+                    defaultForSportNames: ["Tennis", "Padel"]
+                )
+            )
+        )
+        let format = LogFormat(mainLine: [.functionName, .returnValue])
+
+        let output = CompactFormatter(
+            format: format,
+            objectPreviewLineLimit: 5
+        ).format(
+            event: event,
+            configuration: configuration
+        )
+        let lines = output.split(separator: "\n", omittingEmptySubsequences: false)
+
+        #expect(lines.count == 5)
+        #expect(output.contains("VerboseDefinition(\n"))
+        #expect(output.contains("\n  id: ...5c7e,"))
+        #expect(output.contains("\n  name: Traditional,"))
+        #expect(output.contains("\n  ... +4 more fields"))
+        #expect(!output.contains("stages: ["))
     }
 
     // MARK: - Second line

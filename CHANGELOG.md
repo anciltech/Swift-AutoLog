@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.9.2 - 2026-06-27
+
+### Changed
+
+- `CompactFormatter` now renders long structured object values as bounded
+  multi-line previews instead of expanding every nested object and collection.
+- Added `CompactFormatter(objectPreviewLineLimit:)` so loggers can opt into
+  larger or smaller object previews.
+
 ## 0.9.1 - 2026-06-27
 
 ### Changed

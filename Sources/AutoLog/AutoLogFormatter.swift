@@ -38,6 +38,7 @@ public protocol AutoLogFormatter: Sendable {
 public struct CompactFormatter: AutoLogFormatter {
   public let profile: DepthProfile
   public let collectionPreviewLimit: Int
+  public let objectPreviewLineLimit: Int
 
   /// A fixed format override. When `nil`, ``AutoLogConfiguration/logFormat`` is
   /// consulted on every call to ``format(event:configuration:)``.
@@ -47,11 +48,13 @@ public struct CompactFormatter: AutoLogFormatter {
   public init(
     profile: DepthProfile = .mvvm,
     format: LogFormat? = nil,
-    collectionPreviewLimit: Int = 8
+    collectionPreviewLimit: Int = 8,
+    objectPreviewLineLimit: Int = 8
   ) {
     self.profile                = profile
     self.format                 = format
     self.collectionPreviewLimit = max(1, collectionPreviewLimit)
+    self.objectPreviewLineLimit = max(3, objectPreviewLineLimit)
     self.fixedFormatPlan        = format.map(FormatPlan.init(format:))
   }
 
@@ -968,6 +971,12 @@ public struct CompactFormatter: AutoLogFormatter {
     if let custom = value as? any CustomStringConvertible {
       let description = custom.description
       if isClearlyValueDescription(description) {
+        if mode == .normal,
+           shouldPrettyPrintDescription(description),
+           let objectPreview = formatObjectPreview(value, mirror: mirror, depth: depth) {
+          return objectPreview
+        }
+
         return mode == .collectionElement
           ? truncatedDescription(description)
           : prettyPrintedDescriptionIfNeeded(description)
@@ -981,6 +990,11 @@ public struct CompactFormatter: AutoLogFormatter {
 
     if mode == .collectionElement {
       return truncatedDescription(description)
+    }
+
+    if shouldPrettyPrintDescription(description),
+       let objectPreview = formatObjectPreview(value, mirror: mirror, depth: depth) {
+      return objectPreview
     }
 
     return prettyPrintedDescriptionIfNeeded(description)
@@ -1111,6 +1125,38 @@ public struct CompactFormatter: AutoLogFormatter {
     count == 1 ? "1 item" : "\(count) items"
   }
 
+  private func formatObjectPreview(
+    _ value: Any,
+    mirror: Mirror,
+    depth: Int
+  ) -> String? {
+    guard depth < 2 else { return conciseObjectSummary(for: value, depth: depth) }
+    guard mirror.displayStyle != .optional else { return nil }
+    guard !mirror.children.isEmpty else { return nil }
+
+    let typeName = shortTypeName(from: String(reflecting: type(of: value)))
+    let children = Array(mirror.children)
+    let hasOmittedFields = children.count + 2 > objectPreviewLineLimit
+    let visibleFieldLimit = hasOmittedFields
+      ? max(1, objectPreviewLineLimit - 3)
+      : max(1, objectPreviewLineLimit - 2)
+    let visibleChildren = children.prefix(visibleFieldLimit)
+    var lines = ["\(typeName)("]
+
+    for (index, child) in visibleChildren.enumerated() {
+      let label = normalizedIdentifierLabel(child.label) ?? child.label ?? "value"
+      let suffix = index == visibleChildren.count - 1 && !hasOmittedFields ? "" : ","
+      lines.append("  \(label): \(objectFieldValue(child.value, label: label, depth: depth + 1))\(suffix)")
+    }
+
+    if hasOmittedFields {
+      lines.append("  ... +\(children.count - visibleChildren.count) more fields")
+    }
+
+    lines.append(")")
+    return lines.joined(separator: "\n")
+  }
+
   private func conciseObjectSummary(for value: Any, depth: Int) -> String? {
     guard depth < 4 else { return nil }
 
@@ -1215,6 +1261,62 @@ public struct CompactFormatter: AutoLogFormatter {
     }
 
     return nil
+  }
+
+  private func objectFieldValue(_ value: Any, label: String, depth: Int) -> String {
+    let mirror = Mirror(reflecting: value)
+
+    if mirror.displayStyle == .optional {
+      guard let child = mirror.children.first else { return "nil" }
+      return objectFieldValue(child.value, label: label, depth: depth + 1)
+    }
+
+    if isIdentifierLabel(label) {
+      return shortIdentifierString(from: value)
+        ?? truncatedDescription(String(describing: value), limit: 120)
+    }
+
+    if isScalarLike(value) {
+      return truncatedDescription(String(describing: value), limit: 120)
+    }
+
+    if let displayStyle = mirror.displayStyle,
+       displayStyle == .collection || displayStyle == .set || displayStyle == .dictionary {
+      return objectCollectionFieldValue(value, mirror: mirror)
+    }
+
+    if let summary = conciseObjectSummary(for: value, depth: depth) {
+      return summary
+    }
+
+    if let identifier = shortIdentifierString(from: value) {
+      return identifier
+    }
+
+    if let custom = value as? any CustomStringConvertible {
+      let description = custom.description
+      if isClearlyValueDescription(description) {
+        return truncatedDescription(description, limit: 120)
+      }
+    }
+
+    return shortTypeName(from: String(reflecting: type(of: value)))
+  }
+
+  private func objectCollectionFieldValue(_ value: Any, mirror: Mirror) -> String {
+    guard !mirror.children.isEmpty else {
+      return mirror.displayStyle == .dictionary ? "[:]" : "[]"
+    }
+
+    let description = String(describing: value)
+    if mirror.displayStyle != .dictionary,
+       mirror.children.count <= 3,
+       description.count <= 80,
+       collectionChildrenAreScalarLike(mirror) {
+      return description
+    }
+
+    return collectionCountSummary(mirror.children.count)
   }
 
   private func truncatedDescription(_ description: String, limit: Int = 160) -> String {
