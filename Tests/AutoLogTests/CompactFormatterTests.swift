@@ -353,6 +353,101 @@ struct CompactFormatterTests {
         #expect(!CompactFormatter().format(event: event, configuration: configuration).contains("→"))
     }
 
+    @Test func smallScalarCollectionParameter_staysInline() {
+        let event = makeEvent(
+            declaration: "func load(ids: [Int])",
+            parameters: ["ids": [1, 2, 3]]
+        )
+
+        let output = CompactFormatter().format(event: event, configuration: configuration)
+
+        #expect(output.contains("load(ids: [1, 2, 3])"))
+        #expect(!output.contains("\n"))
+    }
+
+    @Test func complexCollectionParameter_rendersBoundedMultilinePreview() {
+        struct StageDefinition {
+            let name: String
+            let rules: [String]
+        }
+
+        struct ScoringDefinition {
+            let name: String
+            let version: String
+            let stages: [StageDefinition]
+        }
+
+        let event = makeEvent(
+            declaration: "func availableScorings(sport: String, scorings: [ScoringDefinition])",
+            parameters: [
+                "sport": "padel",
+                "scorings": [
+                    ScoringDefinition(
+                        name: "Just Count",
+                        version: "2.1.5",
+                        stages: [StageDefinition(name: "Point", rules: ["userInput"])]
+                    ),
+                    ScoringDefinition(
+                        name: "HIHO",
+                        version: "2.1.5",
+                        stages: [
+                            StageDefinition(name: "Point", rules: ["userInput"]),
+                            StageDefinition(name: "Game", rules: ["winByTwo"]),
+                        ]
+                    ),
+                    ScoringDefinition(
+                        name: "PARS",
+                        version: "2.1.5",
+                        stages: [StageDefinition(name: "Point", rules: [])]
+                    ),
+                ],
+            ]
+        )
+
+        let output = CompactFormatter(collectionPreviewLimit: 2).format(
+            event: event,
+            configuration: configuration
+        )
+        let lines = output.split(separator: "\n", omittingEmptySubsequences: false)
+
+        #expect(lines.count == 5)
+        #expect(lines[0].contains("availableScorings(scorings: ["))
+        #expect(lines[1].contains("1. ScoringDefinition(name: Just Count, version: 2.1.5, stages: 1 item)"))
+        #expect(lines[2].contains("2. ScoringDefinition(name: HIHO, version: 2.1.5, stages: 2 items)"))
+        #expect(lines[3].contains("... +1 more"))
+        #expect(lines[4].contains("], sport: padel)"))
+        #expect(!output.contains("rules: ["))
+    }
+
+    @Test func complexCollectionReturnValue_rendersBoundedMultilinePreview() {
+        struct Player {
+            let id: String
+            let name: String
+            let memberIds: [String]
+        }
+
+        let event = makeEvent(
+            declaration: "func preferredPlayers(sport: String) -> [Player]",
+            parameters: ["sport": "padel"],
+            result: .success([
+                Player(id: "YveHhRNTdkghAUKmzo7ztCon1h73", name: "Player", memberIds: []),
+                Player(id: "C9E15EFB-889C-4F7E-AE9A-6F48955EDF43", name: "Opponent", memberIds: []),
+            ])
+        )
+
+        let output = CompactFormatter(collectionPreviewLimit: 1).format(
+            event: event,
+            configuration: configuration
+        )
+        let lines = output.split(separator: "\n", omittingEmptySubsequences: false)
+
+        #expect(lines.count == 4)
+        #expect(lines[0].contains("preferredPlayers(sport: padel) → ["))
+        #expect(lines[1].contains("1. Player(id: ...1h73, name: Player)"))
+        #expect(lines[2].contains("... +1 more"))
+        #expect(lines[3].contains("]"))
+    }
+
     // MARK: - Second line
 
     @Test func failure_showsErrorInlineOnMainLine() {

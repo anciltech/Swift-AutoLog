@@ -282,6 +282,22 @@ Opaque reference-like values are summarized a bit more helpfully in the default 
 -> 🟢 InteractionManager.isHovered(frame: Frame.id: ...2341) → false
 ```
 
+Collection parameters and return values are also kept readable. Small scalar
+arrays stay inline, while complex arrays, sets, and dictionaries render as a
+bounded multi-line preview. Each visible element gets a numbered summary,
+identifier fields are abbreviated, and nested collections collapse to counts:
+
+```swift
+-> 🟢 AppStoreLogic.availableScorings(scorings: [
+   1. ScoringDefinition(name: Just Count, version: 2.1.5, stages: 2 items)
+   2. ScoringDefinition(name: HIHO, version: 2.1.5, stages: 3 items)
+   ... +4 more
+])
+```
+
+Use `CompactFormatter(collectionPreviewLimit:)` to tune how many collection
+entries the formatter shows before adding the `... +N more` line.
+
 ### Per-function logging with `@Log`
 
 Use `@Log` when you only want to instrument a specific function:

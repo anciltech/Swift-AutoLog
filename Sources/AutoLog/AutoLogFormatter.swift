@@ -37,16 +37,22 @@ public protocol AutoLogFormatter: Sendable {
 /// always wins over the runtime setting.
 public struct CompactFormatter: AutoLogFormatter {
   public let profile: DepthProfile
+  public let collectionPreviewLimit: Int
 
   /// A fixed format override. When `nil`, ``AutoLogConfiguration/logFormat`` is
   /// consulted on every call to ``format(event:configuration:)``.
   public let format: LogFormat?
   private let fixedFormatPlan: FormatPlan?
 
-  public init(profile: DepthProfile = .mvvm, format: LogFormat? = nil) {
-    self.profile         = profile
-    self.format          = format
-    self.fixedFormatPlan = format.map(FormatPlan.init(format:))
+  public init(
+    profile: DepthProfile = .mvvm,
+    format: LogFormat? = nil,
+    collectionPreviewLimit: Int = 8
+  ) {
+    self.profile                = profile
+    self.format                 = format
+    self.collectionPreviewLimit = max(1, collectionPreviewLimit)
+    self.fixedFormatPlan        = format.map(FormatPlan.init(format:))
   }
 
   public func format(
@@ -232,6 +238,42 @@ public struct CompactFormatter: AutoLogFormatter {
   ) -> String {
     guard !columnElements.isEmpty else { return body }
 
+    guard let prefix = rowPrefix(
+      for: event,
+      depth: depth,
+      columnElements: columnElements,
+      configuration: configuration,
+      rowKind: rowKind,
+      force: false
+    ) else {
+      return body
+    }
+
+    let bodyLines = body.split(separator: "\n", omittingEmptySubsequences: false).map(String.init)
+    guard bodyLines.count > 1 else { return prefix + body }
+
+    let continuationPrefix = rowPrefix(
+      for: event,
+      depth: depth,
+      columnElements: columnElements,
+      configuration: configuration,
+      rowKind: .annotation,
+      force: true
+    ) ?? prefix
+
+    return bodyLines.enumerated().map { index, line in
+      (index == 0 ? prefix : continuationPrefix) + line
+    }.joined(separator: "\n")
+  }
+
+  private func rowPrefix(
+    for event: AutoLogEvent,
+    depth: Int,
+    columnElements: [LogFormat.Element],
+    configuration: AutoLogConfiguration,
+    rowKind: RowKind,
+    force: Bool
+  ) -> String? {
     var hasContent = false
     var columns: [String] = []
     columns.reserveCapacity(columnElements.count)
@@ -254,8 +296,8 @@ public struct CompactFormatter: AutoLogFormatter {
       )
     }
 
-    guard hasContent else { return body }
-    return columns.joined(separator: " │ ") + " │ " + body
+    guard hasContent || force else { return nil }
+    return columns.joined(separator: " │ ") + " │ "
   }
 
   private func renderMainRow(
@@ -462,7 +504,7 @@ public struct CompactFormatter: AutoLogFormatter {
     }
 
     if case .success(let value) = event.result, type(of: value) != Void.self {
-      line += " → \(value)"
+      line += " → \(formatValue(value))"
     } else if case .failure(let error) = event.result {
       line += " → \(formattedError(error))"
     }
@@ -537,7 +579,7 @@ public struct CompactFormatter: AutoLogFormatter {
         appendSegment("async", noLeadingSpace: false, element: .effectSpecifiers)
       case .returnValue:
         if case .success(let value) = event.result, type(of: value) != Void.self {
-          appendSegment("→ \(value)", noLeadingSpace: false, element: .returnValue)
+          appendSegment("→ \(formatValue(value))", noLeadingSpace: false, element: .returnValue)
         } else if case .failure(let error) = event.result {
           appendSegment(
             "→ \(formattedError(error))",
@@ -877,6 +919,19 @@ public struct CompactFormatter: AutoLogFormatter {
   }
 
   private func formatParameterValue(_ value: Any) -> String {
+    formatValue(value)
+  }
+
+  private enum ValueFormattingMode {
+    case normal
+    case collectionElement
+  }
+
+  private func formatValue(
+    _ value: Any,
+    depth: Int = 0,
+    mode: ValueFormattingMode = .normal
+  ) -> String {
     if isScalarLike(value) {
       return String(describing: value)
     }
@@ -885,10 +940,37 @@ public struct CompactFormatter: AutoLogFormatter {
       return shortTypeName(from: String(reflecting: type))
     }
 
+    let mirror = Mirror(reflecting: value)
+
+    if let optional = formatOptional(
+      value,
+      mirror: mirror,
+      depth: depth,
+      mode: mode
+    ) {
+      return optional
+    }
+
+    if let collection = formatCollection(
+      value,
+      mirror: mirror,
+      depth: depth,
+      mode: mode
+    ) {
+      return collection
+    }
+
+    if mode == .collectionElement,
+       let summary = conciseObjectSummary(for: value, depth: depth) {
+      return summary
+    }
+
     if let custom = value as? any CustomStringConvertible {
       let description = custom.description
       if isClearlyValueDescription(description) {
-        return description
+        return mode == .collectionElement
+          ? truncatedDescription(description)
+          : description
       }
     }
 
@@ -897,7 +979,247 @@ public struct CompactFormatter: AutoLogFormatter {
       return shortIdentifierSummary(for: value) ?? shortTypeName(from: description)
     }
 
+    if mode == .collectionElement {
+      return truncatedDescription(description)
+    }
+
     return description
+  }
+
+  private func formatOptional(
+    _ value: Any,
+    mirror: Mirror,
+    depth: Int,
+    mode: ValueFormattingMode
+  ) -> String? {
+    guard mirror.displayStyle == .optional else { return nil }
+
+    guard let child = mirror.children.first else { return "nil" }
+    let formatted = formatValue(child.value, depth: depth + 1, mode: mode)
+    return mode == .normal ? "Optional(\(formatted))" : formatted
+  }
+
+  private func formatCollection(
+    _ value: Any,
+    mirror: Mirror,
+    depth: Int,
+    mode: ValueFormattingMode
+  ) -> String? {
+    guard let displayStyle = mirror.displayStyle else { return nil }
+
+    switch displayStyle {
+    case .collection, .set:
+      return formatSequenceCollection(value, mirror: mirror, depth: depth, mode: mode)
+    case .dictionary:
+      return formatDictionary(value, mirror: mirror, depth: depth, mode: mode)
+    default:
+      return nil
+    }
+  }
+
+  private func formatSequenceCollection(
+    _ value: Any,
+    mirror: Mirror,
+    depth: Int,
+    mode: ValueFormattingMode
+  ) -> String {
+    let count = mirror.children.count
+    guard count > 0 else { return "[]" }
+
+    let description = String(describing: value)
+    if mode == .normal,
+       count <= collectionPreviewLimit,
+       description.count <= 120,
+       collectionChildrenAreScalarLike(mirror) {
+      return description
+    }
+
+    if mode == .collectionElement || depth >= 2 {
+      return collectionCountSummary(count)
+    }
+
+    let preview = mirror.children.prefix(collectionPreviewLimit).enumerated().map { index, child in
+      let value = formatValue(
+        child.value,
+        depth: depth + 1,
+        mode: .collectionElement
+      )
+      return "  \(index + 1). \(value)"
+    }
+
+    var lines = ["["]
+    lines.append(contentsOf: preview)
+    if count > collectionPreviewLimit {
+      lines.append("  ... +\(count - collectionPreviewLimit) more")
+    }
+    lines.append("]")
+    return lines.joined(separator: "\n")
+  }
+
+  private func formatDictionary(
+    _ value: Any,
+    mirror: Mirror,
+    depth: Int,
+    mode: ValueFormattingMode
+  ) -> String {
+    let count = mirror.children.count
+    guard count > 0 else { return "[:]" }
+
+    let description = String(describing: value)
+    if mode == .normal,
+       count <= collectionPreviewLimit,
+       description.count <= 120,
+       collectionChildrenAreScalarLike(mirror) {
+      return description
+    }
+
+    if mode == .collectionElement || depth >= 2 {
+      return collectionCountSummary(count)
+    }
+
+    let preview = mirror.children.prefix(collectionPreviewLimit).compactMap { child -> String? in
+      let pairMirror = Mirror(reflecting: child.value)
+      let values = Array(pairMirror.children.map(\.value))
+      guard values.count == 2 else { return nil }
+      let key = formatValue(values[0], depth: depth + 1, mode: .collectionElement)
+      let value = formatValue(values[1], depth: depth + 1, mode: .collectionElement)
+      return "  \(key): \(value)"
+    }
+
+    var lines = ["["]
+    lines.append(contentsOf: preview)
+    if count > collectionPreviewLimit {
+      lines.append("  ... +\(count - collectionPreviewLimit) more")
+    }
+    lines.append("]")
+    return lines.joined(separator: "\n")
+  }
+
+  private func collectionChildrenAreScalarLike(_ mirror: Mirror) -> Bool {
+    mirror.children.allSatisfy { child in
+      let childMirror = Mirror(reflecting: child.value)
+      if childMirror.displayStyle == .optional,
+         let wrapped = childMirror.children.first {
+        return isScalarLike(wrapped.value)
+      }
+
+      return isScalarLike(child.value)
+    }
+  }
+
+  private func collectionCountSummary(_ count: Int) -> String {
+    count == 1 ? "1 item" : "\(count) items"
+  }
+
+  private func conciseObjectSummary(for value: Any, depth: Int) -> String? {
+    guard depth < 4 else { return nil }
+
+    let mirror = Mirror(reflecting: value)
+    guard
+      mirror.displayStyle != .collection,
+      mirror.displayStyle != .set,
+      mirror.displayStyle != .dictionary,
+      !mirror.children.isEmpty
+    else {
+      return nil
+    }
+
+    let typeName = shortTypeName(from: String(reflecting: type(of: value)))
+    let fields = prioritizedSummaryFields(from: mirror, depth: depth)
+    guard !fields.isEmpty else {
+      return shortIdentifierSummary(for: value)
+    }
+
+    return "\(typeName)(\(fields.joined(separator: ", ")))"
+  }
+
+  private func prioritizedSummaryFields(from mirror: Mirror, depth: Int) -> [String] {
+    let priority = [
+      "id",
+      "identifier",
+      "name",
+      "title",
+      "version",
+      "type",
+      "status",
+      "state",
+      "count",
+      "isWearer",
+      "stages",
+      "rules",
+      "items",
+    ]
+
+    var fields: [String] = []
+    for label in priority {
+      guard
+        fields.count < 4,
+        let child = mirror.children.first(where: { normalizedIdentifierLabel($0.label) == label }),
+        let formatted = summaryFieldValue(
+          child.value,
+          label: label,
+          depth: depth + 1
+        )
+      else {
+        continue
+      }
+
+      fields.append("\(label): \(formatted)")
+    }
+
+    if !fields.isEmpty {
+      return fields
+    }
+
+    for child in mirror.children {
+      guard
+        fields.count < 3,
+        let label = normalizedIdentifierLabel(child.label),
+        let formatted = summaryFieldValue(
+          child.value,
+          label: label,
+          depth: depth + 1
+        )
+      else {
+        continue
+      }
+
+      fields.append("\(label): \(formatted)")
+    }
+
+    return fields
+  }
+
+  private func summaryFieldValue(_ value: Any, label: String, depth: Int) -> String? {
+    let mirror = Mirror(reflecting: value)
+    if mirror.displayStyle == .optional {
+      guard let child = mirror.children.first else { return nil }
+      return summaryFieldValue(child.value, label: label, depth: depth + 1)
+    }
+
+    if isIdentifierLabel(label) {
+      return shortIdentifierString(from: value)
+    }
+
+    if isScalarLike(value) {
+      return String(describing: value)
+    }
+
+    if let displayStyle = mirror.displayStyle,
+       displayStyle == .collection || displayStyle == .set || displayStyle == .dictionary {
+      return collectionCountSummary(mirror.children.count)
+    }
+
+    if let identifier = shortIdentifierString(from: value) {
+      return identifier
+    }
+
+    return nil
+  }
+
+  private func truncatedDescription(_ description: String, limit: Int = 160) -> String {
+    guard description.count > limit else { return description }
+    return String(description.prefix(limit)) + "..."
   }
 
   private func isClearlyValueDescription(_ description: String) -> Bool {

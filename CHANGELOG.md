@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+
+- `CompactFormatter` now renders complex collection parameters and return values
+  as bounded multi-line previews with per-element summaries instead of dumping
+  the full object graph inline.
+
 ## 0.9.0 - 2026-05-22
 
 ### Added

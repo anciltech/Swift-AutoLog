@@ -207,6 +207,13 @@ AutoLog.start(
 
 Use `AutoLog.start()` when the default logger and configuration are enough.
 Advanced setups can still pass a custom logger, store, or refresh interval.
+The default ``CompactFormatter`` keeps small scalar collections inline, but
+formats complex arrays, sets, and dictionaries as bounded multi-line previews.
+Each visible element gets a short numbered summary, identifier fields are
+abbreviated, nested collections collapse to counts, and continuation lines stay
+aligned under the compact output columns. Pass
+`CompactFormatter(collectionPreviewLimit:)` when a console sink should show more
+or fewer entries before the formatter adds `... +N more`.
 For isolated hot paths, add `measure: false` to ``Log(using:level:omit:tag:measure:)``
 to suppress generated timing capture for that function, including when the
 function routes through a custom ``AutoLogger``. Use `measure: true` when a
