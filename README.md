@@ -56,7 +56,7 @@ Swift AutoLog can record when a function exits early from `guard`, `if`, `else i
 Add the dependency to your `Package.swift`:
 
 ```swift
-.package(url: "https://github.com/anciltech/Swift-AutoLog.git", from: "0.5.1"),
+.package(url: "https://github.com/anciltech/Swift-AutoLog.git", from: "0.9.1"),
 ```
 
 Then add `AutoLog` to the target that should use the macros:
