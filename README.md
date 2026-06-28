@@ -103,6 +103,59 @@ In Xcode:
 
 When you first build after importing the package, Xcode will prompt you to enable macros from the dependency.
 
+### Macro trust and CI
+
+Swift AutoLog uses Swift macros, which run as compiler plugins during builds.
+Xcode intentionally requires each developer machine and CI host to trust those
+plugins before macro expansion can run. AutoLog cannot pre-approve that trust
+from `Package.swift` or from the package manifest.
+
+If CI fails with `Macro "AutoLogMacro" from package "Swift-AutoLog" must be
+enabled before it can be used`, use one of the headless setup options below.
+
+For local Xcode builds, click **Trust & Enable** when Xcode asks to enable
+macros from `Swift-AutoLog`. The prompt should normally appear once for a given
+package fingerprint, but Xcode may ask again after package updates, cache
+resets, different Xcode installations, or branch-based dependencies. Production
+apps should prefer released tags and checked-in `Package.resolved` state so the
+macro fingerprint changes only when the app intentionally updates AutoLog.
+
+For Xcode Cloud, add this custom build script to the consuming app repository
+at `ci_scripts/ci_post_clone.sh`:
+
+```bash
+#!/bin/zsh
+set -euo pipefail
+
+defaults write com.apple.dt.Xcode IDESkipMacroFingerprintValidation -bool YES
+```
+
+Make the script executable before committing it:
+
+```bash
+chmod +x ci_scripts/ci_post_clone.sh
+```
+
+For other CI systems that invoke `xcodebuild` directly, pass the validation
+skip flag on the trusted build job:
+
+```bash
+xcodebuild \
+  -project MyApp.xcodeproj \
+  -scheme MyApp \
+  -destination 'platform=iOS Simulator,name=iPhone 16' \
+  -skipMacroValidation \
+  build
+```
+
+If the project also uses Swift package build plugins, that CI command may also
+need `-skipPackagePluginValidation`. These settings bypass Xcode's interactive
+trust prompt for the build host, so use them only in CI workflows with pinned
+package versions and reviewed dependencies.
+
+See [Macro Trust and CI](Sources/AutoLog/Documentation.docc/MacroTrustAndCI.md)
+in the package documentation for more setup notes.
+
 ## Quick start
 
 The fastest path is deliberately small:

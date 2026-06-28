@@ -64,6 +64,7 @@ Swift AutoLog provides macros that leverage Apple's OSLog framework, eliminating
 - <doc:ExistingLoggingIntegration>
 - <doc:BackendSinkExamples>
 - <doc:ProductionInstallChecklist>
+- <doc:MacroTrustAndCI>
 - <doc:MeasuringPerformance>
 - <doc:LeverageOSLog>
 - <doc:CustomizingMacroBehavior>
