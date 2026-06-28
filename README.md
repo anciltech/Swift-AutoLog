@@ -83,6 +83,14 @@ SwiftUI convenience APIs such as `Button.log`, `Binding.log`,
 )
 ```
 
+`AutoLogSwiftUI`'s `.taskLog` helpers keep the same source-compatible call shape
+as SwiftUI `.task`, but manage their lifecycle task through `onAppear`,
+`onDisappear`, and `id` changes. That avoids direct watchOS Release/archive
+links against SwiftUI `.task` opaque return descriptors while preserving
+interaction logging for async view work. The package CI covers this with
+`scripts/watch-tasklog-release-smoke.sh`, which builds a minimal watchOS Release
+fixture that uses both `.taskLog` and `.taskLog(id:)`.
+
 The `AutoLog` library product supports iOS 17, macOS, and watchOS 11 or newer. The
 runtime uses package-local locking instead of Swift's iOS 18-only
 `Synchronization.Mutex`, so the deployment floor is not tied to that newer API.

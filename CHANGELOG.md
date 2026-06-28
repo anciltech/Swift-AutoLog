@@ -1,5 +1,17 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- Reimplemented `AutoLogSwiftUI` `.taskLog` and `.taskLog(id:)` with
+  AutoLog-owned lifecycle task modifiers instead of delegating directly to
+  SwiftUI `.task`. This avoids watchOS Release/archive linker failures for
+  SwiftUI `.task` opaque return descriptors while preserving the public
+  `.taskLog(...)` call shape.
+- Added a watchOS Release smoke fixture and CI script that build a minimal
+  SwiftUI executable using both `.taskLog` overload families.
+
 ## 0.10.0 - 2026-06-27
 
 ### Changed

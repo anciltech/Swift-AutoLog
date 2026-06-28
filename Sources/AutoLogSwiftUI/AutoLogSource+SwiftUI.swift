@@ -1368,6 +1368,87 @@ extension AutoLogInteraction {
 
 // MARK: - View lifecycle and callback modifiers
 
+@available(iOS 15.0, macOS 12.0, tvOS 15.0, watchOS 8.0, *)
+@MainActor
+private struct AutoLogTaskOperation: Sendable {
+    let source: any Sourceable
+    let priority: TaskPriority
+    let fileID: String
+    let line: Int
+    let column: Int
+    let action: @Sendable () async -> Void
+
+    func makeTask() -> Task<Void, Never> {
+        Task(priority: priority) {
+            await source.log(fileID: fileID, line: line, column: column) { @Sendable in
+                await action()
+            }
+        }
+    }
+}
+
+// Avoid delegating to SwiftUI .task here: watchOS Release clients can otherwise
+// link against SwiftUI task opaque return descriptors that are not exported.
+@available(iOS 15.0, macOS 12.0, tvOS 15.0, watchOS 8.0, *)
+@MainActor
+private struct AutoLogTaskModifier: ViewModifier {
+    let operation: AutoLogTaskOperation
+
+    @State private var currentTask: Task<Void, Never>?
+
+    func body(content: Content) -> some View {
+        content
+            .onAppear {
+                startTask()
+            }
+            .onDisappear {
+                cancelTask()
+            }
+    }
+
+    private func startTask() {
+        cancelTask()
+        currentTask = operation.makeTask()
+    }
+
+    private func cancelTask() {
+        currentTask?.cancel()
+        currentTask = nil
+    }
+}
+
+@available(iOS 15.0, macOS 12.0, tvOS 15.0, watchOS 8.0, *)
+@MainActor
+private struct AutoLogTaskIDModifier<ID: Equatable>: ViewModifier {
+    let operation: AutoLogTaskOperation
+    let value: ID
+
+    @State private var currentTask: Task<Void, Never>?
+
+    func body(content: Content) -> some View {
+        content
+            .onAppear {
+                startTask()
+            }
+            .onChange(of: value) { _, _ in
+                startTask()
+            }
+            .onDisappear {
+                cancelTask()
+            }
+    }
+
+    private func startTask() {
+        cancelTask()
+        currentTask = operation.makeTask()
+    }
+
+    private func cancelTask() {
+        currentTask?.cancel()
+        currentTask = nil
+    }
+}
+
 extension View {
     /// Runs `action` from `onAppear` with a system interaction source.
     ///
@@ -1471,11 +1552,18 @@ extension View {
         column: Int = #column,
         _ action: @escaping @Sendable () async -> Void
     ) -> some View {
-        task(priority: priority) {
-            await source.log(fileID: fileID, line: line, column: column) { @Sendable in
-                await action()
-            }
-        }
+        modifier(
+            AutoLogTaskModifier(
+                operation: AutoLogTaskOperation(
+                    source: source,
+                    priority: priority,
+                    fileID: fileID,
+                    line: line,
+                    column: column,
+                    action: action
+                )
+            )
+        )
     }
 
     /// Runs SwiftUI `.task(id:)` work with a system interaction source.
@@ -1533,11 +1621,19 @@ extension View {
         column: Int = #column,
         _ action: @escaping @Sendable () async -> Void
     ) -> some View {
-        task(id: value, priority: priority) {
-            await source.log(fileID: fileID, line: line, column: column) { @Sendable in
-                await action()
-            }
-        }
+        modifier(
+            AutoLogTaskIDModifier(
+                operation: AutoLogTaskOperation(
+                    source: source,
+                    priority: priority,
+                    fileID: fileID,
+                    line: line,
+                    column: column,
+                    action: action
+                ),
+                value: value
+            )
+        )
     }
 
     /// Runs SwiftUI `.onChange(of:)` callbacks with a system interaction source.

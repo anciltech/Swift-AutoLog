@@ -463,6 +463,11 @@ hand-wrapping the closure:
 String-based lifecycle helpers use ``AutoLogInteraction/system(_:)`` by
 default. Pass any ``Sourceable`` value when the origin is better described as
 an API callback, timer, keyboard event, gesture, or app-specific custom source.
+The `taskLog` helpers preserve SwiftUI task-style lifecycle semantics by
+starting work when the view appears, cancelling when it disappears, and
+restarting the `id:` variant when the identity changes. AutoLog owns that
+lifecycle task instead of wrapping SwiftUI's `.task` modifier directly, which
+keeps `AutoLogSwiftUI` safe for watchOS Release and archive links.
 
 Every interaction origin gets a compact source-plus-badge prefix such as
 `👆🏼-🧵A1B`. The origin event becomes a trace root, and downstream calls
