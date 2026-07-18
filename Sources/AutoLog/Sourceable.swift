@@ -29,9 +29,10 @@ public extension Sourceable {
         )
     }
 
-    /// Async variant of ``log(fileID:line:column:operation:)``.
+    /// Async variant of ``log(fileID:line:column:operation:)`` that remains on
+    /// the caller's actor.
     @discardableResult
-    func log<T>(
+    nonisolated(nonsending) func log<T>(
         fileID: String = #fileID,
         line: Int = #line,
         column: Int = #column,

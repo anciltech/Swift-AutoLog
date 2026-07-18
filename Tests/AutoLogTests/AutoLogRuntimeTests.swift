@@ -4,6 +4,31 @@ import Testing
 
 @Suite(.serialized)
 struct AutoLogRuntimeTests {
+  @Test @MainActor
+  func asyncContextWrappers_preserveCallerActorIsolation() async {
+    var value = 0
+
+    let depthResult = await AutoLog.withCallSiteDepth(2) {
+      await Task.yield()
+      value += 1
+      return value
+    }
+    let sourceResult = await AutoLogInteraction.system("Main actor test").log {
+      await Task.yield()
+      value += 1
+      return value
+    }
+    let taskResult = await AutoLog.logTask("Main actor test") {
+      await Task.yield()
+      value += 1
+      return value
+    }
+
+    #expect(depthResult == 1)
+    #expect(sourceResult == 2)
+    #expect(taskResult == 3)
+  }
+
   @Test
   func configurationStore_roundTripsConfigurationAndRevision() {
     let suiteName = "AutoLogRuntimeTests.store.\(UUID().uuidString)"

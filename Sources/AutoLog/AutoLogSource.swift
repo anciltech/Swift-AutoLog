@@ -261,9 +261,10 @@ public enum AutoLog {
     }
   }
 
-  /// Async variant of ``withSourceContext(_:operation:)``.
+  /// Async variant of ``withSourceContext(_:operation:)`` that remains on the
+  /// caller's actor.
   @discardableResult
-  public static func withSourceContext<T>(
+  public nonisolated(nonsending) static func withSourceContext<T>(
     _ context: SourceContext?,
     operation: () async throws -> T
   ) async rethrows -> T {
@@ -283,9 +284,10 @@ public enum AutoLog {
     }
   }
 
-  /// Async variant of ``withCallSiteDepth(_:operation:)``.
+  /// Async variant of ``withCallSiteDepth(_:operation:)`` that remains on the
+  /// caller's actor.
   @discardableResult
-  public static func withCallSiteDepth<T>(
+  public nonisolated(nonsending) static func withCallSiteDepth<T>(
     _ depth: Int?,
     operation: () async throws -> T
   ) async rethrows -> T {
@@ -329,9 +331,10 @@ public enum AutoLog {
     }
   }
 
-  /// Async variant of ``run(_:fileID:line:column:operation:)``.
+  /// Async variant of ``run(_:fileID:line:column:operation:)`` that remains on
+  /// the caller's actor.
   @discardableResult
-  public static func run<T>(
+  public nonisolated(nonsending) static func run<T>(
     _ source: any Sourceable,
     fileID: String = #fileID,
     line: Int = #line,
@@ -368,9 +371,9 @@ public enum AutoLog {
   ///
   /// The current `AutoLogSource.current` TaskLocal is preserved, so task-group
   /// children still inherit the interaction badge that triggered the parent
-  /// workflow.
+  /// workflow. The operation remains on the caller's actor.
   @discardableResult
-  public static func logTask<T>(
+  public nonisolated(nonsending) static func logTask<T>(
     _ declaration: String,
     level: (any Levelable)? = nil,
     fileID: String = #fileID,
