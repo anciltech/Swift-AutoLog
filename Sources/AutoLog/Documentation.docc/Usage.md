@@ -799,3 +799,9 @@ This keeps branch decisions visible without treating them as automatic failures.
 Output profiles classify manual ``AutoLog/warning(_:fileID:line:)`` events and
 handled-error catch-site rows as `.warning`, so warning rows can be shown or
 hidden independently from ordinary successful completions and thrown failures.
+
+## Source toolchain baseline
+
+The source package requires Swift 6.2 / Xcode 26 or newer for its
+`nonisolated(nonsending)` async wrappers. Public binary releases must also be
+built and tested against their declared minimum toolchain.

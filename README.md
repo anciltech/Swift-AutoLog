@@ -49,6 +49,14 @@ Swift AutoLog can record when a function exits early from `guard`, `if`, `else i
 
 **On top of that**, Swift AutoLog does not bind you into any proprietary logging system - use the logger of your choice without compromising on convenience that comes with macros.
 
+## Toolchain baseline
+
+The source package requires **Swift 6.2 / Xcode 26 or newer**. Its async wrappers
+use `nonisolated(nonsending)` to preserve the caller actor and allow non-Sendable
+results. Swift 6.1 cannot parse this API. Source tests pass on Swift 6.2; the older
+binary distribution baseline is being verified separately. The existing public
+0.10.2 binary still requires Swift 6.4 until its replacement is released.
+
 ## Installation
 
 ### Customer distribution
