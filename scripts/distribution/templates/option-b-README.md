@@ -6,20 +6,20 @@ Automatic function logging for Swift apps, with a precompiled runtime.
 
 1. Open your project's **Package Dependencies** and press **+**.
 2. Paste `https://github.com/anciltech/Swift-AutoLog-Distribution.git`.
-3. Choose **Up to Next Major Version**, starting at **0.10.2**.
+3. Choose **Up to Next Major Version**, starting at **__AUTOLOG_RELEASE_VERSION__**.
 4. Add **AutoLog** to the app or framework target that will use the macros.
    Also add **AutoLogSwiftUI** for `Button.log`, `Binding.log`, and view helpers.
 5. Build and approve Xcode's **Trust & Enable** prompt for the macro plugin.
 
 No access to the private implementation repository is required.
-Requires Xcode 27 (Swift 6.4) or newer for this binary release.
+Requires Xcode 26 (Swift 6.2) or newer for this binary release.
 Supports iOS 17+, macOS 15+, and watchOS 11+, including simulators and Intel Macs.
 
 ## Install in a Swift package
 
 ```swift
 // In dependencies:
-.package(url: "https://github.com/anciltech/Swift-AutoLog-Distribution.git", from: "0.10.2")
+.package(url: "https://github.com/anciltech/Swift-AutoLog-Distribution.git", from: "__AUTOLOG_RELEASE_VERSION__")
 
 // In your target's dependencies:
 .product(name: "AutoLog", package: "Swift-AutoLog-Distribution")

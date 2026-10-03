@@ -37,11 +37,9 @@ DIST_DIR="$ROOT_DIR/.build/option-b-release-$VERSION"
 "$TOOL_DIR/option-b-distribution-smoke.sh" \
   --runtime-binary-path "$ARTIFACT_DIR/AutoLogCore.xcframework"
 "$TOOL_DIR/prepare-option-b-distribution.sh" \
-  --output "$DIST_DIR" \
+  --output "$DIST_DIR" --version "$VERSION" \
   --runtime-binary-url "https://github.com/$REPOSITORY/releases/download/$VERSION/AutoLogCore.xcframework.zip" \
   --checksum "$CHECKSUM"
-# Keep the customer's install minimum aligned with the release being published.
-sed -i '' "s/0\.10\.2/$VERSION/g" "$DIST_DIR/README.md"
 "$TOOL_DIR/validate-option-b-distribution.sh" --package "$DIST_DIR"
 
 cat > "$DIST_DIR/RELEASE.md" <<NOTES
@@ -51,7 +49,8 @@ Install: https://github.com/$REPOSITORY.git
 
 Products: AutoLog and optional AutoLogSwiftUI.
 Platforms: iOS 17+, macOS 15+, watchOS 11+, and simulators.
-Toolchain: Xcode 27 / Swift 6.4 or newer.
+Toolchain: Xcode 26 / Swift 6.2 or newer.
+The runtime artifact is built with Swift 6.2 and preserves caller actor isolation.
 
 The runtime is a static XCFramework; its implementation source is excluded.
 Macro implementations and SwiftUI convenience wrappers remain source targets.

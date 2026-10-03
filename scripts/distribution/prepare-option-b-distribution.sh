@@ -8,6 +8,8 @@ Usage:
   scripts/prepare-option-b-distribution.sh --output DIR --runtime-binary-url URL --checksum CHECKSUM
   scripts/prepare-option-b-distribution.sh --output DIR --runtime-source-for-smoke
 
+Optional: --version VERSION (default 0.10.3).
+
 Creates the Option B customer package:
 - public AutoLog shim target with macro declarations
 - public AutoLogMacro source target
@@ -26,9 +28,14 @@ RUNTIME_BINARY_PATH=""
 RUNTIME_BINARY_URL=""
 RUNTIME_CHECKSUM=""
 RUNTIME_SOURCE_FOR_SMOKE=false
+VERSION="0.10.3"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
+    --version)
+      VERSION="${2:?Missing release version}"
+      shift 2
+      ;;
     --output)
       OUTPUT_DIR="${2:-}"
       shift 2
@@ -60,6 +67,8 @@ while [[ $# -gt 0 ]]; do
       ;;
   esac
 done
+
+[[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "Expected a semantic version." >&2; exit 2; }
 
 if [[ -z "$OUTPUT_DIR" ]]; then
   echo "--output is required" >&2
@@ -205,7 +214,7 @@ $runtime_target_manifest
 )
 EOF
 
-cp "$TOOL_DIR/templates/option-b-README.md" "$OUTPUT_DIR/README.md"
+sed "s/__AUTOLOG_RELEASE_VERSION__/$VERSION/g" "$TOOL_DIR/templates/option-b-README.md" > "$OUTPUT_DIR/README.md"
 mkdir -p "$OUTPUT_DIR/docs"
 cp "$SOURCE_PACKAGE_DIR/Sources/AutoLog/Documentation.docc/MacroTrustAndCI.md" "$OUTPUT_DIR/docs/MacroTrustAndCI.md"
 

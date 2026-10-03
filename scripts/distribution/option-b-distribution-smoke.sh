@@ -9,7 +9,7 @@ CONSUMER_DIR="$ROOT_DIR/.build/option-b-consumer"
 CONSUMER_BUILD_DIR="$ROOT_DIR/.build/option-b-consumer-build"
 RUNTIME_BINARY_PATH=""
 PACKAGE_URL=""
-VERSION="0.10.2"
+VERSION="0.10.3"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -56,11 +56,11 @@ if [[ -n "$PACKAGE_URL" ]]; then
   DEPENDENCY=".package(url: \"$PACKAGE_URL\", exact: \"$VERSION\")"
 elif [[ -n "$RUNTIME_BINARY_PATH" ]]; then
   "$TOOL_DIR/prepare-option-b-distribution.sh" \
-    --output "$DIST_DIR" \
+    --output "$DIST_DIR" --version "$VERSION" \
     --runtime-binary-path "$RUNTIME_BINARY_PATH"
 else
   "$TOOL_DIR/prepare-option-b-distribution.sh" \
-    --output "$DIST_DIR" \
+    --output "$DIST_DIR" --version "$VERSION" \
     --runtime-source-for-smoke
 fi
 

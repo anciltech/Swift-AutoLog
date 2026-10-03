@@ -27,3 +27,7 @@ The publisher rejects runtimes whose text-interface headers were emitted by a
 compiler outside the Swift 6.2 series. This prevents rebuilding on a newer local
 Xcode from silently raising the advertised minimum. Other compilers may build
 comparison artifacts in CI, but those artifacts cannot be published by this tool.
+
+The next customer release is 0.10.3 with tools 6.2. Use `--version VERSION`
+when preparing a different release; the generated README uses that version.
+Publication is still gated on the complete older binary matrix.
