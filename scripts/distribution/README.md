@@ -40,3 +40,7 @@ continue to use per-process Xcode selection without changing the user's default.
 The platform download omits `-buildVersion`: Xcode 26.0.1 rejects the numeric
 26.0 selector despite offering a compatible default. Simulator enumeration is
 performed first, following the runner maintainers' initialization workaround.
+
+The publisher extracts and validates the exact ZIP it will upload. Its compiler
+check and customer smoke use that extracted framework, so a mismatched adjacent
+framework cannot hide a newer binary inside the hosted archive.

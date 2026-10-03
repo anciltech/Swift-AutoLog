@@ -12,9 +12,16 @@ REPOSITORY="anciltech/Swift-AutoLog-Distribution"
 ARTIFACT_DIR="$(cd "$ARTIFACT_DIR" && pwd)"
 ARCHIVE="$ARTIFACT_DIR/AutoLogCore.xcframework.zip"
 [[ -f "$ARCHIVE" ]] || { echo "Build AutoLogCore.xcframework.zip first." >&2; exit 1; }
+mkdir -p "$ROOT_DIR/.build"
+VERIFICATION_DIR="$(mktemp -d "$ROOT_DIR/.build/option-b-runtime-check.XXXXXX")"
+trap 'rm -rf "$VERIFICATION_DIR"' EXIT
+# Validate the archive that will actually be uploaded, rather than a potentially
+# different framework sitting beside it.
+unzip -q "$ARCHIVE" -d "$VERIFICATION_DIR"
+VERIFIED_RUNTIME="$VERIFICATION_DIR/AutoLogCore.xcframework"
 # A newer builder can silently raise the binary import requirement even when
 # Package.swift still advertises Swift 6.2. Only publish baseline-built artifacts.
-python3 - "$ARTIFACT_DIR/AutoLogCore.xcframework" <<'PYTHON'
+python3 - "$VERIFIED_RUNTIME" <<'PYTHON'
 import re, sys
 from pathlib import Path
 interfaces = list(Path(sys.argv[1]).rglob("*.swiftinterface"))
@@ -35,7 +42,7 @@ DIST_DIR="$ROOT_DIR/.build/option-b-release-$VERSION"
 
 # Verify the actual binary consumer before creating any public repository.
 "$TOOL_DIR/option-b-distribution-smoke.sh" \
-  --runtime-binary-path "$ARTIFACT_DIR/AutoLogCore.xcframework"
+  --runtime-binary-path "$VERIFIED_RUNTIME"
 "$TOOL_DIR/prepare-option-b-distribution.sh" \
   --output "$DIST_DIR" --version "$VERSION" \
   --runtime-binary-url "https://github.com/$REPOSITORY/releases/download/$VERSION/AutoLogCore.xcframework.zip" \
