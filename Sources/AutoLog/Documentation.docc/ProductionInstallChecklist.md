@@ -2,6 +2,18 @@
 
 Use this checklist before enabling Swift AutoLog in a production target.
 
+## Repository Access Gate
+
+As verified on October 3, 2026, `anciltech/Swift-AutoLog` is private. Before
+adding the package, obtain access for your GitHub account, accept any invitation,
+and authenticate that account in Xcode's Settings > Accounts or in Git for
+command-line SwiftPM. CI hosts also need access to the private repository.
+
+A repository access error occurs before compilation. Approving macros or
+adding `-skipMacroValidation` cannot fix it. Installation without individual
+access grants requires a public source repository or a separately published
+distribution package.
+
 ## Checklist
 
 1. Add the `AutoLog` product to the app, framework, extension, or package target

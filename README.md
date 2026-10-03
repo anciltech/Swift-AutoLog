@@ -51,6 +51,31 @@ Swift AutoLog can record when a function exits early from `guard`, `if`, `else i
 
 ## Installation
 
+### Repository access
+
+As verified on October 3, 2026, `anciltech/Swift-AutoLog` is a **private**
+GitHub repository. The URL below works only for accounts granted repository
+access. Adding it in Swift Package Manager does not grant that access.
+
+For the current private installation path:
+
+1. Ask the repository owner to grant your GitHub account access and accept any
+   invitation.
+2. Add that GitHub account in **Xcode > Settings > Accounts**. For command-line
+   SwiftPM, configure Git authentication for the same authorized account.
+3. Add the package and select the products for your app target as shown below.
+   Give each CI host access to the private dependency too.
+
+If Xcode reports that you do not have access, fix repository permissions and
+authentication first. Macro approval happens later, during compilation, and
+cannot resolve a repository access error. See Apple's
+[private dependency guidance](https://developer.apple.com/documentation/xcode/making-dependencies-available-to-xcode-cloud)
+for Xcode Cloud.
+
+Installation without individual access grants requires a public source
+repository or a separately published distribution package. This URL currently
+provides neither anonymous access nor a protected binary distribution.
+
 ### Swift Package Manager
 
 Add the dependency to your `Package.swift`:
@@ -104,10 +129,13 @@ app targets that depend on `AutoLog`.
 
 In Xcode:
 
-1. Open `Project > Package Dependencies`
-2. Press `+`
-3. Paste `https://github.com/anciltech/Swift-AutoLog.git`
-4. Add the `AutoLog` product to the app or framework target where you want to use it
+1. Complete the repository access setup above
+2. Open `Project > Package Dependencies`
+3. Press `+`
+4. Paste `https://github.com/anciltech/Swift-AutoLog.git`
+5. Add the `AutoLog` product to the app or framework target where you want to use it
+6. Also add `AutoLogSwiftUI` if you use the SwiftUI logging helpers; import
+   `AutoLog` and, for those helpers, `AutoLogSwiftUI` in the relevant files
 
 When you first build after importing the package, Xcode will prompt you to enable macros from the dependency.
 
