@@ -51,37 +51,25 @@ Swift AutoLog can record when a function exits early from `guard`, `if`, `else i
 
 ## Installation
 
-### Repository access
+### Customer distribution
 
-As verified on October 3, 2026, `anciltech/Swift-AutoLog` is a **private**
-GitHub repository. The URL below works only for accounts granted repository
-access. Adding it in Swift Package Manager does not grant that access.
+Use the public customer package:
+[`Swift-AutoLog-Distribution`](https://github.com/anciltech/Swift-AutoLog-Distribution).
+Release `0.10.2` includes a precompiled runtime for iOS 17+, macOS 15+, and
+watchOS 11+, including simulators and Intel Macs. This binary release requires
+**Xcode 27 / Swift 6.4 or newer**.
 
-For the current private installation path:
-
-1. Ask the repository owner to grant your GitHub account access and accept any
-   invitation.
-2. Add that GitHub account in **Xcode > Settings > Accounts**. For command-line
-   SwiftPM, configure Git authentication for the same authorized account.
-3. Add the package and select the products for your app target as shown below.
-   Give each CI host access to the private dependency too.
-
-If Xcode reports that you do not have access, fix repository permissions and
-authentication first. Macro approval happens later, during compilation, and
-cannot resolve a repository access error. See Apple's
-[private dependency guidance](https://developer.apple.com/documentation/xcode/making-dependencies-available-to-xcode-cloud)
-for Xcode Cloud.
-
-Installation without individual access grants requires a public source
-repository or a separately published distribution package. This URL currently
-provides neither anonymous access nor a protected binary distribution.
+You do not need access to the private `anciltech/Swift-AutoLog` source repository.
+The runtime implementation ships as a static XCFramework; macro declarations,
+macro implementation, and SwiftUI convenience wrappers remain public source.
+Public Swift module interfaces expose the runtime API declarations.
 
 ### Swift Package Manager
 
 Add the dependency to your `Package.swift`:
 
 ```swift
-.package(url: "https://github.com/anciltech/Swift-AutoLog.git", from: "0.10.0"),
+.package(url: "https://github.com/anciltech/Swift-AutoLog-Distribution.git", from: "0.10.2"),
 ```
 
 Then add `AutoLog` to the target that should use the macros:
@@ -90,7 +78,7 @@ Then add `AutoLog` to the target that should use the macros:
 .target(
   name: "MyFeature",
   dependencies: [
-    .product(name: "AutoLog", package: "Swift-AutoLog")
+    .product(name: "AutoLog", package: "swift-autolog-distribution")
   ]
 )
 ```
@@ -102,8 +90,8 @@ SwiftUI convenience APIs such as `Button.log`, `Binding.log`,
 .target(
   name: "MyApp",
   dependencies: [
-    .product(name: "AutoLog", package: "Swift-AutoLog"),
-    .product(name: "AutoLogSwiftUI", package: "Swift-AutoLog")
+    .product(name: "AutoLog", package: "swift-autolog-distribution"),
+    .product(name: "AutoLogSwiftUI", package: "swift-autolog-distribution")
   ]
 )
 ```
@@ -116,7 +104,7 @@ interaction logging for async view work. The package CI covers this with
 `scripts/watch-tasklog-release-smoke.sh`, which builds a minimal watchOS Release
 fixture that uses both `.taskLog` and `.taskLog(id:)`.
 
-The `AutoLog` library product supports iOS 17, macOS, and watchOS 11 or newer. The
+The `AutoLog` library product supports iOS 17, macOS 15, and watchOS 11 or newer. The
 runtime uses package-local locking instead of Swift's iOS 18-only
 `Synchronization.Mutex`, so the deployment floor is not tied to that newer API.
 Once iOS 18 is old enough to be the minimum supported iOS version, the runtime
@@ -129,15 +117,27 @@ app targets that depend on `AutoLog`.
 
 In Xcode:
 
-1. Complete the repository access setup above
-2. Open `Project > Package Dependencies`
-3. Press `+`
-4. Paste `https://github.com/anciltech/Swift-AutoLog.git`
+1. Open `Project > Package Dependencies`
+2. Press `+`
+3. Paste `https://github.com/anciltech/Swift-AutoLog-Distribution.git`
+4. Choose a version requirement starting at `0.10.2`
 5. Add the `AutoLog` product to the app or framework target where you want to use it
 6. Also add `AutoLogSwiftUI` if you use the SwiftUI logging helpers; import
    `AutoLog` and, for those helpers, `AutoLogSwiftUI` in the relevant files
 
 When you first build after importing the package, Xcode will prompt you to enable macros from the dependency.
+
+### Private source development
+
+As verified on October 3, 2026, `anciltech/Swift-AutoLog` remains private. Use
+that source URL only when developing the library or intentionally consuming its
+source. Obtain repository access, accept any invitation, and authenticate the
+authorized GitHub account in Xcode's **Settings > Accounts** or in Git for
+command-line SwiftPM. CI hosts also need private source access for that path.
+A repository access error cannot be fixed by approving macros.
+
+Choose either the customer distribution or the source package for a target;
+do not add both, because they expose the same module names.
 
 ### Macro trust and CI
 

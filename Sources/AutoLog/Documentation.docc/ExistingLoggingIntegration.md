@@ -9,7 +9,9 @@ Most brownfield apps should use Swift AutoLog for function-boundary
 instrumentation and keep their existing destination as an output sink. The
 customer-facing setup is:
 
-1. Add the `AutoLog` product.
+1. Add the `AutoLog` product from the public
+   `https://github.com/anciltech/Swift-AutoLog-Distribution.git` package
+   (`0.10.2` or newer; Xcode 27 / Swift 6.4 or newer).
 2. Bootstrap the runtime once with `AutoLog.start()`.
 3. Tag app-owned service, view-model, use-case, repository, or data-source
    types with `@AutoLog`.

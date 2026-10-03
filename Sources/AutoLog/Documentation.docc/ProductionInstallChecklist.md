@@ -2,17 +2,19 @@
 
 Use this checklist before enabling Swift AutoLog in a production target.
 
-## Repository Access Gate
+## Customer Package
 
-As verified on October 3, 2026, `anciltech/Swift-AutoLog` is private. Before
-adding the package, obtain access for your GitHub account, accept any invitation,
-and authenticate that account in Xcode's Settings > Accounts or in Git for
-command-line SwiftPM. CI hosts also need access to the private repository.
+Add `https://github.com/anciltech/Swift-AutoLog-Distribution.git` at `0.10.2`
+or newer. This public package includes the binary runtime and the `AutoLog`
+and optional `AutoLogSwiftUI` products; no private source access is required.
+This binary release requires Xcode 27 / Swift 6.4 or newer and supports iOS 17+,
+macOS 15+, and watchOS 11+.
 
-A repository access error occurs before compilation. Approving macros or
-adding `-skipMacroValidation` cannot fix it. Installation without individual
-access grants requires a public source repository or a separately published
-distribution package.
+The source repository `anciltech/Swift-AutoLog` remains private. Only source
+consumers need repository access and authenticated Git/Xcode accounts (including
+CI hosts). Choose one distribution per target because both packages expose the
+same module names. Repository permission errors occur before compilation and
+cannot be fixed with macro trust settings.
 
 ## Checklist
 
