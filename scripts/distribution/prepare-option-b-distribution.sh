@@ -11,9 +11,9 @@ Usage:
 Creates the Option B customer package:
 - public AutoLog shim target with macro declarations
 - public AutoLogMacro source target
-- protected AutoLogRuntime target supplied as a binary target
+- protected AutoLogCore target supplied as a binary target
 
-The --runtime-source-for-smoke mode copies runtime source as AutoLogRuntime so
+The --runtime-source-for-smoke mode copies runtime source as AutoLogCore so
 the package shape can be compiled locally. Do not ship that mode to customers.
 EOF
 }
@@ -103,37 +103,37 @@ cp "$SOURCE_PACKAGE_DIR/LICENSE" "$OUTPUT_DIR/LICENSE"
 cp -R "$SOURCE_PACKAGE_DIR/Sources/AutoLogMacro" "$OUTPUT_DIR/Sources/AutoLogMacro"
 
 {
-  echo "@_exported public import AutoLogRuntime"
+  echo "@_exported public import AutoLogCore"
   echo
   cat "$SOURCE_PACKAGE_DIR/Sources/AutoLog/Macros.swift"
 } > "$OUTPUT_DIR/Sources/AutoLog/Macros.swift"
 
 runtime_target_manifest=""
 if [[ "$RUNTIME_SOURCE_FOR_SMOKE" == true ]]; then
-  mkdir -p "$OUTPUT_DIR/Sources/AutoLogRuntime"
+  mkdir -p "$OUTPUT_DIR/Sources/AutoLogCore"
   while IFS= read -r source_file; do
     relative_path="${source_file#"$SOURCE_PACKAGE_DIR/Sources/AutoLog/"}"
-    mkdir -p "$OUTPUT_DIR/Sources/AutoLogRuntime/$(dirname "$relative_path")"
-    cp "$source_file" "$OUTPUT_DIR/Sources/AutoLogRuntime/$relative_path"
+    mkdir -p "$OUTPUT_DIR/Sources/AutoLogCore/$(dirname "$relative_path")"
+    cp "$source_file" "$OUTPUT_DIR/Sources/AutoLogCore/$relative_path"
   done < <(find "$SOURCE_PACKAGE_DIR/Sources/AutoLog" -type f -name '*.swift' ! -name 'Macros.swift' | sort)
 
   runtime_target_manifest='    .target(
-      name: "AutoLogRuntime",
-      path: "Sources/AutoLogRuntime",
+      name: "AutoLogCore",
+      path: "Sources/AutoLogCore",
       swiftSettings: [
         .swiftLanguageMode(.v6)
       ]
     ),'
 elif [[ -n "$RUNTIME_BINARY_PATH" ]]; then
   mkdir -p "$OUTPUT_DIR/Artifacts"
-  cp -R "$RUNTIME_BINARY_PATH" "$OUTPUT_DIR/Artifacts/AutoLogRuntime.xcframework"
+  cp -R "$RUNTIME_BINARY_PATH" "$OUTPUT_DIR/Artifacts/AutoLogCore.xcframework"
   runtime_target_manifest="    .binaryTarget(
-      name: \"AutoLogRuntime\",
-      path: \"Artifacts/AutoLogRuntime.xcframework\"
+      name: \"AutoLogCore\",
+      path: \"Artifacts/AutoLogCore.xcframework\"
     ),"
 else
   runtime_target_manifest="    .binaryTarget(
-      name: \"AutoLogRuntime\",
+      name: \"AutoLogCore\",
       url: \"$RUNTIME_BINARY_URL\",
       checksum: \"$RUNTIME_CHECKSUM\"
     ),"
@@ -193,7 +193,7 @@ $runtime_target_manifest
     .target(
       name: "AutoLog",
       dependencies: [
-        "AutoLogRuntime",
+        "AutoLogCore",
         "AutoLogMacro"
       ],
       path: "Sources/AutoLog",

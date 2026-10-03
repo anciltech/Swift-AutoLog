@@ -86,7 +86,7 @@ Xcode Cloud and command-line build setup.
 
 ## Distribution contents
 
-- **AutoLogRuntime**: a static XCFramework downloaded from this repository's
+- **AutoLogCore**: a static XCFramework downloaded from this repository's
   release assets. Runtime, formatting, configuration, and routing source are
   excluded.
 - **AutoLog**: public macro declarations and runtime API re-exports.

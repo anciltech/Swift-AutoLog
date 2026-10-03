@@ -61,18 +61,18 @@ if [[ ! -d "$PACKAGE_DIR/Sources/AutoLogMacro" ]]; then
 fi
 
 if [[ "$ALLOW_RUNTIME_SOURCE" == true ]]; then
-  if [[ ! -d "$PACKAGE_DIR/Sources/AutoLogRuntime" ]]; then
-    echo "Smoke package expected Sources/AutoLogRuntime" >&2
+  if [[ ! -d "$PACKAGE_DIR/Sources/AutoLogCore" ]]; then
+    echo "Smoke package expected Sources/AutoLogCore" >&2
     exit 1
   fi
 else
-  if [[ -d "$PACKAGE_DIR/Sources/AutoLogRuntime" ]]; then
-    echo "Release package must not include Sources/AutoLogRuntime" >&2
+  if [[ -d "$PACKAGE_DIR/Sources/AutoLogCore" ]]; then
+    echo "Release package must not include Sources/AutoLogCore" >&2
     exit 1
   fi
 
   if ! grep -q 'binaryTarget(' "$PACKAGE_DIR/Package.swift"; then
-    echo "Release package must declare AutoLogRuntime as a binaryTarget" >&2
+    echo "Release package must declare AutoLogCore as a binaryTarget" >&2
     exit 1
   fi
 fi
@@ -82,13 +82,13 @@ if find "$PACKAGE_DIR/Sources/AutoLog" -type f ! -name 'Macros.swift' | grep -q 
   exit 1
 fi
 
-if ! grep -q 'name: "AutoLogRuntime"' "$PACKAGE_DIR/Package.swift"; then
-  echo "Package.swift must declare an AutoLogRuntime target" >&2
+if ! grep -q 'name: "AutoLogCore"' "$PACKAGE_DIR/Package.swift"; then
+  echo "Package.swift must declare an AutoLogCore target" >&2
   exit 1
 fi
 
-if ! grep -q '@_exported public import AutoLogRuntime' "$PACKAGE_DIR/Sources/AutoLog/Macros.swift"; then
-  echo "AutoLog shim must re-export AutoLogRuntime" >&2
+if ! grep -q '@_exported public import AutoLogCore' "$PACKAGE_DIR/Sources/AutoLog/Macros.swift"; then
+  echo "AutoLog shim must re-export AutoLogCore" >&2
   exit 1
 fi
 
@@ -102,13 +102,13 @@ manifest = json.load(sys.stdin)
 root = Path(sys.argv[1])
 smoke = sys.argv[2] == "true"
 targets = {t["name"]: t for t in manifest["targets"]}
-expected = {"AutoLog", "AutoLogMacro", "AutoLogSwiftUI", "AutoLogRuntime"}
+expected = {"AutoLog", "AutoLogMacro", "AutoLogSwiftUI", "AutoLogCore"}
 assert set(targets) == expected, "Unexpected targets in customer package"
 assert {p["name"] for p in manifest["products"]} == {"AutoLog", "AutoLogSwiftUI"}, "Missing public products"
 assert (root / "LICENSE").is_file(), "License missing"
-allowed = expected if smoke else expected - {"AutoLogRuntime"}
+allowed = expected if smoke else expected - {"AutoLogCore"}
 assert {p.name for p in (root / "Sources").iterdir()} == allowed, "Unexpected source directory"
-runtime = targets["AutoLogRuntime"]
+runtime = targets["AutoLogCore"]
 if not smoke:
     assert runtime["type"] == "binary", "Runtime must be binary"
     if runtime.get("url"):

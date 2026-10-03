@@ -16,3 +16,9 @@ then verifies anonymous consumption; run it only when publication is authorized.
 
 The older-toolchain baseline is being verified on complete Xcode installations.
 The candidate manifest floor is Swift 6.2; 0.10.2 remains the Swift 6.4 release.
+
+The binary module is `AutoLogCore`, re-exported by `AutoLog`. It deliberately
+avoids the public `AutoLogRuntime` type name: Swift 6.2/6.3 text-interface import
+otherwise resolves module-qualified types against the struct and fails. The
+consumer check also returns a non-Sendable reference from caller-isolated async
+closures, exercising the API that requires Swift 6.2.

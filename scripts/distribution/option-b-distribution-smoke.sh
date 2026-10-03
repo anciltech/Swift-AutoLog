@@ -77,7 +77,7 @@ rm -rf "$CONSUMER_DIR" "$CONSUMER_BUILD_DIR"
 mkdir -p "$CONSUMER_DIR/Sources/OptionBConsumer"
 
 cat > "$CONSUMER_DIR/Package.swift" <<EOF
-// swift-tools-version: 6.0
+// swift-tools-version: 6.2
 import PackageDescription
 
 let package = Package(
@@ -169,6 +169,35 @@ private struct ConsumerView: View {
       .taskLog("Reload", id: "one") { _ = QuickStartService().greet("Reload") }
   }
 }
+
+private final class ActorState {
+  var value = 0
+}
+
+@MainActor
+private func verifyCallerIsolation() async {
+  let state = ActorState()
+  let depth = await AutoLog.withCallSiteDepth(2) {
+    await Task.yield()
+    state.value += 1
+    return state
+  }
+  let interaction = await AutoLogInteraction.system("Actor check").log {
+    await Task.yield()
+    state.value += 1
+    return state
+  }
+  let task = await AutoLog.logTask("Actor check") {
+    await Task.yield()
+    state.value += 1
+    return state
+  }
+  guard depth === state, interaction === state, task === state, state.value == 3 else {
+    fatalError("Async wrappers failed caller-isolation check")
+  }
+}
+
+await verifyCallerIsolation()
 
 private let store = EventStore()
 private let configurationStore = AutoLogConfigurationStore(

@@ -10,18 +10,18 @@ ARTIFACT_DIR="${2:?Missing artifact directory}"
 REPOSITORY="anciltech/Swift-AutoLog-Distribution"
 [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "Expected a semantic version." >&2; exit 2; }
 ARTIFACT_DIR="$(cd "$ARTIFACT_DIR" && pwd)"
-ARCHIVE="$ARTIFACT_DIR/AutoLogRuntime.xcframework.zip"
-[[ -f "$ARCHIVE" ]] || { echo "Build AutoLogRuntime.xcframework.zip first." >&2; exit 1; }
+ARCHIVE="$ARTIFACT_DIR/AutoLogCore.xcframework.zip"
+[[ -f "$ARCHIVE" ]] || { echo "Build AutoLogCore.xcframework.zip first." >&2; exit 1; }
 CHECKSUM="$(swift package compute-checksum "$ARCHIVE")"
 DIST_DIR="$ROOT_DIR/.build/option-b-release-$VERSION"
 [[ ! -e "$DIST_DIR" ]] || { echo "Release staging directory already exists: $DIST_DIR" >&2; exit 1; }
 
 # Verify the actual binary consumer before creating any public repository.
 "$TOOL_DIR/option-b-distribution-smoke.sh" \
-  --runtime-binary-path "$ARTIFACT_DIR/AutoLogRuntime.xcframework"
+  --runtime-binary-path "$ARTIFACT_DIR/AutoLogCore.xcframework"
 "$TOOL_DIR/prepare-option-b-distribution.sh" \
   --output "$DIST_DIR" \
-  --runtime-binary-url "https://github.com/$REPOSITORY/releases/download/$VERSION/AutoLogRuntime.xcframework.zip" \
+  --runtime-binary-url "https://github.com/$REPOSITORY/releases/download/$VERSION/AutoLogCore.xcframework.zip" \
   --checksum "$CHECKSUM"
 # Keep the customer's install minimum aligned with the release being published.
 sed -i '' "s/0\.10\.2/$VERSION/g" "$DIST_DIR/README.md"
@@ -84,7 +84,7 @@ gh release create "$VERSION" "$ARCHIVE" \
 
 # Prove the hosted artifact and source package are reachable without credentials.
 curl --fail --location --silent --show-error --retry 5 --retry-all-errors --retry-delay 2 \
-  "https://github.com/$REPOSITORY/releases/download/$VERSION/AutoLogRuntime.xcframework.zip" \
+  "https://github.com/$REPOSITORY/releases/download/$VERSION/AutoLogCore.xcframework.zip" \
   --output "$ARTIFACT_DIR/anonymous-download.zip"
 [[ "$(swift package compute-checksum "$ARTIFACT_DIR/anonymous-download.zip")" == "$CHECKSUM" ]]
 GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1 GIT_TERMINAL_PROMPT=0 \

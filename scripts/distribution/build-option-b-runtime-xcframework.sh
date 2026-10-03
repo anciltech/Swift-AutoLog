@@ -6,7 +6,7 @@ usage() {
 Usage:
   scripts/build-option-b-runtime-xcframework.sh --output DIR [--configuration Release]
 
-Requires Xcode and XcodeGen. Builds a static AutoLogRuntime.xcframework for iOS,
+Requires Xcode and XcodeGen. Builds a static AutoLogCore.xcframework for iOS,
 iOS Simulator, macOS, watchOS, and watchOS Simulator with Swift module interfaces.
 Macro declarations are excluded. The output directory must be empty.
 HELP
@@ -33,7 +33,7 @@ OUTPUT_DIR="$(cd "$OUTPUT_DIR" && pwd)"
 [[ -z "$(ls -A "$OUTPUT_DIR")" ]] || { echo "Output directory must be empty: $OUTPUT_DIR" >&2; exit 1; }
 
 BUILD_ROOT="$ROOT_DIR/.build/option-b-runtime-xcframework"
-PROJECT_DIR="$BUILD_ROOT/AutoLogRuntimeProject"
+PROJECT_DIR="$BUILD_ROOT/AutoLogCoreProject"
 ARCHIVE_DIR="$BUILD_ROOT/archives"
 rm -rf "$BUILD_ROOT"
 mkdir -p "$PROJECT_DIR/Sources" "$ARCHIVE_DIR"
@@ -44,7 +44,7 @@ while IFS= read -r source_file; do
 done < <(find "$SOURCE_PACKAGE_DIR/Sources/AutoLog" -type f -name '*.swift' ! -name 'Macros.swift' | sort)
 
 cat > "$PROJECT_DIR/project.yml" <<'SPEC'
-name: AutoLogRuntime
+name: AutoLogCore
 options:
   bundleIdPrefix: com.anciltech
 settings:
@@ -65,30 +65,30 @@ settings:
     COPY_PHASE_STRIP: YES
     STRIP_INSTALLED_PRODUCT: YES
 targets:
-  AutoLogRuntime:
+  AutoLogCore:
     type: framework
     platform: iOS
     sources: [Sources]
     settings:
       MACH_O_TYPE: staticlib
-      PRODUCT_BUNDLE_IDENTIFIER: com.anciltech.AutoLogRuntime
+      PRODUCT_BUNDLE_IDENTIFIER: com.anciltech.AutoLogCore
       GENERATE_INFOPLIST_FILE: YES
       SUPPORTED_PLATFORMS: 'iphoneos iphonesimulator macosx watchos watchsimulator'
 schemes:
-  AutoLogRuntime:
+  AutoLogCore:
     build:
       targets:
-        AutoLogRuntime: all
+        AutoLogCore: all
 SPEC
 xcodegen generate --spec "$PROJECT_DIR/project.yml" --project "$PROJECT_DIR" >/dev/null
 frameworks=()
 archive_framework() {
   local name="$1" destination="$2" sdk="$3"
   local archive_path="$ARCHIVE_DIR/$name.xcarchive"
-  echo "Archiving AutoLogRuntime for $name"
+  echo "Archiving AutoLogCore for $name"
   if ! xcodebuild archive \
-    -project "$PROJECT_DIR/AutoLogRuntime.xcodeproj" \
-    -scheme AutoLogRuntime -destination "$destination" -sdk "$sdk" \
+    -project "$PROJECT_DIR/AutoLogCore.xcodeproj" \
+    -scheme AutoLogCore -destination "$destination" -sdk "$sdk" \
     -archivePath "$archive_path" -configuration "$CONFIGURATION" \
     -derivedDataPath "$BUILD_ROOT/DerivedData" \
     SKIP_INSTALL=NO BUILD_LIBRARY_FOR_DISTRIBUTION=YES CODE_SIGNING_ALLOWED=NO \
@@ -96,8 +96,8 @@ archive_framework() {
     tail -80 "$ARCHIVE_DIR/$name.log" >&2
     return 1
   fi
-  local framework="$archive_path/Products/Library/Frameworks/AutoLogRuntime.framework"
-  [[ -d "$framework/Modules/AutoLogRuntime.swiftmodule" ]] || { echo "Missing framework modules: $framework" >&2; return 1; }
+  local framework="$archive_path/Products/Library/Frameworks/AutoLogCore.framework"
+  [[ -d "$framework/Modules/AutoLogCore.swiftmodule" ]] || { echo "Missing framework modules: $framework" >&2; return 1; }
   frameworks+=("-framework" "$framework")
 }
 archive_framework ios 'generic/platform=iOS' iphoneos
@@ -106,11 +106,11 @@ archive_framework macos 'generic/platform=macOS' macosx
 archive_framework watchos 'generic/platform=watchOS' watchos
 archive_framework watchos-simulator 'generic/platform=watchOS Simulator' watchsimulator
 xcodebuild -create-xcframework "${frameworks[@]}" \
-  -output "$OUTPUT_DIR/AutoLogRuntime.xcframework" > "$OUTPUT_DIR/create-xcframework.log" 2>&1
+  -output "$OUTPUT_DIR/AutoLogCore.xcframework" > "$OUTPUT_DIR/create-xcframework.log" 2>&1
 (
   cd "$OUTPUT_DIR"
-  /usr/bin/zip -qry AutoLogRuntime.xcframework.zip AutoLogRuntime.xcframework
-  swift package compute-checksum AutoLogRuntime.xcframework.zip > AutoLogRuntime.xcframework.zip.checksum
+  /usr/bin/zip -qry AutoLogCore.xcframework.zip AutoLogCore.xcframework
+  swift package compute-checksum AutoLogCore.xcframework.zip > AutoLogCore.xcframework.zip.checksum
 )
-echo "Built $OUTPUT_DIR/AutoLogRuntime.xcframework"
-echo "Checksum: $(cat "$OUTPUT_DIR/AutoLogRuntime.xcframework.zip.checksum")"
+echo "Built $OUTPUT_DIR/AutoLogCore.xcframework"
+echo "Checksum: $(cat "$OUTPUT_DIR/AutoLogCore.xcframework.zip.checksum")"
