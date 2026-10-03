@@ -1,0 +1,54 @@
+name: Minimum Toolchain Baseline
+
+on:
+  push:
+    branches: [main, codex/swiftui-lifecycle-log-modifiers]
+    paths:
+      - '.github/workflows/toolchain-baseline.yaml'
+      - 'scripts/distribution/**'
+      - 'Sources/**'
+      - 'Package.swift'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  baseline:
+    runs-on: macos-26
+    timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      matrix:
+        xcode: ['26.0.1', '26.5']
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_${{ matrix.xcode }}.app/Contents/Developer
+    steps:
+      - uses: actions/checkout@v4
+      - name: Record compiler and SDKs
+        run: |
+          mkdir -p .build/baseline-evidence
+          xcodebuild -version | tee .build/baseline-evidence/xcode.txt
+          xcrun swift --version | tee .build/baseline-evidence/swift.txt
+          xcodebuild -showsdks > .build/baseline-evidence/sdks.txt
+      - name: Verify source package
+        run: swift test --disable-keychain --disable-netrc --filter 'AutoLogRuntimeTests|AutoLogMacroTests' > .build/baseline-evidence/source-tests.log 2>&1
+      - name: Install framework project generator
+        run: brew install xcodegen
+      - name: Archive protected runtime
+        run: scripts/distribution/build-option-b-runtime-xcframework.sh --output .build/baseline-runtime > .build/baseline-evidence/archives.log 2>&1
+      - name: Verify public interfaces and runtime consumer
+        run: scripts/distribution/option-b-distribution-smoke.sh --runtime-binary-path "$PWD/.build/baseline-runtime/AutoLogRuntime.xcframework" > .build/baseline-evidence/consumer.log 2>&1
+      - name: Verify iOS and watchOS Release links
+        run: scripts/distribution/option-b-platform-smoke.sh > .build/baseline-evidence/platforms.log 2>&1
+      - name: Upload binary and diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: autolog-baseline-xcode-${{ matrix.xcode }}
+          path: |
+            .build/baseline-runtime
+            .build/baseline-evidence
+            .build/option-b-runtime-xcframework/archives/*.log
+            .build/option-b-platform-smoke/*.log
+          retention-days: 7
