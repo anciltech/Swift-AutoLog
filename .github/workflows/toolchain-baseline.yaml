@@ -6,7 +6,7 @@ on:
     paths:
       - '.github/workflows/toolchain-baseline.yaml'
       - 'scripts/distribution/**'
-      - 'Sources/**'
+      - 'Sources/**/*.swift'
       - 'Package.swift'
   workflow_dispatch:
 

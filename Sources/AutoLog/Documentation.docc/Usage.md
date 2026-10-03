@@ -799,4 +799,3 @@ This keeps branch decisions visible without treating them as automatic failures.
 Output profiles classify manual ``AutoLog/warning(_:fileID:line:)`` events and
 handled-error catch-site rows as `.warning`, so warning rows can be shown or
 hidden independently from ordinary successful completions and thrown failures.
-

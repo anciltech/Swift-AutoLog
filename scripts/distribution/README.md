@@ -48,3 +48,6 @@ framework cannot hide a newer binary inside the hosted archive.
 `Published Customer Baseline` verifies actual release 0.10.3 installation on
 Swift 6.2 and 6.3.2 with Git configuration, SwiftPM Keychain, and netrc disabled.
 The release publisher separately performs the anonymous Xcode 27 check.
+
+The hosted-consumer workflow removes checkout credentials before resolving the
+public dependency. Documentation-only changes do not rerun native archives.
