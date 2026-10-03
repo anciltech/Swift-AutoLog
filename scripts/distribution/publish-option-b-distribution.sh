@@ -12,6 +12,23 @@ REPOSITORY="anciltech/Swift-AutoLog-Distribution"
 ARTIFACT_DIR="$(cd "$ARTIFACT_DIR" && pwd)"
 ARCHIVE="$ARTIFACT_DIR/AutoLogCore.xcframework.zip"
 [[ -f "$ARCHIVE" ]] || { echo "Build AutoLogCore.xcframework.zip first." >&2; exit 1; }
+# A newer builder can silently raise the binary import requirement even when
+# Package.swift still advertises Swift 6.2. Only publish baseline-built artifacts.
+python3 - "$ARTIFACT_DIR/AutoLogCore.xcframework" <<'PYTHON'
+import re, sys
+from pathlib import Path
+interfaces = list(Path(sys.argv[1]).rglob("*.swiftinterface"))
+assert interfaces, "Runtime has no textual Swift interfaces"
+for interface in interfaces:
+    header = interface.read_text().splitlines()[:4]
+    compiler = next((line for line in header if "swift-compiler-version:" in line), "")
+    assert re.search(r"Swift version 6\.2(?:[ .]|$)", compiler), (
+        f"Publish requires a Swift 6.2-built runtime: {interface}: {compiler}"
+    )
+    assert any("-module-name AutoLogCore" in line for line in header), (
+        f"Unexpected runtime module: {interface}"
+    )
+PYTHON
 CHECKSUM="$(swift package compute-checksum "$ARCHIVE")"
 DIST_DIR="$ROOT_DIR/.build/option-b-release-$VERSION"
 [[ ! -e "$DIST_DIR" ]] || { echo "Release staging directory already exists: $DIST_DIR" >&2; exit 1; }

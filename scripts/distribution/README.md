@@ -22,3 +22,8 @@ avoids the public `AutoLogRuntime` type name: Swift 6.2/6.3 text-interface impor
 otherwise resolves module-qualified types against the struct and fails. The
 consumer check also returns a non-Sendable reference from caller-isolated async
 closures, exercising the API that requires Swift 6.2.
+
+The publisher rejects runtimes whose text-interface headers were emitted by a
+compiler outside the Swift 6.2 series. This prevents rebuilding on a newer local
+Xcode from silently raising the advertised minimum. Other compilers may build
+comparison artifacts in CI, but those artifacts cannot be published by this tool.
