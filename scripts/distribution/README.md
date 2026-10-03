@@ -36,3 +36,7 @@ Xcode 26.0.1 runs on macOS 15. GitHub removed its watchOS 26.0 platform
 components from the image, so the workflow installs that platform explicitly
 and selects Xcode on the disposable runner before building. The local scripts
 continue to use per-process Xcode selection without changing the user's default.
+
+The platform download omits `-buildVersion`: Xcode 26.0.1 rejects the numeric
+26.0 selector despite offering a compatible default. Simulator enumeration is
+performed first, following the runner maintainers' initialization workaround.
