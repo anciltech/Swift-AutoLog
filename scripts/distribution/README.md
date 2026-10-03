@@ -31,3 +31,8 @@ comparison artifacts in CI, but those artifacts cannot be published by this tool
 The next customer release is 0.10.3 with tools 6.2. Use `--version VERSION`
 when preparing a different release; the generated README uses that version.
 Publication is still gated on the complete older binary matrix.
+
+Xcode 26.0.1 runs on macOS 15. GitHub removed its watchOS 26.0 platform
+components from the image, so the workflow installs that platform explicitly
+and selects Xcode on the disposable runner before building. The local scripts
+continue to use per-process Xcode selection without changing the user's default.

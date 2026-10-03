@@ -16,7 +16,7 @@ permissions:
 jobs:
   baseline:
     runs-on: ${{ matrix.runner }}
-    timeout-minutes: 35
+    timeout-minutes: 45
     strategy:
       fail-fast: false
       matrix:
@@ -36,7 +36,12 @@ jobs:
           xcrun swift --version | tee .build/baseline-evidence/swift.txt
           xcodebuild -showsdks > .build/baseline-evidence/sdks.txt
       - name: Initialize platform support
-        run: sudo env DEVELOPER_DIR="$DEVELOPER_DIR" xcodebuild -runFirstLaunch
+        run: |
+          sudo xcode-select --switch "$DEVELOPER_DIR"
+          sudo xcodebuild -runFirstLaunch
+      - name: Install removed baseline watchOS platform
+        if: matrix.xcode == '26.0.1'
+        run: xcodebuild -downloadPlatform watchOS -buildVersion 26.0 > .build/baseline-evidence/watchos-platform-install.log 2>&1
       - name: Verify source package
         run: swift test --disable-keychain --disable-netrc --filter 'AutoLogRuntimeTests|AutoLogMacroTests' > .build/baseline-evidence/source-tests.log 2>&1
       - name: Install framework project generator
