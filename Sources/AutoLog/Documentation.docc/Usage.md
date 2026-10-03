@@ -23,9 +23,9 @@ Opt out of logging and exclude methods from emitting events.
 ## Import the AutoLog library
 
 Add the public `https://github.com/anciltech/Swift-AutoLog-Distribution.git`
-package at `0.10.2` or newer and choose the `AutoLog` product in Xcode or Swift
+package at `0.10.3` or newer and choose the `AutoLog` product in Xcode or Swift
 Package Manager. Add `AutoLogSwiftUI` too if you use the SwiftUI helpers below.
-The binary release requires Xcode 27 / Swift 6.4 or newer and supports iOS 17+,
+The binary release requires Xcode 26 / Swift 6.2 or newer and supports iOS 17+,
 macOS 15+, and watchOS 11+. Private source repository access is unnecessary.
 
 After importing AutoLog for the first time, you will be prompted to enable
@@ -800,8 +800,3 @@ Output profiles classify manual ``AutoLog/warning(_:fileID:line:)`` events and
 handled-error catch-site rows as `.warning`, so warning rows can be shown or
 hidden independently from ordinary successful completions and thrown failures.
 
-## Source toolchain baseline
-
-The source package requires Swift 6.2 / Xcode 26 or newer for its
-`nonisolated(nonsending)` async wrappers. Public binary releases must also be
-built and tested against their declared minimum toolchain.

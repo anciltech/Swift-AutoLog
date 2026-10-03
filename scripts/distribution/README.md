@@ -14,8 +14,8 @@ expansion and runtime events while disabling saved HTTP credentials.
 links. `publish-option-b-distribution.sh` publishes only after binary checks and
 then verifies anonymous consumption; run it only when publication is authorized.
 
-The older-toolchain baseline is being verified on complete Xcode installations.
-The candidate manifest floor is Swift 6.2; 0.10.2 remains the Swift 6.4 release.
+The verified minimum is Swift 6.2 / Xcode 26, tested from Xcode 26.0.1.
+Release 0.10.3 uses the baseline-built runtime; 0.10.2 retains its Swift 6.4 requirement.
 
 The binary module is `AutoLogCore`, re-exported by `AutoLog`. It deliberately
 avoids the public `AutoLogRuntime` type name: Swift 6.2/6.3 text-interface import
@@ -28,9 +28,9 @@ compiler outside the Swift 6.2 series. This prevents rebuilding on a newer local
 Xcode from silently raising the advertised minimum. Other compilers may build
 comparison artifacts in CI, but those artifacts cannot be published by this tool.
 
-The next customer release is 0.10.3 with tools 6.2. Use `--version VERSION`
+The current customer release is 0.10.3 with tools 6.2. Use `--version VERSION`
 when preparing a different release; the generated README uses that version.
-Publication is still gated on the complete older binary matrix.
+The complete older binary matrix passed before publication.
 
 Xcode 26.0.1 runs on macOS 15. GitHub removed its watchOS 26.0 platform
 components from the image, so the workflow installs that platform explicitly
@@ -44,3 +44,7 @@ performed first, following the runner maintainers' initialization workaround.
 The publisher extracts and validates the exact ZIP it will upload. Its compiler
 check and customer smoke use that extracted framework, so a mismatched adjacent
 framework cannot hide a newer binary inside the hosted archive.
+
+`Published Customer Baseline` verifies actual release 0.10.3 installation on
+Swift 6.2 and 6.3.2 with Git configuration, SwiftPM Keychain, and netrc disabled.
+The release publisher separately performs the anonymous Xcode 27 check.
