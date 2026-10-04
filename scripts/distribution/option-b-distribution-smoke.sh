@@ -9,7 +9,7 @@ CONSUMER_DIR="$ROOT_DIR/.build/option-b-consumer"
 CONSUMER_BUILD_DIR="$ROOT_DIR/.build/option-b-consumer-build"
 RUNTIME_BINARY_PATH=""
 PACKAGE_URL=""
-VERSION="0.10.3"
+VERSION="0.10.4"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in

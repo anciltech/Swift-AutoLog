@@ -52,7 +52,7 @@ Swift AutoLog can record when a function exits early from `guard`, `if`, `else i
 ## Toolchain baseline
 
 Requires **Swift 6.2 / Xcode 26 or newer**, for both the source package and the
-protected runtime from release 0.10.3. Async wrappers use
+protected runtime from release 0.10.4. Async wrappers use
 `nonisolated(nonsending)` to preserve the caller actor and allow non-Sendable
 results; Swift 6.1 cannot parse this API.
 
@@ -67,7 +67,7 @@ also passes the Xcode 27 / Swift 6.4 consumer check.
 
 Use the public customer package:
 [`Swift-AutoLog-Distribution`](https://github.com/anciltech/Swift-AutoLog-Distribution).
-Release `0.10.3` includes a precompiled runtime for iOS 17+, macOS 15+, and
+Release `0.10.4` includes a precompiled runtime for iOS 17+, macOS 15+, and
 watchOS 11+, including simulators and Intel Macs. This binary release requires
 **Xcode 26 / Swift 6.2 or newer**.
 
@@ -81,7 +81,7 @@ Public Swift module interfaces expose the runtime API declarations.
 Add the dependency to your `Package.swift`:
 
 ```swift
-.package(url: "https://github.com/anciltech/Swift-AutoLog-Distribution.git", from: "0.10.3"),
+.package(url: "https://github.com/anciltech/Swift-AutoLog-Distribution.git", from: "0.10.4"),
 ```
 
 Then add `AutoLog` to the target that should use the macros:
@@ -132,7 +132,7 @@ In Xcode:
 1. Open `Project > Package Dependencies`
 2. Press `+`
 3. Paste `https://github.com/anciltech/Swift-AutoLog-Distribution.git`
-4. Choose a version requirement starting at `0.10.3`
+4. Choose a version requirement starting at `0.10.4`
 5. Add the `AutoLog` product to the app or framework target where you want to use it
 6. Also add `AutoLogSwiftUI` if you use the SwiftUI logging helpers; import
    `AutoLog` and, for those helpers, `AutoLogSwiftUI` in the relevant files

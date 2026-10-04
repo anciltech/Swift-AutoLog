@@ -4,7 +4,7 @@ Use this checklist before enabling Swift AutoLog in a production target.
 
 ## Customer Package
 
-Add `https://github.com/anciltech/Swift-AutoLog-Distribution.git` at `0.10.3`
+Add `https://github.com/anciltech/Swift-AutoLog-Distribution.git` at `0.10.4`
 or newer. This public package includes the binary runtime and the `AutoLog`
 and optional `AutoLogSwiftUI` products; no private source access is required.
 This binary release requires Xcode 26 / Swift 6.2 or newer and supports iOS 17+,

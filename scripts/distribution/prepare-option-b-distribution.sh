@@ -8,7 +8,7 @@ Usage:
   scripts/prepare-option-b-distribution.sh --output DIR --runtime-binary-url URL --checksum CHECKSUM
   scripts/prepare-option-b-distribution.sh --output DIR --runtime-source-for-smoke
 
-Optional: --version VERSION (default 0.10.3).
+Optional: --version VERSION (default 0.10.4).
 
 Creates the Option B customer package:
 - public AutoLog shim target with macro declarations
@@ -28,7 +28,7 @@ RUNTIME_BINARY_PATH=""
 RUNTIME_BINARY_URL=""
 RUNTIME_CHECKSUM=""
 RUNTIME_SOURCE_FOR_SMOKE=false
-VERSION="0.10.3"
+VERSION="0.10.4"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in

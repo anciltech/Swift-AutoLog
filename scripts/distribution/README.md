@@ -15,7 +15,7 @@ links. `publish-option-b-distribution.sh` publishes only after binary checks and
 then verifies anonymous consumption; run it only when publication is authorized.
 
 The verified minimum is Swift 6.2 / Xcode 26, tested from Xcode 26.0.1.
-Release 0.10.3 uses the baseline-built runtime; 0.10.2 retains its Swift 6.4 requirement.
+Release 0.10.4 uses the baseline-built runtime and includes required framework bundle versions; 0.10.2 retains its Swift 6.4 requirement.
 
 The binary module is `AutoLogCore`, re-exported by `AutoLog`. It deliberately
 avoids the public `AutoLogRuntime` type name: Swift 6.2/6.3 text-interface import
@@ -47,7 +47,7 @@ The publisher extracts and validates the exact ZIP it will upload. Its compiler
 check and customer smoke use that extracted framework, so a mismatched adjacent
 framework cannot hide a newer binary inside the hosted archive.
 
-`Published Customer Baseline` verifies actual release 0.10.3 installation on
+`Published Customer Baseline` verifies actual release 0.10.4 installation on
 Swift 6.2 and 6.3.2 with Git configuration, SwiftPM Keychain, and netrc disabled.
 The release publisher separately performs the anonymous Xcode 27 check.
 

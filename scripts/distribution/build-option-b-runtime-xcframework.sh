@@ -17,7 +17,7 @@ SOURCE_PACKAGE_DIR="$(cd "$TOOL_DIR/../.." && pwd)"
 ROOT_DIR="${AUTOLOG_DISTRIBUTION_WORKSPACE:-$SOURCE_PACKAGE_DIR}"
 OUTPUT_DIR=""
 CONFIGURATION="Release"
-VERSION="0.10.3"
+VERSION="0.10.4"
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --output) OUTPUT_DIR="${2:?Missing output directory}"; shift 2 ;;
