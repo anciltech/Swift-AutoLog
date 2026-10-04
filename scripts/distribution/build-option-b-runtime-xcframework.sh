@@ -4,7 +4,7 @@ set -euo pipefail
 usage() {
   cat <<'HELP'
 Usage:
-  scripts/build-option-b-runtime-xcframework.sh --output DIR [--configuration Release]
+  scripts/build-option-b-runtime-xcframework.sh --output DIR [--configuration Release] [--version VERSION]
 
 Requires Xcode and XcodeGen. Builds a static AutoLogCore.xcframework for iOS,
 iOS Simulator, macOS, watchOS, and watchOS Simulator with Swift module interfaces.
@@ -17,15 +17,18 @@ SOURCE_PACKAGE_DIR="$(cd "$TOOL_DIR/../.." && pwd)"
 ROOT_DIR="${AUTOLOG_DISTRIBUTION_WORKSPACE:-$SOURCE_PACKAGE_DIR}"
 OUTPUT_DIR=""
 CONFIGURATION="Release"
+VERSION="0.10.3"
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --output) OUTPUT_DIR="${2:?Missing output directory}"; shift 2 ;;
     --configuration) CONFIGURATION="${2:?Missing configuration}"; shift 2 ;;
+    --version) VERSION="${2:?Missing release version}"; shift 2 ;;
     -h|--help) usage; exit 0 ;;
     *) echo "Unknown argument: $1" >&2; usage >&2; exit 2 ;;
   esac
 done
 [[ -n "$OUTPUT_DIR" ]] || { usage >&2; exit 2; }
+[[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "Expected a semantic version." >&2; exit 2; }
 command -v xcodegen >/dev/null || { echo "Install XcodeGen before building the release runtime." >&2; exit 1; }
 xcodebuild -version >/dev/null
 mkdir -p "$OUTPUT_DIR"
@@ -43,13 +46,15 @@ while IFS= read -r source_file; do
   cp "$source_file" "$PROJECT_DIR/Sources/$relative_path"
 done < <(find "$SOURCE_PACKAGE_DIR/Sources/AutoLog" -type f -name '*.swift' ! -name 'Macros.swift' | sort)
 
-cat > "$PROJECT_DIR/project.yml" <<'SPEC'
+cat > "$PROJECT_DIR/project.yml" <<SPEC
 name: AutoLogCore
 options:
   bundleIdPrefix: com.anciltech
 settings:
   base:
     SWIFT_VERSION: '6.0'
+    MARKETING_VERSION: '$VERSION'
+    CURRENT_PROJECT_VERSION: '1'
     IPHONEOS_DEPLOYMENT_TARGET: '17.0'
     MACOSX_DEPLOYMENT_TARGET: '15.0'
     WATCHOS_DEPLOYMENT_TARGET: '11.0'
@@ -107,6 +112,13 @@ archive_framework watchos 'generic/platform=watchOS' watchos
 archive_framework watchos-simulator 'generic/platform=watchOS Simulator' watchsimulator
 xcodebuild -create-xcframework "${frameworks[@]}" \
   -output "$OUTPUT_DIR/AutoLogCore.xcframework" > "$OUTPUT_DIR/create-xcframework.log" 2>&1
+while IFS= read -r plist; do
+  framework_version="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$plist")"
+  [[ "$framework_version" == "$VERSION" ]] || {
+    echo "Unexpected framework CFBundleShortVersionString in $plist: $framework_version" >&2
+    exit 1
+  }
+done < <(find "$OUTPUT_DIR/AutoLogCore.xcframework" -path '*/AutoLogCore.framework/Info.plist' -type f -o -path '*/AutoLogCore.framework/Versions/A/Resources/Info.plist' -type f)
 (
   cd "$OUTPUT_DIR"
   /usr/bin/zip -qry AutoLogCore.xcframework.zip AutoLogCore.xcframework

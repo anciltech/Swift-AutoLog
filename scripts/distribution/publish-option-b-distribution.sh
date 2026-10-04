@@ -21,10 +21,12 @@ unzip -q "$ARCHIVE" -d "$VERIFICATION_DIR"
 VERIFIED_RUNTIME="$VERIFICATION_DIR/AutoLogCore.xcframework"
 # A newer builder can silently raise the binary import requirement even when
 # Package.swift still advertises Swift 6.2. Only publish baseline-built artifacts.
-python3 - "$VERIFIED_RUNTIME" <<'PYTHON'
-import re, sys
+python3 - "$VERIFIED_RUNTIME" "$VERSION" <<'PYTHON'
+import plistlib, re, sys
 from pathlib import Path
-interfaces = list(Path(sys.argv[1]).rglob("*.swiftinterface"))
+runtime = Path(sys.argv[1])
+version = sys.argv[2]
+interfaces = list(runtime.rglob("*.swiftinterface"))
 assert interfaces, "Runtime has no textual Swift interfaces"
 for interface in interfaces:
     header = interface.read_text().splitlines()[:4]
@@ -35,6 +37,16 @@ for interface in interfaces:
     assert any("-module-name AutoLogCore" in line for line in header), (
         f"Unexpected runtime module: {interface}"
     )
+plists = list(runtime.glob("*/AutoLogCore.framework/Info.plist"))
+plists += list(runtime.glob("*/AutoLogCore.framework/Versions/A/Resources/Info.plist"))
+assert plists, "Runtime has no framework Info.plists"
+for plist in plists:
+    with plist.open("rb") as source:
+        metadata = plistlib.load(source)
+    assert metadata.get("CFBundleShortVersionString") == version, (
+        f"Runtime has an invalid CFBundleShortVersionString: {plist}"
+    )
+    assert metadata.get("CFBundleVersion"), f"Runtime has no CFBundleVersion: {plist}"
 PYTHON
 CHECKSUM="$(swift package compute-checksum "$ARCHIVE")"
 DIST_DIR="$ROOT_DIR/.build/option-b-release-$VERSION"

@@ -28,8 +28,10 @@ compiler outside the Swift 6.2 series. This prevents rebuilding on a newer local
 Xcode from silently raising the advertised minimum. Other compilers may build
 comparison artifacts in CI, but those artifacts cannot be published by this tool.
 
-The current customer release is 0.10.3 with tools 6.2. Use `--version VERSION`
-when preparing a different release; the generated README uses that version.
+The runtime builder accepts `--version VERSION` and writes that value into every
+framework `CFBundleShortVersionString`. The publisher verifies that value in the
+exact ZIP before it uploads. Use the same version for the runtime builder and
+the publisher.
 The complete older binary matrix passed before publication.
 
 Xcode 26.0.1 runs on macOS 15. GitHub removed its watchOS 26.0 platform
