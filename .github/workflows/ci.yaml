@@ -16,6 +16,11 @@ jobs:
     - uses: actions/checkout@v4
     - name: Select supported Xcode
       run: sudo xcode-select --switch /Applications/Xcode_26.0.1.app/Contents/Developer
+    - name: Initialize baseline platforms
+      run: |
+        sudo xcodebuild -runFirstLaunch
+        xcrun simctl list > /dev/null
+        xcodebuild -downloadPlatform watchOS -architectureVariant universal
     - name: Build
       run: swift build -v
     - name: Run tests

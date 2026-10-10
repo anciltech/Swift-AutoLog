@@ -25,3 +25,14 @@ simulator Release variants. These are compile/link checks, not physical-device t
 The minimum-toolchain workflow now tests source consumers. The hosted workflow
 installs the public source release without saved credentials. Binary build,
 generation, validation and publication tools have been removed.
+
+## Verified publication
+
+Release 0.11.0 is public. Anonymous source consumers passed on Swift 6.2 and
+6.3.2 in [the hosted workflow](https://github.com/anciltech/Swift-AutoLog/actions/runs/38050880347),
+and locally on Xcode 27 / Swift 6.4. Both minimum-toolchain lanes passed source
+tests and all four iOS/watchOS Release links in
+[the source baseline](https://github.com/anciltech/Swift-AutoLog/actions/runs/38050880397).
+The regular CI source build/tests passed but its separate watch fixture initially
+failed because the runner omitted watchOS 26.0. CI now installs the compatible
+baseline watch platform before using that fixture, matching the passing matrix.
