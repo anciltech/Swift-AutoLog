@@ -1,114 +1,50 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-TOOL_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-SOURCE_PACKAGE_DIR="$(cd "$TOOL_DIR/../.." && pwd)"
-ROOT_DIR="${AUTOLOG_DISTRIBUTION_WORKSPACE:-$SOURCE_PACKAGE_DIR}"
-DIST_DIR="$ROOT_DIR/.build/option-b-public-package"
-CONSUMER_DIR="$ROOT_DIR/.build/option-b-consumer"
-CONSUMER_BUILD_DIR="$ROOT_DIR/.build/option-b-consumer-build"
-RUNTIME_BINARY_PATH=""
+PACKAGE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+WORKSPACE="${AUTOLOG_SOURCE_WORKSPACE:-$PACKAGE_DIR}"
+CONSUMER_DIR="$WORKSPACE/.build/source-consumer"
+CONSUMER_BUILD_DIR="$WORKSPACE/.build/source-consumer-build"
 PACKAGE_URL=""
-VERSION="0.10.4"
-
+VERSION="0.11.0"
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --runtime-binary-path)
-      RUNTIME_BINARY_PATH="${2:-}"
-      shift 2
-      ;;
-    --package-url)
-      PACKAGE_URL="${2:?Missing package URL}"
-      shift 2
-      ;;
-    --version)
-      VERSION="${2:?Missing release version}"
-      shift 2
-      ;;
+    --package-url) PACKAGE_URL="${2:?Missing URL}"; shift 2 ;;
+    --version) VERSION="${2:?Missing version}"; shift 2 ;;
     -h|--help)
-      cat <<'EOF'
-Usage:
-  scripts/option-b-distribution-smoke.sh
-  scripts/option-b-distribution-smoke.sh --runtime-binary-path PATH
-  scripts/option-b-distribution-smoke.sh --package-url URL --version VERSION
-
-Without --runtime-binary-path, the smoke uses runtime source as a temporary
-stand-in so the package split can be verified before a binary exists.
-EOF
-      exit 0
-      ;;
-    *)
-      echo "Unknown argument: $1" >&2
-      exit 2
-      ;;
+      echo 'Usage: scripts/source-consumer-smoke.sh [--package-url URL --version VERSION]'
+      exit 0 ;;
+    *) echo "Unknown argument: $1" >&2; exit 2 ;;
   esac
 done
-
-if [[ -n "$RUNTIME_BINARY_PATH" && -n "$PACKAGE_URL" ]]; then
-  echo "Choose a local runtime or a published package, not both." >&2
-  exit 2
-fi
-if [[ -z "$PACKAGE_URL" ]]; then
-  rm -rf "$DIST_DIR"
-fi
+[[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo 'Expected a semantic version.' >&2; exit 2; }
 if [[ -n "$PACKAGE_URL" ]]; then
-  PACKAGE_ID="$(basename "$PACKAGE_URL" .git | tr '[:upper:]' '[:lower:]')"
+  [[ "$PACKAGE_URL" == 'https://github.com/anciltech/Swift-AutoLog.git' ]] || { echo 'Expected the public source repository.' >&2; exit 2; }
   DEPENDENCY=".package(url: \"$PACKAGE_URL\", exact: \"$VERSION\")"
-elif [[ -n "$RUNTIME_BINARY_PATH" ]]; then
-  "$TOOL_DIR/prepare-option-b-distribution.sh" \
-    --output "$DIST_DIR" --version "$VERSION" \
-    --runtime-binary-path "$RUNTIME_BINARY_PATH"
 else
-  "$TOOL_DIR/prepare-option-b-distribution.sh" \
-    --output "$DIST_DIR" --version "$VERSION" \
-    --runtime-source-for-smoke
+  DEPENDENCY=".package(path: \"$PACKAGE_DIR\")"
 fi
-
-if [[ -z "$PACKAGE_URL" ]]; then
-  PACKAGE_ID="option-b-public-package"
-  DEPENDENCY='.package(path: "../option-b-public-package")'
-fi
-if [[ -n "$RUNTIME_BINARY_PATH" ]]; then
-  # Force the consumer to compile the public text interfaces, proving that the
-  # release is not relying on compiler-specific cached .swiftmodule files.
-  find "$DIST_DIR/Artifacts" -type f -name '*.swiftmodule' -delete
-fi
-rm -rf "$CONSUMER_DIR" "$CONSUMER_BUILD_DIR"
-mkdir -p "$CONSUMER_DIR/Sources/OptionBConsumer"
-
+mkdir -p "$CONSUMER_DIR/Sources/SourceConsumer"
 cat > "$CONSUMER_DIR/Package.swift" <<EOF
 // swift-tools-version: 6.2
 import PackageDescription
-
 let package = Package(
-  name: "OptionBConsumer",
-  platforms: [
-    .macOS(.v15),
-    .iOS(.v17),
-    .watchOS(.v11),
-  ],
-  products: [
-    .executable(name: "OptionBConsumer", targets: ["OptionBConsumer"]),
-  ],
-  dependencies: [
-    $DEPENDENCY,
-  ],
-  targets: [
-    .executableTarget(
-      name: "OptionBConsumer",
-      dependencies: [
-        .product(name: "AutoLog", package: "$PACKAGE_ID"),
-        .product(name: "AutoLogSwiftUI", package: "$PACKAGE_ID"),
-      ],
-      swiftSettings: [
-        .swiftLanguageMode(.v6),
-      ]
-    ),
-  ]
+  name: "SourceConsumer",
+  platforms: [.macOS(.v15), .iOS(.v17), .watchOS(.v11)],
+  products: [.executable(name: "SourceConsumer", targets: ["SourceConsumer"])],
+  dependencies: [$DEPENDENCY],
+  targets: [.executableTarget(
+    name: "SourceConsumer",
+    dependencies: [
+      .product(name: "AutoLog", package: "swift-autolog"),
+      .product(name: "AutoLogSwiftUI", package: "swift-autolog")
+    ],
+    swiftSettings: [.swiftLanguageMode(.v6)]
+  )]
 )
 EOF
 
-cat > "$CONSUMER_DIR/Sources/OptionBConsumer/main.swift" <<'EOF'
+cat > "$CONSUMER_DIR/Sources/SourceConsumer/main.swift" <<'EOF'
 import AutoLog
 import AutoLogSwiftUI
 import SwiftUI
@@ -201,7 +137,7 @@ await verifyCallerIsolation()
 
 private let store = EventStore()
 private let configurationStore = AutoLogConfigurationStore(
-  suiteName: "OptionBConsumer.\(UUID().uuidString)"
+  suiteName: "SourceConsumer.\(UUID().uuidString)"
 )
 
 // Verify the documented default bootstrap and an ordinary macro call first.
@@ -236,12 +172,8 @@ guard successCount == 0, failureCount == 1 else {
   fatalError("Expected only one failure event, got success=\(successCount) failure=\(failureCount)")
 }
 
-print("Option B distribution smoke passed")
+print("Open-source consumer smoke passed")
 EOF
 
-# The public customer endpoint must work without credentials. Disable SwiftPM
-# credential stores as well as Git configuration in the publisher/recheck lane.
-swift run --disable-keychain --disable-netrc \
-  --package-path "$CONSUMER_DIR" \
-  --scratch-path "$CONSUMER_BUILD_DIR" \
-  OptionBConsumer
+swift run --jobs 4 --disable-keychain --disable-netrc \
+  --package-path "$CONSUMER_DIR" --scratch-path "$CONSUMER_BUILD_DIR" SourceConsumer

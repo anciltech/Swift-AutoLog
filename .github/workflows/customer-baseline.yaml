@@ -1,8 +1,8 @@
-name: Published Customer Baseline
+name: Published Open-source Baseline
 
 on:
   push:
-    branches: [main, codex/swiftui-lifecycle-log-modifiers]
+    branches: [main]
     paths: ['.github/workflows/customer-baseline.yaml']
   workflow_dispatch:
 
@@ -34,6 +34,6 @@ jobs:
         run: |
           xcodebuild -version
           xcrun swift --version
-          scripts/distribution/option-b-distribution-smoke.sh \
-            --package-url https://github.com/anciltech/Swift-AutoLog-Distribution.git \
-            --version 0.10.3
+          scripts/source-consumer-smoke.sh \
+            --package-url https://github.com/anciltech/Swift-AutoLog.git \
+            --version 0.11.0

@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.11.0 - 2026-10-10
+
+### Changed
+
+- Publish the complete MIT-licensed source package from `anciltech/Swift-AutoLog`.
+- Retire the separate binary distribution and its publishing tools.
+- Bring the runtime, macro, SwiftUI, and caller-isolation fixes from the development branch into `main`.
+- Verify local and anonymously installed source consumers, including iOS/watchOS Release links.
+- Keep the `AutoLog` and `AutoLogSwiftUI` products and imports unchanged.
+
 ## 0.10.1 - 2026-06-28
 
 ### Fixed

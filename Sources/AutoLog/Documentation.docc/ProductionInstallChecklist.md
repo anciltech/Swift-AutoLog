@@ -2,19 +2,16 @@
 
 Use this checklist before enabling Swift AutoLog in a production target.
 
-## Customer Package
+## Open-source Package
 
-Add `https://github.com/anciltech/Swift-AutoLog-Distribution.git` at `0.10.4`
-or newer. This public package includes the binary runtime and the `AutoLog`
-and optional `AutoLogSwiftUI` products; no private source access is required.
-This binary release requires Xcode 26 / Swift 6.2 or newer and supports iOS 17+,
-macOS 15+, and watchOS 11+.
+Add `https://github.com/anciltech/Swift-AutoLog.git` at `0.11.0` or newer.
+The MIT-licensed public repository includes the runtime, macros, SwiftUI helpers,
+settings, and tests as source. Select `AutoLog` and optional `AutoLogSwiftUI`.
+Requires Xcode 26 / Swift 6.2 or newer; supports iOS 17+, macOS 15+, and watchOS 11+.
 
-The source repository `anciltech/Swift-AutoLog` remains private. Only source
-consumers need repository access and authenticated Git/Xcode accounts (including
-CI hosts). Choose one distribution per target because both packages expose the
-same module names. Repository permission errors occur before compilation and
-cannot be fixed with macro trust settings.
+Replace the retired binary distribution dependency rather than adding both.
+Update the package identity to `swift-autolog`, resolve the graph again, and
+review the new source revision before updating macro trust on CI hosts.
 
 ## Checklist
 

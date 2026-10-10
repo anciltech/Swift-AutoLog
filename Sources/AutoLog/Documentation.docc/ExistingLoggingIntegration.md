@@ -10,8 +10,8 @@ instrumentation and keep their existing destination as an output sink. The
 customer-facing setup is:
 
 1. Add the `AutoLog` product from the public
-   `https://github.com/anciltech/Swift-AutoLog-Distribution.git` package
-   (`0.10.4` or newer; Xcode 26 / Swift 6.2 or newer).
+   `https://github.com/anciltech/Swift-AutoLog.git` package
+   (`0.11.0` or newer; Xcode 26 / Swift 6.2 or newer).
 2. Bootstrap the runtime once with `AutoLog.start()`.
 3. Tag app-owned service, view-model, use-case, repository, or data-source
    types with `@AutoLog`.

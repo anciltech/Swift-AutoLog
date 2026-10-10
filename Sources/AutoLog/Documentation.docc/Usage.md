@@ -22,11 +22,11 @@ Opt out of logging and exclude methods from emitting events.
 
 ## Import the AutoLog library
 
-Add the public `https://github.com/anciltech/Swift-AutoLog-Distribution.git`
-package at `0.10.4` or newer and choose the `AutoLog` product in Xcode or Swift
+Add the public `https://github.com/anciltech/Swift-AutoLog.git`
+package at `0.11.0` or newer and choose the `AutoLog` product in Xcode or Swift
 Package Manager. Add `AutoLogSwiftUI` too if you use the SwiftUI helpers below.
-The binary release requires Xcode 26 / Swift 6.2 or newer and supports iOS 17+,
-macOS 15+, and watchOS 11+. Private source repository access is unnecessary.
+The source release requires Xcode 26 / Swift 6.2 or newer and supports iOS 17+,
+macOS 15+, and watchOS 11+. The full implementation is public under the MIT license.
 
 After importing AutoLog for the first time, you will be prompted to enable
 macros provided by the library. Local Xcode users should approve the
