@@ -36,3 +36,15 @@ tests and all four iOS/watchOS Release links in
 The regular CI source build/tests passed but its separate watch fixture initially
 failed because the runner omitted watchOS 26.0. CI now installs the compatible
 baseline watch platform before using that fixture, matching the passing matrix.
+
+## Retirement and local verification
+
+The former `anciltech/Swift-AutoLog-Distribution` repository was deleted after
+local consumers migrated and its complete Git mirror/release archives were saved
+by the demo workspace. GitHub confirmed deletion; authenticated and anonymous API
+lookups return HTTP 404. Historical local checkouts are not active publishers.
+
+Xcode 27 / Swift 6.4 functional verification passed: 209 runtime tests and 109
+macro tests. The full local suite compiled but was interrupted in performance
+measurements on an overloaded host; the minimum-toolchain CI lanes ran the full
+source suite successfully. No local performance claim is made.
